@@ -1,0 +1,21 @@
+{
+  "weeks": [
+    { "id": "w1", "title": "Week 1 · 光学与 Camera 硬件入门", "days": ["day-01", "day-02", "day-03", "day-04", "day-05", "day-06", "day-07"] },
+    { "id": "w2", "title": "Week 2 · ISP Pipeline 全链路", "days": ["day-08", "day-09", "day-10", "day-11", "day-12", "day-13", "day-14"] },
+    { "id": "w3", "title": "Week 3 · AEC 第一阶段：基础", "days": ["day-15", "day-16", "day-17", "day-18", "day-19", "day-20", "day-21"] },
+    { "id": "w4", "title": "Week 4 · AEC 第二阶段：进阶", "days": ["day-22", "day-23", "day-24", "day-25", "day-26", "day-27", "day-28"] },
+    { "id": "w5", "title": "Week 5 · AWB 第一阶段：基础", "days": ["day-29", "day-30", "day-31", "day-32", "day-33", "day-34", "day-35"] },
+    { "id": "w6", "title": "Week 6 · AWB 第二阶段：进阶", "days": ["day-36", "day-37", "day-38", "day-39", "day-40", "day-41", "day-42"] },
+    { "id": "w7", "title": "Week 7 · AF + Flash + HDR 综合", "days": ["day-43", "day-44", "day-45", "day-46", "day-47", "day-48", "day-49"] },
+    { "id": "w8", "title": "Week 8 · 色彩科学 + 工具实操 + 面试冲刺", "days": ["day-50", "day-51", "day-52", "day-53", "day-54", "day-55", "day-56", "day-57", "day-58", "day-59", "day-60"] }
+  ],
+  "days": [
+    { "id": "day-01", "week": 1, "module": "M1", "title": "认识光与曝光三要素" },
+    { "id": "day-02", "week": 1, "module": "M1", "title": "Bayer 阵列与 CFA：相机如何看到颜色" },
+    { "id": "day-03", "week": 1, "module": "M1", "title": "CMOS 传感器工作原理" },
+    { "id": "day-04", "week": 1, "module": "M1", "title": "镜头、光圈与马达对焦" },
+    { "id": "day-05", "week": 1, "module": "M1", "title": "快门、曝光时间与帧率" },
+    { "id": "day-06", "week": 1, "module": "M1", "title": "闪光灯：LED 与色温" },
+    { "id": "day-07", "week": 1, "module": "M1", "title": "Week 1 总结 + 硬件全景图" }
+  ]
+}
