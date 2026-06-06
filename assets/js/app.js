@@ -39,7 +39,11 @@ function placeholderView(title) {
 }
 
 const router = new Router()
-  .on("#/overview",      () => { renderSidebar("#/overview");  placeholderView("📚 总览"); })
+  .on("#/overview", async () => {
+    renderSidebar("#/overview");
+    const { renderOverview } = await import("./views/overview.js");
+    renderOverview(content, { progress, router });
+  })
   .on("#/today",         () => { renderSidebar("#/today");     placeholderView("📅 今日学习"); })
   .on("#/notes",         () => { renderSidebar("#/notes");     placeholderView("📝 笔记"); })
   .on("#/quiz",          () => { renderSidebar("#/quiz");      placeholderView("📊 考核中心"); })

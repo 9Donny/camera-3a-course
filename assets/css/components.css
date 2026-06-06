@@ -30,3 +30,25 @@
 .nav-item.active { background: var(--accent); color: white; }
 .nav-item.locked { color: var(--text-dim); cursor: not-allowed; }
 .nav-section { margin-top: 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); }
+
+.progress-bar { height: 6px; background: var(--surface-2); border-radius: 3px; margin-bottom: 24px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); transition: width .3s; }
+
+.overview-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+.week-row { display: flex; align-items: center; gap: 12px; }
+.week-label { width: 64px; color: var(--text-muted); font-size: 13px; }
+.week-cells { display: flex; gap: 4px; }
+.day-cell {
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; font-size: 12px; cursor: default;
+}
+.day-cell.locked { background: var(--surface-2); color: var(--text-dim); }
+.day-cell.current { background: transparent; border: 2px solid var(--accent); color: var(--accent-2); cursor: pointer; }
+.day-cell.done { background: var(--accent); color: white; cursor: pointer; }
+.day-cell.empty { visibility: hidden; }
+
+.legend { display: flex; gap: 16px; color: var(--text-muted); font-size: 13px; }
+.legend i.dot { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: middle; }
+.legend i.dot.done { background: var(--accent); }
+.legend i.dot.current { background: transparent; border: 2px solid var(--accent); }
+.legend i.dot.locked { background: var(--surface-2); }
