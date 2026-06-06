@@ -1,6 +1,7 @@
 import { storage } from "./storage.js";
 import { Progress } from "./progress.js";
 import { Router } from "./router.js";
+import { notes } from "./notes.js";
 
 const sidebar = document.getElementById("sidebar");
 const content = document.getElementById("content");
@@ -49,16 +50,69 @@ const router = new Router()
     const { renderToday } = await import("./views/today.js");
     await renderToday(content, { progress, router, persistProgress });
   })
-  .on("#/notes",         () => { renderSidebar("#/notes");     placeholderView("📝 笔记"); })
-  .on("#/quiz",          () => { renderSidebar("#/quiz");      placeholderView("📊 考核中心"); })
-  .on("#/report",        () => { renderSidebar("#/report");    placeholderView("📈 日报"); })
-  .on("#/weakness",      () => { renderSidebar("#/weakness");  placeholderView("🎯 薄弱项"); })
-  .on("#/notes/:dayId",  (p) => { renderSidebar("#/notes");    placeholderView(`📝 笔记 · ${p.dayId}`); })
-  .on("#/quiz/:quizId",  (p) => { renderSidebar("#/quiz");     placeholderView(`📊 考核 · ${p.quizId}`); })
-  .on("#/report/:dayId", (p) => { renderSidebar("#/report");   placeholderView(`📈 日报 · ${p.dayId}`); })
-  .setNotFound(() => { renderSidebar("");                       placeholderView("404 路径未找到"); });
+  .on("#/notes", async () => {
+    renderSidebar("#/notes");
+    const { renderNotesList } = await import("./views/notes-view.js");
+    renderNotesList(content, { router });
+  })
+  .on("#/notes/:dayId", async (p) => {
+    renderSidebar("#/notes");
+    const { renderNoteEditor } = await import("./views/notes-view.js");
+    renderNoteEditor(content, { dayId: p.dayId });
+  })
+  .on("#/quiz", async () => {
+    renderSidebar("#/quiz");
+    const { renderQuizCenter } = await import("./views/quiz-view.js");
+    renderQuizCenter(content, { progress });
+  })
+  .on("#/quiz/:quizId", async (p) => {
+    renderSidebar("#/quiz");
+    const { renderQuiz } = await import("./views/quiz-view.js");
+    await renderQuiz(content, { quizId: p.quizId, router });
+  })
+  .on("#/report", async () => {
+    renderSidebar("#/report");
+    const { renderReport } = await import("./views/report-view.js");
+    renderReport(content, { dayId: null, progress });
+  })
+  .on("#/report/:dayId", async (p) => {
+    renderSidebar("#/report");
+    const { renderReport } = await import("./views/report-view.js");
+    renderReport(content, { dayId: p.dayId, progress });
+  })
+  .on("#/weakness", async () => {
+    renderSidebar("#/weakness");
+    const { renderWeakness } = await import("./views/weakness-view.js");
+    renderWeakness(content, {});
+  })
+  .setNotFound(() => { renderSidebar(""); placeholderView("404 路径未找到"); });
 
 router.start();
 
-// expose for views to navigate / mutate state
-window.app = { progress, persistProgress, router, storage };
+function downloadFile(filename, content, mime = "text/plain") {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+window.app = {
+  progress, persistProgress, router, storage,
+  exportNotesMd: () => downloadFile(`notes-${new Date().toISOString().slice(0,10)}.md`, notes.exportMarkdown(), "text/markdown"),
+  exportNotesJson: () => downloadFile(`notes-${new Date().toISOString().slice(0,10)}.json`, notes.exportJSON(), "application/json"),
+  importNotesJson: async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    notes.importJSON(text);
+    alert("笔记已导入。请刷新页面。");
+  },
+  exportReport: (dayId) => {
+    import("./report.js").then(({ buildDailyReport }) => {
+      const r = buildDailyReport(dayId, progress);
+      const md = `# 日报 · ${dayId}\n\n- 完成时间：${r.completedAt}\n- 连续打卡：${r.streak} 天\n- 小测：${r.quiz ? r.quiz.score + "/" + r.quiz.total : "未做"}\n\n## 笔记摘要\n${r.notePreview}\n\n## 模块正确率\n${Object.entries(r.moduleSummary).map(([m,s])=>`- ${m}: ${(s.accuracy*100).toFixed(0)}%`).join("\n")}\n\n> ${r.encouragement}\n`;
+      downloadFile(`report-${dayId}.md`, md, "text/markdown");
+    });
+  },
+};

@@ -74,3 +74,25 @@
 .glossary ul { margin: 0; padding-left: 20px; line-height: 1.8; }
 
 .lesson-footer { margin-top: 40px; display: flex; gap: 12px; padding: 16px 0; border-top: 1px solid var(--border); }
+
+.note-editor { width: 100%; min-height: 400px; padding: 12px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--font-sans); font-size: 14px; line-height: 1.7; resize: vertical; }
+
+.quiz-item { background: var(--surface); padding: 16px; border-radius: var(--radius); margin-bottom: 12px; border: 1px solid var(--border); }
+.qprompt { font-weight: 600; margin-bottom: 12px; }
+.qopts label { display: block; padding: 6px 0; cursor: pointer; }
+.qopts input[type=radio] { margin-right: 8px; }
+.qfill, .qshort { width: 100%; padding: 8px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-family: inherit; }
+.qshort { min-height: 80px; resize: vertical; }
+.result-item { padding: 12px; border-bottom: 1px solid var(--border); }
+.result-item .ok { color: var(--success); }
+.result-item .fail { color: var(--danger); }
+
+.weakness-chart { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
+.weakness-row { display: grid; grid-template-columns: 220px 1fr 60px; align-items: center; gap: 12px; }
+.weakness-label { color: var(--text-muted); font-size: 13px; }
+.weakness-bar { background: var(--surface-2); height: 14px; border-radius: 7px; overflow: hidden; }
+.weakness-pct { text-align: right; color: var(--text-muted); font-size: 13px; }
+.bar-mastered { background: var(--success); height: 100%; }
+.bar-partial  { background: var(--warning); height: 100%; }
+.bar-urgent   { background: var(--danger);  height: 100%; }
+.bar-untested { background: var(--surface-2); height: 100%; }
