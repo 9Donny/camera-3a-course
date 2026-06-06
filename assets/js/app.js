@@ -44,7 +44,11 @@ const router = new Router()
     const { renderOverview } = await import("./views/overview.js");
     renderOverview(content, { progress, router });
   })
-  .on("#/today",         () => { renderSidebar("#/today");     placeholderView("📅 今日学习"); })
+  .on("#/today", async () => {
+    renderSidebar("#/today");
+    const { renderToday } = await import("./views/today.js");
+    await renderToday(content, { progress, router, persistProgress });
+  })
   .on("#/notes",         () => { renderSidebar("#/notes");     placeholderView("📝 笔记"); })
   .on("#/quiz",          () => { renderSidebar("#/quiz");      placeholderView("📊 考核中心"); })
   .on("#/report",        () => { renderSidebar("#/report");    placeholderView("📈 日报"); })
