@@ -1,0 +1,11 @@
+# Visual Companion 临时文件
+.superpowers/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 编辑器
+.vscode/
+.idea/
+*.swp

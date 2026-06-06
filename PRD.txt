@@ -1,0 +1,169 @@
+#  目标
+帮我做一个手机Camera调教的课程(主要针对高通平台的手机 camera 做 3A tunning),让我在 2 个月时间内能从一名手机测试工程师转行到 camera 调教工程师 .课程的展现方式是通过 html 展示.
+
+# 我自己的情况:
+我对手机 camera 一窍不通,纯小白,因此需要对很多 camera 原理\术语\相关技术做一些深入的学习,可以让我能在 2 个月后,通过 Camera 调教工程师的面试.
+我每天有 4 个小时的学习时间,我喜欢记笔记,可以边学边记,我对英文不是很熟悉,最好是中文课程,如果有专业英文术语,最好帮我进行解释说明.
+我是大专毕业,对于代码编程不是很熟悉,如果课程涉及编程,还需要告知或者铺设一些预备知识.
+
+# 课程方式:
+1. 可以是图文并茂,视频或者动图等
+2. 每天上课可以线上记笔记
+3. 每天学习完成后,帮我生成知识问答,然后帮我生成每天学习的日报,每天需要定期打卡
+4. 在 html 网页中可以看到整个课程的总览,但是不可以跳跃学习,需要按照规划挨个学习
+5. 课程一定要从浅到深入,一定要记住我的基础知识薄弱,不适合一上来就说专业词汇
+6.  我每天的学习时间比如周末可以更长一些,因此课程需要支持一天超前学习,不限制学习时长
+7. 课程的展现方式是通过 html 展示, 整体的 html 网页交互方式要简单美观,可以参考 claude 官方力推的的设计 skills 来进行网页 UI 设计.
+
+#  学习完成后自检评估
+1. 每天需要有考核环节,每周也需要有考核环节,每月也需要
+2. 根据考核结果需要评估出我哪方便能力比较薄弱,并且针对性的给我设计一些课程或者资料
+
+# 已有的一些资料
+1. 我的妹妹是一名 camera 调教工程师,经验丰富,她最近调试的高通平台是 7450,我有一些他的学习笔记:链接是有道云笔记的:https://share.note.youdao.com/ynoteshare/mobile.html?id=1157e1026f60f51ff6e46acad349b3ff,https://share.note.youdao.com/ynoteshare/mobile.html?id=dd6b0e33d2952e7a0ae9eff734913757
+2. 我有高通的一些 3A 的 pdf 文档, 你可以参考去涉及课程:80-NK872-14SC_REV_K_Camera_3A_7_0_Tuning_Guide__Simplified_Chinese_.pdf,80-PN984-22_REV_F_Qualcomm_3A_10_Deep_Dive.pdf,文档在 当前目录下
+3. 同时网上可以搜索一些资料帮助我理解这些知识.
+4. 已知的一些面试题目: 
+AE算法流程
+亮度获取：图像经过OB，shading后，将图像分成64*48的网格，获取亮度信息。
+计算Target：用luma target ，直方图，bright region ，dark region， extreme clolor等AE信息统计模块进行调整分析，统计出最终的目标亮度(Target)。基础亮度信息和目标亮度进行比较分析，决定是否收敛。
+曝光调节：若决定收敛，则经过曝光表进入exp index，将需要的曝光时间和sersor gain配置给sensor，之后经过gamma，TMC,LTM,GTM 做isp gain补偿，最后照片的正确曝光；如果不收敛的话，则循环到next AE index,继续获取亮度，直到完成正确的曝光。
+safe target 怎么得来的
+计算出Bright_Low_target,Bright_High_Target,Dark_Low_target和Dark_High_Target这四个值，然后去掉最大值和最小值，得到low target 和high target
+然后将reference target luma与low target 和high target进行比较，取中间的值作为safe target。
+最后将第二步得到的safe target 和MinTargetAdjRatioreference target luma 和MaxTargetRatioreference target luma 比较，取中间值为最终的safe target。
+LTM 的算法流程
+Applies a bilateral filter to generate a nonlinear mask
+(应用双边滤波器以生成非线性mask)
+Avoids halo artifacts on the edges
+Uses an LTM curve set for local gain adjustment
+(避免边缘出现光晕瑕疵,使用LTM曲线集进行局部增益调整)
+Uses a combination of LTM and LCE
+使用LTM和LCE的组合计算local gain
+TMC的作用
+作为LTM 和GTM 的混合比例统计。LTM和GTM的占比相加必须等于1。
+index 怎么计算
+Lux 指数用于指示当帧亮度超过最大值 exp_index 时测试条件的亮度信息。该指数通过以下等式确定：
+因此，如果帧亮度 = 测试条件的亮度目标，则 lux_index 等于 exp_index。lux_index 有助 于在 exp_index 达到最大值时以帧亮度传达亮度信息。
+Darkboost gain 和adrc gain怎么来的
+Darkboost gain = long target/safe target。
+(取MaxDarkBoostGain 和Dark_low_target/safe target 的最小值，再将这个最小值与 MaxADRCGain/DRCGain的值对比，得到的最小值。)
+Adrc gain = safe target /short target。
+取bright low target和bright high target 以及safe target 的最小值作为short target
+取safe target/short target 的计算值与MaxDRCgain比较得到的最小值就是adrc gain的值。
+影响对比度的模块有哪些
+Gamma LTM GTM TMC
+gamma 调试优先还是LTM调试优先？
+Gamma.(gamma影响全局亮度，LTM影响局部亮度，先调好全局，再调局部)
+帧率是240 的曝光时间
+Time=1/帧率=1/240(s)=4166666（ms）
+7250 平台TMC用的是3.0 还是4.0，怎么知道用的是3.0还是4.0
+高通AE 分为多少个数据块统计的，怎么统计的
+64*48个统计数据块，通过中心测光模式统计。
+高通曝光表怎么调试，主要影响什么
+首先计算出垂直消隐时间和首行曝光时间
+FrameLengthLines=Frame_lengthLine_length 也就是帧长行长，一帧的像素数
+Vertical Blanking Time=1/最大帧率/FrameLengthLinesvertical_offset10^9
+首行曝光时间=1/最大帧率/FrameLengthLinesminlinecount10^9
+vertical_offse:垂直补偿
+Minlinecount:最小曝光行
+其他行优先以曝光时间优先的形式曝光，为了避免暗环境有拖影，最后一行以gain优先的形式曝光。
+主要影响：AEC 曝光表通过传感器曝光时间和传感器模拟增益控制图像亮度。主要影响亮度和噪声
+曝光方程是怎样的？
+AV+TV=BV+SV=EV
+AV+TV：曝光的供给面，有多少光进入摄像头。
+BV+SV：曝光的接受面，有多少光反映到图片的亮度上。
+EV：曝光量，光圈大小和快门时间组合共同决定曝光量。
+闪光灯打闪过曝：
+调整主闪和预闪的比率flux，flux越大，闪光灯拍的照片越暗。
+Video拍摄到人脸，画面偏亮，不稳定
+1.调整video的收敛速度，使其变慢。
+2.关闭face ae，检测到人脸的时候将不会调用face ae的参数，画面无变化，通过tone mapping 调整人脸。
+Metering 分为那两个模块？
+evtable和ae数据统计
+ev table 这些是各个帧的合成调整，用于算法处理的，ae数据统计计算就是正在调整的那些
+TMC主要调哪些参数：
+TMC很少调，建议调的参数一个是GTM和LTM的混合比率，还有dark boost ratio ，tone target和tone anchors这些。
+
+# boss直聘上对应的岗位 JD 是:
+岗位 1:
+Camera tuning 工程师
+工作地:北京市朝阳区东方梅地”
+"岗位职责:分模块负责AF、AWB或者AEC
+1.负责Camera效果优化，能够独立完成Camera
+Tuning项目;
+2.负责对竞品和Camera行业分析;
+3.制定Camera效果优化计划，撰写Camera效果优化技术文档:
+“任职要求:
+1.本科及以上学历，相关行业3年以上工作经验;
+2.有扎实的光学和图像处理知识，熟悉Camera基本结构、成像原理、ISP流程以及3A算法;
+3.熟悉高通平台Tuning工具，具备2年以上高通平台Camera Tuning经验;
+4.具有画质主客、客观评价能力，能够解决测试中出现的画质问题;
+5.具备良好的沟通能力和团队协作意识，细心，沉稳，有激情，有责任心"
+岗位 2:
+关于团队
+我们正在研发一款面向消费者的新形态影像硬件产品，采用多摄立体方案，覆盖从专业Log色彩到HDR的完整影像管线。目标用户是有审美追求的创作者，我们希望做出真正经得起专业眼光审视的画质，而不是靠参数堆砌。
+你将负责什么:
+驱动产品的多摄系统从RAW到最终交付的整套画质表现，具体包括:
+多摄一致性:定义并验收多摄之间在曝光、白平衡、色彩、几何畸变上的一致性指标，确保最终成片无割裂感:
+色彩科学:主导标准色彩、自研Log色彩、HDR三套色彩管线的设计，输出官方LUT，与下游App端监看、桌面端调色软件接力链路打通-Tuning全流程:定义AE/AWB/AF、降噪、锐化、HDR、防抖等模块的目标与验收标准，与ISP/算法团队协作落地
+-场景化调优:针对典型用户场景(运动、室内、低光、强逆光、人像、旅拍)定义画质...
+
+岗位 3:
+Job Function:
+[ Support camera solution on Qualcomm
+SnapdragonTM mobile processors and
+design-wins.
+[ Help customers understand Qualcomm
+SpectraTM camera solution on ISP, algorithms,tuning and tools, so that they can deliver the
+most competitive image quality within the
+project schedule.
+[ Provide solutions to customer's issues on
+image quality, and support at customer's site tosolve camera tuning issues quickly.
+Dldentify problems reported by customers,
+report Qualcomm bugs to development team
+and provide the analysis until the root cause arefound and bugs are fixed.
+Skills & Experiences[ Familiar with camera sensor technologiessuch as CMOS/CCD.
+L Be an expert on color science, imageprocessing and quality tuning theories.
+[ Experienced in color processing pipeline andfundamental algorithms used in digital cameraindustry, such as AWB/AE/AF.
+[Experienced in various image processing
+algorithms adopted in digital camera industry,such as color enhancement, noise reduction
+etc.
+D Experienced with camera tuning and imagequality improvement in phone or adjacent
+industries.
+ Familiar with C/C++ and Matlab and work
+environment under Linux/Windows/Android.
+[ The ability to learn quickly with high
+motivation and work under high pressure.
+[ The experience working on Qualcomm
+platforms and phone industry is preferred.
+ Excellent English communication and
+interpersonal skills.
+
+岗位 4:
+Camera tuning工程师/tuning工程师/调校工程师/Camera调试/高通+3A-AF、AWB、AEC、 AF AE ISP
+相机调校，是指通过软件算法、参数配置及硬件协同优化，对相机(包括手机、相机设备、车载摄像头等)的成像效果进行精细化调整的技术过程，核心目标是让相机在不同场景下输出色彩、清晰度、动态范围等更符合用户视觉预期或专业需求的图像。无人机相机调试中，AF、AWB、AEC和ISP是核心技术术语，分别对应相机不同的自动控制算法和图像处理模块:AF(AutoFocus, 自动对焦)、AWB (Auto White
+Balance，自动白平衡)、AEC (Auto ExposureControl，自动曝光控制)、ISP(Ilmage Signal
+Processor，图像信号处理器)
+岗位职责:
+负责Camera画质效果优化，能够独立完成
+Camera Tuning 项目;
+负责对竞品和Camera行业分析;
+制定Camera效果优化计划，撰写Camera效果优化技术文档;相关行业3年以上工作经验;
+有扎实的光学和图像处理知识，熟悉Camera基本结构、成像原理、ISP流程以及3A算法;
+熟悉高通平台Tuning工具，具备2年以上高通平台 Camera Tuning 经验;
+具有画质主客、客观评价能力，能够解决测试中出现的画质问题
+具备良好的沟通能力和团队协作意识，细心，沉稳，有激情，有责任心。
+
+岗位 5:
+岗位职责:
+1、评估和调试图像传感器性能，如HDR
+remosaic等;
+2、基于移动平台(高通、联发科、麒麟、三星等)，完成图像传感器相关的效果调试及优化;
+3、基于客户需求，完成图像效果的针对性调试;对客户的现场支持。
+任职要求:
+1、本科及以上学历，光学、计算机等工科或理科背景;5年以上相机/图像调试相关工作经验;
+2、具备扎实的ISP管道和模块知识;至少一个移动平台的相机项目调试经验(高通、联发科、麒麟、三星等),有AE/raw域多帧/tone mapping等经验优先
+3、了解相机传感器的特性;sensor工作原理及驱动(点亮)方法;
+4、对创新的影像技术敏感，较强的能够快速适应能力;
+5、较强的英语的听说读写能力。
