@@ -1,11 +1,16 @@
 export class Progress {
   constructor(initial = null) {
-    this.state = initial ?? {
+    const defaults = {
       currentDay: 1,
       completedDays: [],
       streak: 0,
       lastCompletedAt: null,
     };
+    if (initial && Array.isArray(initial.completedDays)) {
+      this.state = initial;
+    } else {
+      this.state = defaults;
+    }
   }
 
   getState() {
