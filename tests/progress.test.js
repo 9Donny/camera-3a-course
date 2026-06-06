@@ -80,3 +80,18 @@ test("hydrate restores state", () => {
   assert.equal(p.isUnlocked(6), false);
   assert.equal(p.getState().streak, 4);
 });
+
+test("hydrate: corrupt state (missing completedDays) falls back to defaults", () => {
+  const p = new Progress({ currentDay: 2 }); // missing completedDays
+  const s = p.getState();
+  assert.equal(s.currentDay, 1);
+  assert.deepEqual(s.completedDays, []);
+  assert.equal(s.streak, 0);
+});
+
+test("hydrate: completedDays not an array falls back to defaults", () => {
+  const p = new Progress({ currentDay: 5, completedDays: "garbage", streak: 4 });
+  const s = p.getState();
+  assert.equal(s.currentDay, 1);
+  assert.deepEqual(s.completedDays, []);
+});
