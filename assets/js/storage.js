@@ -18,7 +18,13 @@ export class Storage {
   }
 
   set(name, value) {
-    this.backend.setItem(this._key(name), JSON.stringify(value));
+    try {
+      this.backend.setItem(this._key(name), JSON.stringify(value));
+      return true;
+    } catch (e) {
+      console.warn(`Storage.set("${name}") failed:`, e);
+      return false;
+    }
   }
 
   remove(name) {

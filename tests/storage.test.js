@@ -42,3 +42,27 @@ test("Storage.remove deletes the prefixed key", () => {
   s.remove("x");
   assert.equal(ls._store.has("camera3a:x"), false);
 });
+
+test("Storage.set returns false and warns on backend error", (t) => {
+  const throwingBackend = {
+    getItem: () => null,
+    setItem: () => { const e = new Error("quota"); e.name = "QuotaExceededError"; throw e; },
+    removeItem: () => {},
+  };
+  const warns = [];
+  const originalWarn = console.warn;
+  console.warn = (...args) => warns.push(args);
+  t.after(() => { console.warn = originalWarn; });
+
+  const s = new Storage(throwingBackend);
+  const result = s.set("x", { big: "data" });
+  assert.equal(result, false);
+  assert.equal(warns.length, 1);
+  assert.match(warns[0][0], /Storage\.set/);
+});
+
+test("Storage.set returns true on success", () => {
+  const ls = makeFakeLocalStorage();
+  const s = new Storage(ls);
+  assert.equal(s.set("x", 1), true);
+});
