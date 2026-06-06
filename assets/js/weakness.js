@@ -32,13 +32,21 @@ export function recommendReview(summary, moduleIndex, subtopicWrongCounts = {}) 
         .filter(s => s.wrong > 0)
         .sort((a, b) => b.wrong - a.wrong)
         .slice(0, 3);
-      if (subtopics.length === 0) continue;
-      recs.push({
-        module,
-        title: m.title ?? module,
-        subtopics,
-        reason: "正确率 60-80%，建议复习错题最多的子主题",
-      });
+      if (subtopics.length > 0) {
+        recs.push({
+          module,
+          title: m.title ?? module,
+          subtopics,
+          reason: "正确率 60-80%，建议复习错题最多的子主题",
+        });
+      } else {
+        recs.push({
+          module,
+          title: m.title ?? module,
+          days: m.days ?? [],
+          reason: "正确率 60-80%，建议整模块复习",
+        });
+      }
     }
   }
   return recs;
