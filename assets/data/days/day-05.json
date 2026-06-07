@@ -9,10 +9,18 @@
       "id": "s1",
       "title": "快门时间和帧率：直接关联",
       "type": "concept",
-      "content": "### 一道 PRD 收集的面试题\n\n你的 PRD 里第 11 题：\n\n> 帧率是 240 的曝光时间是多少？\n\n标准答案：\n\n$$\\text{曝光时间} \\le \\frac{1}{\\text{帧率}} = \\frac{1}{240} \\text{ 秒} \\approx 4.17 \\text{ 毫秒}$$\n\n这一节我们把这个关系讲透。\n\n### 为什么是「小于等于」\n\n想象一下：\n\n- 帧率 240 fps 表示每秒输出 240 张图像\n- 每张图像分配的时间窗口是 1/240 秒 = 4.17 ms\n- 这个 4.17 ms 是这一帧从 **「开始读出」到「下一帧开始读出」** 的间隔\n\n在这 4.17 ms 内，sensor 必须做完 3 件事：\n\n1. **曝光**（积分电荷）\n2. **读出**（一行一行从 sensor 输出）\n3. **行间隙时间**（行与行之间的处理）\n\n所以**曝光时间不能等于** 1/240，因为还有读出和处理时间。实际曝光时间通常是 1/240 ÷ N（N 是某个分配比例）。\n\n但**理论上的最长曝光时间 = 1/帧率**，这是物理上限。240 fps 慢动作录像里，曝光时间一般控制在 2-3 ms 左右。\n\n### 为什么暗光下慢动作画质差\n\n240 fps 慢动作录像看起来很流畅，但你也许注意到 **暗光下颗粒感很重**。原因就在这里：\n\n- 30 fps 时单帧最长可以曝 33 ms\n- 240 fps 时单帧最多只能曝 4 ms\n\n**进光时间被压到 1/8**，单帧亮度只有原来的 1/8。要补偿就只能加 ISO，结果就是噪点重。\n\n这是物理限制，没法绕。\n\n### 一组要记住的换算\n\n| 帧率 | 单帧最长曝光时间 |\n| --- | --- |\n| 24 fps（电影） | 1/24 ≈ 41.7 ms |\n| 30 fps（普通视频） | 1/30 ≈ 33.3 ms |\n| 60 fps（高刷视频） | 1/60 ≈ 16.7 ms |\n| 120 fps（慢动作） | 1/120 ≈ 8.3 ms |\n| 240 fps（超慢动作） | 1/240 ≈ 4.17 ms |\n| 960 fps（极致慢动作） | 1/960 ≈ 1.04 ms |\n\n960 fps 单帧只有 1 ms 进光时间，所以 960 fps 模式必须在**强光下**才能拍 —— 这是华为/三星早期超慢动作只允许室外用的原因。",
+      "content": "### 一道 PRD 收集的面试题\n\n你的 PRD 里第 11 题：\n\n> 帧率是 240 的曝光时间是多少？\n\n标准答案：\n\n$$\\text{曝光时间} \\le \\frac{1}{\\text{帧率}} = \\frac{1}{240} \\text{ 秒} \\approx 4.17 \\text{ 毫秒}$$\n\n这一节我们把这个关系讲透。\n\n### 为什么是「小于等于」\n\n想象一下：\n\n- 帧率 240 fps 表示每秒输出 240 张图像\n- 每张图像分配的时间窗口是 1/240 秒 = 4.17 ms\n- 这个 4.17 ms 是这一帧从 **「开始读出」到「下一帧开始读出」** 的间隔\n\n在这 4.17 ms 内，sensor 必须做完 3 件事：\n\n1. **曝光**（积分电荷）\n2. **读出**（一行一行从 sensor 输出）\n3. **行间隙时间**（行与行之间的处理）\n\n所以**曝光时间不能等于** 1/240，因为还有读出和处理时间。实际曝光时间通常是 1/240 ÷ N（N 是某个分配比例）。\n\n但**理论上的最长曝光时间 = 1/帧率**，这是物理上限。240 fps 慢动作录像里，曝光时间一般控制在 2-3 ms 左右。\n\n### 为什么暗光下慢动作画质差\n\n240 fps 慢动作录像看起来很流畅，但你也许注意到 **暗光下颗粒感很重**。原因就在这里：\n\n- 30 fps 时单帧最长可以曝 33 ms\n- 240 fps 时单帧最多只能曝 4 ms\n\n**进光时间被压到 1/8**，单帧亮度只有原来的 1/8。要补偿就只能加 ISO，结果就是噪点重。\n\n这是物理限制，没法绕。\n\n### 一组要记住的换算\n\n| 帧率 | 单帧最长曝光时间 |\n| --- | --- |\n| 24 fps（电影） | 1/24 ≈ 41.7 ms |\n| 30 fps（普通视频） | 1/30 ≈ 33.3 ms |\n| 60 fps（高刷视频） | 1/60 ≈ 16.7 ms |\n| 120 fps（慢动作） | 1/120 ≈ 8.3 ms |\n| 240 fps（超慢动作） | 1/240 ≈ 4.17 ms |\n| 960 fps（极致慢动作） | 1/960 ≈ 1.04 ms |\n\n960 fps 单帧只有 1 ms 进光时间，所以 960 fps 模式必须在**强光下**才能拍 —— 这是华为/三星早期超慢动作只允许室外用的原因。\n\n<figure>\n<svg viewBox=\"0 0 600 220\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"帧率与曝光时间关系\">\n  <g font-family=\"sans-serif\" font-size=\"13\" fill=\"#e2e8f0\">\n    <text x=\"300\" y=\"20\" text-anchor=\"middle\" fill=\"#cbd5e1\">单帧时间窗口 = 1/帧率</text>\n    <line x1=\"40\" y1=\"180\" x2=\"560\" y2=\"180\" stroke=\"#94a3b8\"/>\n    <line x1=\"40\" y1=\"60\" x2=\"40\" y2=\"180\" stroke=\"#94a3b8\"/>\n    <text x=\"20\" y=\"65\" fill=\"#94a3b8\" font-size=\"11\">帧率</text>\n    <text x=\"305\" y=\"200\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">单帧最长曝光 (ms)</text>\n\n    <rect x=\"60\" y=\"160\" width=\"300\" height=\"14\" fill=\"#22c55e\" opacity=\"0.7\"/>\n    <text x=\"40\" y=\"170\" text-anchor=\"end\" fill=\"#94a3b8\" font-size=\"11\">30 fps</text>\n    <text x=\"365\" y=\"170\" fill=\"#22c55e\" font-size=\"11\">33.3 ms</text>\n\n    <rect x=\"60\" y=\"130\" width=\"150\" height=\"14\" fill=\"#22c55e\" opacity=\"0.7\"/>\n    <text x=\"40\" y=\"140\" text-anchor=\"end\" fill=\"#94a3b8\" font-size=\"11\">60 fps</text>\n    <text x=\"215\" y=\"140\" fill=\"#22c55e\" font-size=\"11\">16.7 ms</text>\n\n    <rect x=\"60\" y=\"100\" width=\"75\" height=\"14\" fill=\"#f59e0b\" opacity=\"0.7\"/>\n    <text x=\"40\" y=\"110\" text-anchor=\"end\" fill=\"#94a3b8\" font-size=\"11\">120 fps</text>\n    <text x=\"140\" y=\"110\" fill=\"#f59e0b\" font-size=\"11\">8.3 ms</text>\n\n    <rect x=\"60\" y=\"70\" width=\"38\" height=\"14\" fill=\"#ef4444\" opacity=\"0.7\"/>\n    <text x=\"40\" y=\"80\" text-anchor=\"end\" fill=\"#94a3b8\" font-size=\"11\">240 fps</text>\n    <text x=\"105\" y=\"80\" fill=\"#ef4444\" font-size=\"11\">4.2 ms（PRD 面试题）</text>\n  </g>\n</svg>\n<figcaption>图：帧率越高，单帧可用曝光时间越短（暗光画质越差）</figcaption>\n</figure>\n",
       "glossary": [
-        { "term": "Frame Rate", "zh": "帧率", "explain": "每秒输出的图像帧数，单位 fps（frames per second）。" },
-        { "term": "Exposure Time", "zh": "曝光时间", "explain": "传感器接收光子的时长。视频模式下曝光时间 ≤ 1/帧率。" }
+        {
+          "term": "Frame Rate",
+          "zh": "帧率",
+          "explain": "每秒输出的图像帧数，单位 fps（frames per second）。"
+        },
+        {
+          "term": "Exposure Time",
+          "zh": "曝光时间",
+          "explain": "传感器接收光子的时长。视频模式下曝光时间 ≤ 1/帧率。"
+        }
       ]
     },
     {
@@ -21,11 +29,31 @@
       "type": "concept",
       "content": "### 从「时间」到「行」\n\n上面我们说曝光时间用毫秒计。但 sensor 内部不是用「秒」工作的，它是用 **行（Line）** 来工作的：\n\n- sensor 一行一行读出（卷帘快门）\n- 每行读出要花一个固定时间（叫 **Line Time**，单位通常是 µs）\n- 整张图 = N 行 × Line Time\n\n所以**曝光时间是按行数算的**，不是按毫秒。这是 sensor datasheet 和高通 Tuning Guide 的语言。\n\n### 三个核心寄存器\n\n每个 sensor 都有这几个核心寄存器（不同厂商命名略有差别，原理一样）：\n\n- **Frame Length Lines（FLL）**：一帧的总行数（含曝光行 + 消隐行）\n- **Line Length Pixels（LLP）**：一行的总像素数（含真实像素 + 行消隐）\n- **Coarse Integration Time（曝光行数）**：实际曝光多少行\n\n### 帧率的计算公式\n\n```\n帧率 = 像素时钟 / (FLL × LLP)\n```\n\n或反过来：\n\n```\n一帧时间 = FLL × LLP / 像素时钟\n        = FLL × Line Time\n```\n\n**关键洞察**：要改帧率，要么改 FLL（增加每帧行数），要么改 LLP（增加每行像素），要么改像素时钟（PLL）。\n\nCamera Tuning 工程师调曝光表时，要明白这件事：\n\n- 帧率 30 fps，FLL = 3000，Line Time = 11 µs → 每帧 33 ms\n- 想曝 16 ms：曝光行数 = 16 ms / 11 µs = 1454 行（小于 FLL，OK）\n- 想曝 50 ms（超过一帧）：必须把 FLL 加大到至少 4546（即降帧率）\n\n这是 Day 1 我们说的 AE 算法「写到 sensor 寄存器」那一步实际做的事情。\n\n### Vertical Blanking：垂直消隐时间\n\n你在高通文档里会看到 **Vertical Blanking Time** 这个词。它就是：\n\n```\nVertical Blanking = (FLL - 实际曝光行数) × Line Time\n```\n\n这是一帧里**「不曝光」的时间**，给 sensor 内部做电路复位、ADC 校准等用。\n\nPRD 里你妹妹的笔记应该也提到了这个词，特别是讲 AE 曝光表的时候。\n\n### 高通文档里的式子\n\n你在 PRD 里贴的高通公式：\n\n> Vertical Blanking Time = 1 / 最大帧率 / FrameLengthLines × vertical_offset × 10^9\n>\n> 首行曝光时间 = 1 / 最大帧率 / FrameLengthLines × minlinecount × 10^9\n\n看着复杂，其实是上面公式的变形。这两条公式 Week 3 讲 AEC 曝光表调试时还会回来 —— 今天**只需要混个脸熟**。",
       "glossary": [
-        { "term": "Frame Length Lines (FLL)", "zh": "帧长行数", "explain": "sensor 一帧的总行数，包括有效曝光行和垂直消隐行。决定帧率上限。" },
-        { "term": "Line Length Pixels (LLP)", "zh": "行长像素数", "explain": "sensor 一行的总像素数，包括有效像素和水平消隐像素。" },
-        { "term": "Line Time", "zh": "行时间", "explain": "sensor 读出一行所需的固定时间，由 LLP 和像素时钟决定。" },
-        { "term": "Coarse Integration Time", "zh": "粗曝光行数", "explain": "sensor 寄存器里以「行数」表示的曝光时间。实际曝光时间 = 行数 × Line Time。" },
-        { "term": "Vertical Blanking", "zh": "垂直消隐时间", "explain": "一帧里非曝光的时间，给 sensor 做内部维护工作。" }
+        {
+          "term": "Frame Length Lines (FLL)",
+          "zh": "帧长行数",
+          "explain": "sensor 一帧的总行数，包括有效曝光行和垂直消隐行。决定帧率上限。"
+        },
+        {
+          "term": "Line Length Pixels (LLP)",
+          "zh": "行长像素数",
+          "explain": "sensor 一行的总像素数，包括有效像素和水平消隐像素。"
+        },
+        {
+          "term": "Line Time",
+          "zh": "行时间",
+          "explain": "sensor 读出一行所需的固定时间，由 LLP 和像素时钟决定。"
+        },
+        {
+          "term": "Coarse Integration Time",
+          "zh": "粗曝光行数",
+          "explain": "sensor 寄存器里以「行数」表示的曝光时间。实际曝光时间 = 行数 × Line Time。"
+        },
+        {
+          "term": "Vertical Blanking",
+          "zh": "垂直消隐时间",
+          "explain": "一帧里非曝光的时间，给 sensor 做内部维护工作。"
+        }
       ]
     },
     {
@@ -34,21 +62,49 @@
       "type": "concept",
       "content": "### 一个常见的画面 bug\n\n在日光灯下用手机摄像头拍视频，有时会看到画面里出现**水平方向缓慢移动的明暗带**。这个现象叫 **带状噪点（Banding）** 或 **闪烁（Flicker）**。\n\n### 物理原因\n\n这事儿和市电频率有关：\n\n- 中国 / 欧洲 / 大部分国家：**50 Hz 交流电** → 灯每秒亮暗 100 次（每个周期亮 2 次）\n- 美国 / 日本（部分）：**60 Hz** → 灯每秒亮暗 120 次\n\n人眼对 100 Hz 闪烁感知不到，但**卷帘快门的 sensor 一行一行读出**，每行读出时灯的亮度可能不一样。结果就是画面上出现水平方向的明暗条纹。\n\n### Antibanding 怎么解决\n\n解决思路很简单：**让曝光时间是闪烁周期的整数倍**，这样每一行都「跨过完整的几个亮暗周期」，平均下来亮度一样。\n\n- 50 Hz 市电，闪烁周期 = 1/100 秒 = 10 ms\n- 曝光时间设为 10 ms / 20 ms / 30 ms ... → **没有 banding**\n- 60 Hz 市电，闪烁周期 = 1/120 秒 ≈ 8.33 ms\n- 曝光时间设为 8.33 ms / 16.67 ms / 25 ms ... → **没有 banding**\n\n这就是「**抗带状（Antibanding）**」算法的本质。手机系统会**自动检测**当前所处的频率（一般用前 / 后摄拍空白幕实时分析），然后约束 AE 算法**只能选闪烁周期整数倍的曝光时间**。\n\n### Antibanding 的代价\n\n这一约束让 AE 不那么自由：\n\n- 不能用 1/200 秒（不是 10 ms 整数倍）→ 只能选 1/100（10 ms）或 1/50（20 ms）\n- 暗光下想用 1/30 秒？50 Hz 下要么 1/100 + 高 ISO，要么 1/50 + 低 ISO\n\n这就是为什么高通文档第 4.10 节叫「调试抗带状噪点与 FPS 的关系」—— FPS 决定了曝光时间的上限，Antibanding 决定了曝光时间的「网格」，两者互相约束。\n\n### 高级版：Auto Flicker Detection\n\n高通的 3A 10 Deep Dive 文档里专门讲了 **Auto Flicker Detection（自动闪烁检测）**：sensor 里有一个特殊的「采样窗」，专门测当前光源的闪烁频率，自动切换 50 Hz / 60 Hz / 无闪烁三种模式。\n\n这个东西 Week 7 会讲。今天记住名字就行。\n\n### 课后小实验\n\n打开你手机的相机 app，拍摄日光灯吊顶（最好选老旧办公楼的那种），看看视频里有没有横纹。\n\n如果有 → 当前 antibanding 没生效或频率选错\n如果没有 → 系统正常工作中",
       "glossary": [
-        { "term": "Banding", "zh": "带状噪点 / 闪烁条纹", "explain": "卷帘快门下交流光源造成画面上水平移动的明暗条纹。" },
-        { "term": "Antibanding", "zh": "抗带状", "explain": "约束曝光时间为光源闪烁周期整数倍的算法，消除带状噪点。" },
-        { "term": "Auto Flicker Detection", "zh": "自动闪烁检测", "explain": "sensor 里专门的硬件 / 算法，实时测出当前光源闪烁频率（50/60 Hz/无），自动切换 antibanding 模式。" }
+        {
+          "term": "Banding",
+          "zh": "带状噪点 / 闪烁条纹",
+          "explain": "卷帘快门下交流光源造成画面上水平移动的明暗条纹。"
+        },
+        {
+          "term": "Antibanding",
+          "zh": "抗带状",
+          "explain": "约束曝光时间为光源闪烁周期整数倍的算法，消除带状噪点。"
+        },
+        {
+          "term": "Auto Flicker Detection",
+          "zh": "自动闪烁检测",
+          "explain": "sensor 里专门的硬件 / 算法，实时测出当前光源闪烁频率（50/60 Hz/无），自动切换 antibanding 模式。"
+        }
       ]
     },
     {
       "id": "s4",
       "title": "曝光优先 vs 增益优先：Tuning 的两个抓手",
       "type": "concept",
-      "content": "### AE 的两个变量\n\nDay 1 的曝光方程告诉我们，左边 AV + TV 是供给。手机光圈固定（AV 不变），所以**实际可调的只有快门时间和 ISO**。\n\n如果当前光线下需要把曝光量加 2 档（EV +2），有两种调法：\n\n- **快门优先**：把曝光时间从 1/100 加到 1/25（增 4 倍 = +2 EV）\n- **增益优先**：把 ISO 从 100 加到 400（增 4 倍 = +2 EV）\n\n两种调法的**画面效果**完全不同：\n\n| 维度 | 快门优先 | 增益优先 |\n| --- | --- | --- |\n| 噪点 | **少**（光子真的多了） | 多（信号被电子放大） |\n| 拖影 | **多**（手抖 / 物体移动会糊） | 少（曝光短） |\n| 抗闪烁 | 受 antibanding 限制 | 不受限 |\n\n这就是 Camera Tuning 工程师每天面对的核心取舍。\n\n### Tuning Guide 里的「曝光表」\n\n高通文档第 3.1 节讲的「**调试曝光表**」就是干这个：在不同 lux_index（光线条件）下，**预先决定**系统该用多长曝光、多少 ISO。\n\n一张曝光表大概长这样（数值我编的，实际更复杂）：\n\n| Lux Index | Exp Index | 曝光时间 | ISO |\n| --- | --- | --- | --- |\n| 14（晴天） | 14 | 1/2000 s | 100 |\n| 12 | 12 | 1/500 s | 100 |\n| 10 | 10 | 1/125 s | 100 |\n| 8 | 8 | 1/30 s | 100 |\n| 6（室内） | 6 | 1/30 s | 400 |\n| 4 | 4 | 1/30 s | 1600 |\n| 2（暗光） | 2 | 1/15 s | 3200 |\n\n你看到那个**拐点**了吗？\n\n- Lux 14-8：**优先增加曝光时间**（曝光优先策略）\n- Lux 8-6：**曝光保持 1/30 不再加（避免抖糊），开始拉 ISO**（gain 优先）\n- Lux 6 以下：**ISO 拉到上限，再不行才把曝光加到 1/15**\n\n这条策略曲线就是「曝光表」。Camera Tuning 工程师调它的两个变量：\n\n1. **拐点位置**：曝光时间多少时该停（决定抗抖 vs 噪点的平衡）\n2. **ISO 上限**：放多大噪点能接受\n\n### 高通的官方建议\n\nPRD 你贴的妹妹笔记里有这条：\n\n> 其他行优先以曝光时间优先的形式曝光，为了避免暗环境有拖影，最后一行以 gain 优先的形式曝光\n\n意思就是：曝光表大部分行是**曝光优先**（增加曝光时间），只有最暗一档切换成 **gain 优先**（增加 ISO 但保持短曝光）。这是为了暗光下不至于拍出全是模糊的画面。\n\n### 一道面试题预演\n\n面试官问：「曝光表怎么调，主要影响什么？」\n\n你应该能答：\n\n> 曝光表通过 sensor 曝光时间和模拟增益（ISO）两个变量控制图像亮度。在曝光时间和 ISO 之间分配 EV 增量，主要影响**亮度和噪声**。一般策略是先加曝光时间，到拐点（约 1/30 秒）后切换到加 ISO，避免手抖造成的拖影。\n\n这正是 PRD 里第 12 题「高通曝光表怎么调试，主要影响什么」的标准答法。",
+      "content": "### AE 的两个变量\n\nDay 1 的曝光方程告诉我们，左边 AV + TV 是供给。手机光圈固定（AV 不变），所以**实际可调的只有快门时间和 ISO**。\n\n如果当前光线下需要把曝光量加 2 档（EV +2），有两种调法：\n\n- **快门优先**：把曝光时间从 1/100 加到 1/25（增 4 倍 = +2 EV）\n- **增益优先**：把 ISO 从 100 加到 400（增 4 倍 = +2 EV）\n\n两种调法的**画面效果**完全不同：\n\n| 维度 | 快门优先 | 增益优先 |\n| --- | --- | --- |\n| 噪点 | **少**（光子真的多了） | 多（信号被电子放大） |\n| 拖影 | **多**（手抖 / 物体移动会糊） | 少（曝光短） |\n| 抗闪烁 | 受 antibanding 限制 | 不受限 |\n\n这就是 Camera Tuning 工程师每天面对的核心取舍。\n\n### Tuning Guide 里的「曝光表」\n\n高通文档第 3.1 节讲的「**调试曝光表**」就是干这个：在不同 lux_index（光线条件）下，**预先决定**系统该用多长曝光、多少 ISO。\n\n一张曝光表大概长这样（数值我编的，实际更复杂）：\n\n| Lux Index | Exp Index | 曝光时间 | ISO |\n| --- | --- | --- | --- |\n| 14（晴天） | 14 | 1/2000 s | 100 |\n| 12 | 12 | 1/500 s | 100 |\n| 10 | 10 | 1/125 s | 100 |\n| 8 | 8 | 1/30 s | 100 |\n| 6（室内） | 6 | 1/30 s | 400 |\n| 4 | 4 | 1/30 s | 1600 |\n| 2（暗光） | 2 | 1/15 s | 3200 |\n\n你看到那个**拐点**了吗？\n\n- Lux 14-8：**优先增加曝光时间**（曝光优先策略）\n- Lux 8-6：**曝光保持 1/30 不再加（避免抖糊），开始拉 ISO**（gain 优先）\n- Lux 6 以下：**ISO 拉到上限，再不行才把曝光加到 1/15**\n\n这条策略曲线就是「曝光表」。Camera Tuning 工程师调它的两个变量：\n\n1. **拐点位置**：曝光时间多少时该停（决定抗抖 vs 噪点的平衡）\n2. **ISO 上限**：放多大噪点能接受\n\n### 高通的官方建议\n\nPRD 你贴的妹妹笔记里有这条：\n\n> 其他行优先以曝光时间优先的形式曝光，为了避免暗环境有拖影，最后一行以 gain 优先的形式曝光\n\n意思就是：曝光表大部分行是**曝光优先**（增加曝光时间），只有最暗一档切换成 **gain 优先**（增加 ISO 但保持短曝光）。这是为了暗光下不至于拍出全是模糊的画面。\n\n### 一道面试题预演\n\n面试官问：「曝光表怎么调，主要影响什么？」\n\n你应该能答：\n\n> 曝光表通过 sensor 曝光时间和模拟增益（ISO）两个变量控制图像亮度。在曝光时间和 ISO 之间分配 EV 增量，主要影响**亮度和噪声**。一般策略是先加曝光时间，到拐点（约 1/30 秒）后切换到加 ISO，避免手抖造成的拖影。\n\n这正是 PRD 里第 12 题「高通曝光表怎么调试，主要影响什么」的标准答法。\n\n<figure>\n<svg viewBox=\"0 0 600 260\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"曝光表策略曲线\">\n  <g font-family=\"sans-serif\" font-size=\"12\" fill=\"#e2e8f0\">\n    <text x=\"300\" y=\"20\" text-anchor=\"middle\" fill=\"#cbd5e1\">曝光表：先加曝光时间，到拐点切换加 ISO</text>\n    <line x1=\"60\" y1=\"220\" x2=\"560\" y2=\"220\" stroke=\"#94a3b8\"/>\n    <line x1=\"60\" y1=\"40\" x2=\"60\" y2=\"220\" stroke=\"#94a3b8\"/>\n    <text x=\"305\" y=\"250\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">Lux Index（场景越亮 →）</text>\n    <text x=\"50\" y=\"50\" text-anchor=\"end\" fill=\"#94a3b8\" font-size=\"11\">参数</text>\n    <text x=\"80\" y=\"240\" fill=\"#94a3b8\" font-size=\"10\">2（暗）</text>\n    <text x=\"540\" y=\"240\" fill=\"#94a3b8\" font-size=\"10\">14（晴）</text>\n\n    <polyline points=\"80,90 200,90 320,140 440,180 540,200\" fill=\"none\" stroke=\"#22c55e\" stroke-width=\"2.5\"/>\n    <text x=\"200\" y=\"80\" fill=\"#22c55e\" font-size=\"11\">曝光时间</text>\n\n    <polyline points=\"80,60 200,140 320,180 440,210 540,210\" fill=\"none\" stroke=\"#f59e0b\" stroke-width=\"2.5\"/>\n    <text x=\"80\" y=\"55\" fill=\"#f59e0b\" font-size=\"11\">ISO</text>\n\n    <line x1=\"200\" y1=\"40\" x2=\"200\" y2=\"220\" stroke=\"#ef4444\" stroke-dasharray=\"4 4\"/>\n    <text x=\"205\" y=\"55\" fill=\"#ef4444\" font-size=\"11\">拐点（约 1/30s）</text>\n    <text x=\"205\" y=\"68\" fill=\"#94a3b8\" font-size=\"10\">→ 切换 gain 优先</text>\n\n    <text x=\"455\" y=\"100\" fill=\"#94a3b8\" font-size=\"11\">白天：低 ISO + 短曝光</text>\n    <text x=\"100\" y=\"190\" fill=\"#94a3b8\" font-size=\"11\">暗光：长曝光 + 高 ISO</text>\n  </g>\n</svg>\n<figcaption>图：高通曝光表的典型策略 —— 拐点决定何时停加曝光改加 ISO</figcaption>\n</figure>\n",
       "glossary": [
-        { "term": "Exposure Table", "zh": "曝光表", "explain": "AE 算法预先定义的查找表，规定不同 lux_index 下系统该用多长曝光、多少 ISO。" },
-        { "term": "Exp Index", "zh": "曝光指数", "explain": "曝光表中表示当前曝光档位的内部数值，等价于 EV 概念。" },
-        { "term": "Exposure-Priority", "zh": "曝光优先", "explain": "EV 上调时优先增加曝光时间，画面噪点少但容易抖糊。" },
-        { "term": "Gain-Priority", "zh": "增益优先", "explain": "EV 上调时优先增加 ISO，画面清晰不抖但噪点重。" }
+        {
+          "term": "Exposure Table",
+          "zh": "曝光表",
+          "explain": "AE 算法预先定义的查找表，规定不同 lux_index 下系统该用多长曝光、多少 ISO。"
+        },
+        {
+          "term": "Exp Index",
+          "zh": "曝光指数",
+          "explain": "曝光表中表示当前曝光档位的内部数值，等价于 EV 概念。"
+        },
+        {
+          "term": "Exposure-Priority",
+          "zh": "曝光优先",
+          "explain": "EV 上调时优先增加曝光时间，画面噪点少但容易抖糊。"
+        },
+        {
+          "term": "Gain-Priority",
+          "zh": "增益优先",
+          "explain": "EV 上调时优先增加 ISO，画面清晰不抖但噪点重。"
+        }
       ]
     },
     {
@@ -60,10 +116,25 @@
     }
   ],
   "references": [
-    { "source": "高通 3A 7.0 Tuning Guide", "page": 15, "section": "3.1 调试曝光表" },
-    { "source": "高通 3A 7.0 Tuning Guide", "page": 38, "section": "4.10 调试抗带状噪点与 FPS 的关系" },
-    { "source": "高通 3A 7.0 Tuning Guide", "page": 76, "section": "6.4 最短消隐时间计算" },
-    { "source": "维基百科 · Rolling shutter", "url": "https://en.wikipedia.org/wiki/Rolling_shutter#Vertical_skew" }
+    {
+      "source": "高通 3A 7.0 Tuning Guide",
+      "page": 15,
+      "section": "3.1 调试曝光表"
+    },
+    {
+      "source": "高通 3A 7.0 Tuning Guide",
+      "page": 38,
+      "section": "4.10 调试抗带状噪点与 FPS 的关系"
+    },
+    {
+      "source": "高通 3A 7.0 Tuning Guide",
+      "page": 76,
+      "section": "6.4 最短消隐时间计算"
+    },
+    {
+      "source": "维基百科 · Rolling shutter",
+      "url": "https://en.wikipedia.org/wiki/Rolling_shutter#Vertical_skew"
+    }
   ],
   "dailyQuizId": "daily-day-05"
 }

@@ -11,8 +11,16 @@
       "type": "concept",
       "content": "### 两种传感器路线\n\n数字相机的传感器历史上有两个主流技术路线：\n\n- **CCD**（Charge-Coupled Device，电荷耦合器件）：1969 年贝尔实验室发明，最初的数码相机几乎都用它\n- **CMOS**（Complementary Metal-Oxide-Semiconductor，互补金属氧化物半导体）：1990 年代后才成熟，但现在统治了 99% 的市场\n\n你买手机、看监控、拆 iPhone 都看不到 CCD。原因是：\n\n| 维度 | CCD | CMOS |\n| --- | --- | --- |\n| 画质（早期） | 更好 | 一般 |\n| 功耗 | 高 | **低**（低 1-2 个数量级） |\n| 读出速度 | 慢 | **快** |\n| 工艺 | 专用 | **和数字电路同工艺**（便宜） |\n| 单像素附带电路 | 几乎没有 | 可以集成放大器、ADC 等 |\n\nCMOS 早期画质比 CCD 差是真的，但 **2000 年后工艺迭代追上来了**，加上「便宜 + 省电 + 快」这三个降维优势，CCD 就被挤到了一些专业领域（天文、科学成像）。手机摄像头从一开始就是 CMOS。\n\n所以你这辈子要打交道的传感器，**默认就是 CMOS**。本节我们专讲 CMOS 内部的工作原理。\n\n### 为什么 CMOS 能省电\n\nCCD 的工作方式是：所有像素的电荷沿着「传送带」一格一格搬到边缘，再统一读出。这个搬运过程消耗大量电能，而且很慢。\n\nCMOS 不搬电荷。每个像素**自己有读出电路**，把电荷转成电压，每个像素都能直接被「寻址」读出。这就像是从「传送带流水线」变成了「随机访问」—— 又快又省电。",
       "glossary": [
-        { "term": "CMOS", "zh": "互补金属氧化物半导体", "explain": "目前手机/相机/监控里 99% 使用的传感器工艺，特点是省电、快、便宜，每像素自带读出电路。" },
-        { "term": "CCD", "zh": "电荷耦合器件", "explain": "早期主流的传感器技术，画质好但耗电、慢，已被 CMOS 替代。" }
+        {
+          "term": "CMOS",
+          "zh": "互补金属氧化物半导体",
+          "explain": "目前手机/相机/监控里 99% 使用的传感器工艺，特点是省电、快、便宜，每像素自带读出电路。"
+        },
+        {
+          "term": "CCD",
+          "zh": "电荷耦合器件",
+          "explain": "早期主流的传感器技术，画质好但耗电、慢，已被 CMOS 替代。"
+        }
       ]
     },
     {
@@ -21,35 +29,87 @@
       "type": "concept",
       "content": "### 一个 CMOS 像素里有什么\n\n手机摄像头的每个像素里，除了那个「光电二极管」（PD，光子转电荷的地方），还有 **4 个晶体管** 和一些线路。这种结构叫 **4T 像素**（4 个 Transistor）：\n\n```\n        +---+\n   PD --|RST|-- VDD     RST: 复位（Reset）\n   |    +---+           TX:  传输（Transfer）\n   |--TX--FD--SF---SEL  SF:  源跟随器（Source Follower）\n           +---+        SEL: 选通\n           |   |\n        +--+   +-- 输出\n        VDD\n```\n\n你不需要看懂电路，但要记住每个晶体管做什么：\n\n- **RST**：每次曝光开始前，把像素「清零」（把残余电荷排掉）\n- **PD**：曝光中，光子打进来 → 累积电荷\n- **TX**：曝光结束后，把电荷「送」到一个浮动节点 FD\n- **SF**：把 FD 上的电荷转成可以测量的电压\n- **SEL**：选通这一行的某个像素，把它的电压输出到列总线\n\n这就是 **「曝光 → 转移 → 读出 → 复位」** 的一轮工作。手机摄像头 30 fps 视频，每个像素每秒要走完这个循环 30 次。\n\n### 像素越小，问题越大\n\n手机为了塞进更多像素 + 镜头模组，每个像素的物理尺寸越来越小：\n\n- 早期手机：2.0 µm\n- 2015 年左右：1.4 µm\n- 现在主流：0.8 µm、0.7 µm，甚至 0.5 µm\n\n像素小有两个直接代价：\n\n1. **光子接收面积变小** → 信噪比下降（暗光更差）\n2. **晶体管和走线挤在一起** → 容易串扰\n\n这就是为什么手机用 Quad Bayer / Nona Bayer 做像素合并 —— 物理上像素是 0.7 µm，合并后等效一个 1.4 µm 的「大像素」，画质回来了。\n\n### BSI：把电路放到背面\n\n有个经典的工艺创新叫 **BSI（Back-Side Illumination，背照式）**：把读出电路从像素正面移到背面，让光子直接打在 PD 上，不被电路挡住。这一招在 2010 年左右大幅提升了手机摄像头的进光量。\n\n现在所有旗舰手机的传感器都是 **BSI** 的（甚至更高级的 **Stacked**，把 PD 层和电路层叠成两层芯片，进一步省空间）。",
       "glossary": [
-        { "term": "Photodiode (PD)", "zh": "光电二极管", "explain": "像素里实际把光子转化为电荷的元件。" },
-        { "term": "4T Pixel", "zh": "4 晶体管像素", "explain": "现代 CMOS 主流像素结构，包含 RST/TX/SF/SEL 四个晶体管。" },
-        { "term": "BSI", "zh": "背照式", "explain": "Back-Side Illumination，把读出电路移到芯片背面，让光子直接打在感光层，提升进光量。" },
-        { "term": "Stacked Sensor", "zh": "堆栈式传感器", "explain": "把感光层和逻辑层做成两层芯片堆叠，进一步提高集成度。索尼是主要供应商。" }
+        {
+          "term": "Photodiode (PD)",
+          "zh": "光电二极管",
+          "explain": "像素里实际把光子转化为电荷的元件。"
+        },
+        {
+          "term": "4T Pixel",
+          "zh": "4 晶体管像素",
+          "explain": "现代 CMOS 主流像素结构，包含 RST/TX/SF/SEL 四个晶体管。"
+        },
+        {
+          "term": "BSI",
+          "zh": "背照式",
+          "explain": "Back-Side Illumination，把读出电路移到芯片背面，让光子直接打在感光层，提升进光量。"
+        },
+        {
+          "term": "Stacked Sensor",
+          "zh": "堆栈式传感器",
+          "explain": "把感光层和逻辑层做成两层芯片堆叠，进一步提高集成度。索尼是主要供应商。"
+        }
       ]
     },
     {
       "id": "s3",
       "title": "卷帘 vs 全局快门：果冻效应的来源",
       "type": "concept",
-      "content": "### 现代手机几乎都是卷帘快门\n\n上面我们说每个像素自己有读出电路。但 CMOS 传感器在读出时**不是所有行同时读**，而是**一行接一行**读出（从上到下）。\n\n这意味着：\n\n- 第 1 行：在 t=0 开始曝光，t=10 ms 结束并读出\n- 第 2 行：在 t=0.01 ms 开始曝光，t=10.01 ms 结束并读出\n- ...\n- 第 N 行：在 t=8 ms 才开始曝光\n\n顶部和底部的曝光**起止时间是错开的**。这种工作方式叫 **卷帘快门（Rolling Shutter）**。\n\n### 果冻效应：你一定见过\n\n卷帘快门有一个臭名昭著的 artifact —— **果冻效应（Rolling Shutter Effect）**：当被拍摄物体高速运动，或者相机自身高速运动（比如手抖、车上拍摄），不同行之间的几毫秒错位会让画面看起来「歪了」：\n\n- 高速旋转的电风扇拍出来叶片是弯的\n- 火车窗外的电线杆向后倾斜\n- 急速摆手时手指拉伸变形\n\n这就是果冻效应。它是物理决定的，**只能用工程手段缓解，无法完全消除**：\n\n- **缩短读出时间**（高速读出 sensor）：从 30 ms 缩到 10 ms\n- **更小的曝光时间**：但暗光受影响\n- **EIS（电子防抖）**：一些算法可以「逆向预测」运动并补偿\n\n### 全局快门：贵在哪\n\n另一种工作方式是 **全局快门（Global Shutter）**：所有像素**同时**开始曝光、同时结束。\n\n好处显而易见 —— 没有果冻效应。\n\n代价：\n\n- 每个像素需要额外的「存储电容」，把电荷暂存起来等所有行读完\n- 工艺更复杂，价格高\n- 通常进光面积也小一点\n\n所以全局快门主要用于：\n\n- 工业机器视觉（要拍传送带、抓取识别）\n- 部分专业相机（如索尼 a9 的体育摄影）\n- **几乎不在手机上**\n\n### Camera Tuning 工程师怎么处理\n\n手机里你接受卷帘快门是命运。但要会**识别果冻效应**：\n\n- 用户报「拍快速移动物体扭曲」→ 大概率果冻效应，**不是 bug**\n- 高刷视频 / 慢动作模式下要给 sensor 配合适的「读出帧率」，让单帧的读出时间足够短\n\nDay 5 我们会讲快门时间和帧率的关系，那时候这些会再回来。",
+      "content": "### 现代手机几乎都是卷帘快门\n\n上面我们说每个像素自己有读出电路。但 CMOS 传感器在读出时**不是所有行同时读**，而是**一行接一行**读出（从上到下）。\n\n这意味着：\n\n- 第 1 行：在 t=0 开始曝光，t=10 ms 结束并读出\n- 第 2 行：在 t=0.01 ms 开始曝光，t=10.01 ms 结束并读出\n- ...\n- 第 N 行：在 t=8 ms 才开始曝光\n\n顶部和底部的曝光**起止时间是错开的**。这种工作方式叫 **卷帘快门（Rolling Shutter）**。\n\n### 果冻效应：你一定见过\n\n卷帘快门有一个臭名昭著的 artifact —— **果冻效应（Rolling Shutter Effect）**：当被拍摄物体高速运动，或者相机自身高速运动（比如手抖、车上拍摄），不同行之间的几毫秒错位会让画面看起来「歪了」：\n\n- 高速旋转的电风扇拍出来叶片是弯的\n- 火车窗外的电线杆向后倾斜\n- 急速摆手时手指拉伸变形\n\n这就是果冻效应。它是物理决定的，**只能用工程手段缓解，无法完全消除**：\n\n- **缩短读出时间**（高速读出 sensor）：从 30 ms 缩到 10 ms\n- **更小的曝光时间**：但暗光受影响\n- **EIS（电子防抖）**：一些算法可以「逆向预测」运动并补偿\n\n### 全局快门：贵在哪\n\n另一种工作方式是 **全局快门（Global Shutter）**：所有像素**同时**开始曝光、同时结束。\n\n好处显而易见 —— 没有果冻效应。\n\n代价：\n\n- 每个像素需要额外的「存储电容」，把电荷暂存起来等所有行读完\n- 工艺更复杂，价格高\n- 通常进光面积也小一点\n\n所以全局快门主要用于：\n\n- 工业机器视觉（要拍传送带、抓取识别）\n- 部分专业相机（如索尼 a9 的体育摄影）\n- **几乎不在手机上**\n\n### Camera Tuning 工程师怎么处理\n\n手机里你接受卷帘快门是命运。但要会**识别果冻效应**：\n\n- 用户报「拍快速移动物体扭曲」→ 大概率果冻效应，**不是 bug**\n- 高刷视频 / 慢动作模式下要给 sensor 配合适的「读出帧率」，让单帧的读出时间足够短\n\nDay 5 我们会讲快门时间和帧率的关系，那时候这些会再回来。\n\n<figure>\n<svg viewBox=\"0 0 600 220\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"卷帘快门时序\">\n  <g font-family=\"sans-serif\" font-size=\"13\" fill=\"#e2e8f0\">\n    <text x=\"300\" y=\"20\" text-anchor=\"middle\" fill=\"#cbd5e1\">卷帘快门：每行错开几毫秒读出</text>\n    <line x1=\"60\" y1=\"180\" x2=\"560\" y2=\"180\" stroke=\"#334155\" stroke-width=\"1\"/>\n    <text x=\"60\" y=\"200\" fill=\"#94a3b8\" font-size=\"11\">t=0</text>\n    <text x=\"555\" y=\"200\" fill=\"#94a3b8\" font-size=\"11\">t=10ms</text>\n    <text x=\"40\" y=\"50\" fill=\"#94a3b8\" font-size=\"11\">第 1 行</text>\n    <text x=\"40\" y=\"90\" fill=\"#94a3b8\" font-size=\"11\">第 N/2 行</text>\n    <text x=\"40\" y=\"130\" fill=\"#94a3b8\" font-size=\"11\">第 N 行</text>\n    <rect x=\"60\" y=\"40\" width=\"200\" height=\"14\" fill=\"#3b82f6\" opacity=\"0.7\"/>\n    <text x=\"160\" y=\"51\" text-anchor=\"middle\" fill=\"#fff\" font-size=\"11\">曝光</text>\n    <rect x=\"260\" y=\"40\" width=\"20\" height=\"14\" fill=\"#22c55e\"/>\n    <rect x=\"120\" y=\"80\" width=\"200\" height=\"14\" fill=\"#3b82f6\" opacity=\"0.7\"/>\n    <text x=\"220\" y=\"91\" text-anchor=\"middle\" fill=\"#fff\" font-size=\"11\">曝光</text>\n    <rect x=\"320\" y=\"80\" width=\"20\" height=\"14\" fill=\"#22c55e\"/>\n    <rect x=\"180\" y=\"120\" width=\"200\" height=\"14\" fill=\"#3b82f6\" opacity=\"0.7\"/>\n    <text x=\"280\" y=\"131\" text-anchor=\"middle\" fill=\"#fff\" font-size=\"11\">曝光</text>\n    <rect x=\"380\" y=\"120\" width=\"20\" height=\"14\" fill=\"#22c55e\"/>\n    <text x=\"430\" y=\"51\" fill=\"#22c55e\" font-size=\"11\">读出</text>\n    <text x=\"430\" y=\"91\" fill=\"#94a3b8\" font-size=\"11\">每行起始时间错开</text>\n    <text x=\"430\" y=\"131\" fill=\"#94a3b8\" font-size=\"11\">→ 高速运动会变形</text>\n  </g>\n</svg>\n<figcaption>图：卷帘快门各行曝光时间错开造成果冻效应</figcaption>\n</figure>\n",
       "glossary": [
-        { "term": "Rolling Shutter", "zh": "卷帘快门", "explain": "CMOS 一行一行依次曝光读出的工作方式。是手机摄像头的默认行为。" },
-        { "term": "Rolling Shutter Effect", "zh": "果冻效应", "explain": "卷帘快门下高速运动物体被拍摄时，由于行间时差产生的几何形变。" },
-        { "term": "Global Shutter", "zh": "全局快门", "explain": "所有像素同时曝光的工作方式，无果冻效应。工艺贵，多用于工业相机，几乎不上手机。" },
-        { "term": "EIS", "zh": "电子防抖", "explain": "Electronic Image Stabilization，通过算法补偿手抖造成的画面位移。" }
+        {
+          "term": "Rolling Shutter",
+          "zh": "卷帘快门",
+          "explain": "CMOS 一行一行依次曝光读出的工作方式。是手机摄像头的默认行为。"
+        },
+        {
+          "term": "Rolling Shutter Effect",
+          "zh": "果冻效应",
+          "explain": "卷帘快门下高速运动物体被拍摄时，由于行间时差产生的几何形变。"
+        },
+        {
+          "term": "Global Shutter",
+          "zh": "全局快门",
+          "explain": "所有像素同时曝光的工作方式，无果冻效应。工艺贵，多用于工业相机，几乎不上手机。"
+        },
+        {
+          "term": "EIS",
+          "zh": "电子防抖",
+          "explain": "Electronic Image Stabilization，通过算法补偿手抖造成的画面位移。"
+        }
       ]
     },
     {
       "id": "s4",
       "title": "OB 和 Lens Shading：调教里第一组术语",
       "type": "concept",
-      "content": "### 黑电平：暗的不是真黑\n\n上一节我们说传感器哪怕没光也会有「暗电流」，加上 ADC 本身的偏置电压，输出的「黑色」实际上不是 0，而是一个固定的小数（比如 64 或 256）。\n\n这个值叫 **黑电平（Black Level）**，在调教里又叫 **OB（Optical Black）**。它的来源是传感器边缘有一圈被「金属」遮住、永远不接受光的像素 —— 这些像素读出来的值就是「绝对黑」的参考值。\n\nISP 第一步要做的事就是 **黑电平校正（Black Level Correction）**：\n\n```\n校正后值 = 原始 RAW 值 - OB 值\n```\n\n如果不做这步，整张图都会偏亮（因为黑都不是真黑）。这就是为什么 Day 1 我们说「ISP 处理之前的 RAW 图叫真相，但真相也不能直接用 —— 至少要先减个 OB」。\n\nCamera Tuning 工程师在新 sensor 上做的第一件事就是**校准 OB 值**：在暗箱里盖住镜头拍黑图，统计 RAW 值，作为黑电平参考。\n\n### Lens Shading：边缘为什么发暗\n\n你拍一张白纸，会发现**画面四个角偏暗一点**。这不是镜头脏 —— 它是物理规律。\n\n光线穿过镜头到达传感器边缘时，路径更长、入射角更大、还可能被镜筒遮挡。结果就是：\n\n- 中心：100% 进光\n- 边角：可能只有 60-70% 进光\n\n这种现象叫 **Lens Shading（镜头阴影）** 或 **暗角**。\n\nISP 第二步要做的事是 **Lens Shading Correction（LSC，镜头阴影校正）**：用一张事先标定好的「增益表」乘到画面上，把边角的亮度拉回来。\n\n增益表是 Camera Tuning 工程师**校准**出来的：\n\n- 在标准光源箱里拍一张全白的均匀光板\n- 测出每个位置实际亮度 / 中心亮度的比值\n- 求倒数，存成一张表（通常是稀疏网格，比如 17×13 个采样点）\n- ISP 运行时按这张表给每个像素打 gain\n\n### 一个完整的 ISP 早期流水线\n\n现在你知道 ISP Pipeline 的前几步是怎么回事了：\n\n```\nRAW → 黑电平校正(OB) → Lens Shading 校正(LSC) → Demosaic → 白平衡 → ...\n```\n\nDay 2 我们提到过这个流程，今天加了 OB 和 LSC 两个新成员。这些是 Week 2 整周的主线。\n\n### 妹妹笔记里的常用词\n\n你在妹妹笔记里如果看到这些词，应该不陌生了：\n\n- **OB** = 黑电平\n- **LSC** = 镜头阴影校正\n- **shading** = 暗角现象\n- **uniformity** = 均匀性，常指经过 LSC 后画面的亮度均匀程度\n\n这些都是调教对话里的高频词。",
+      "content": "### 黑电平：暗的不是真黑\n\n上一节我们说传感器哪怕没光也会有「暗电流」，加上 ADC 本身的偏置电压，输出的「黑色」实际上不是 0，而是一个固定的小数（比如 64 或 256）。\n\n这个值叫 **黑电平（Black Level）**，在调教里又叫 **OB（Optical Black）**。它的来源是传感器边缘有一圈被「金属」遮住、永远不接受光的像素 —— 这些像素读出来的值就是「绝对黑」的参考值。\n\nISP 第一步要做的事就是 **黑电平校正（Black Level Correction）**：\n\n```\n校正后值 = 原始 RAW 值 - OB 值\n```\n\n如果不做这步，整张图都会偏亮（因为黑都不是真黑）。这就是为什么 Day 1 我们说「ISP 处理之前的 RAW 图叫真相，但真相也不能直接用 —— 至少要先减个 OB」。\n\nCamera Tuning 工程师在新 sensor 上做的第一件事就是**校准 OB 值**：在暗箱里盖住镜头拍黑图，统计 RAW 值，作为黑电平参考。\n\n### Lens Shading：边缘为什么发暗\n\n你拍一张白纸，会发现**画面四个角偏暗一点**。这不是镜头脏 —— 它是物理规律。\n\n光线穿过镜头到达传感器边缘时，路径更长、入射角更大、还可能被镜筒遮挡。结果就是：\n\n- 中心：100% 进光\n- 边角：可能只有 60-70% 进光\n\n这种现象叫 **Lens Shading（镜头阴影）** 或 **暗角**。\n\nISP 第二步要做的事是 **Lens Shading Correction（LSC，镜头阴影校正）**：用一张事先标定好的「增益表」乘到画面上，把边角的亮度拉回来。\n\n增益表是 Camera Tuning 工程师**校准**出来的：\n\n- 在标准光源箱里拍一张全白的均匀光板\n- 测出每个位置实际亮度 / 中心亮度的比值\n- 求倒数，存成一张表（通常是稀疏网格，比如 17×13 个采样点）\n- ISP 运行时按这张表给每个像素打 gain\n\n### 一个完整的 ISP 早期流水线\n\n现在你知道 ISP Pipeline 的前几步是怎么回事了：\n\n```\nRAW → 黑电平校正(OB) → Lens Shading 校正(LSC) → Demosaic → 白平衡 → ...\n```\n\nDay 2 我们提到过这个流程，今天加了 OB 和 LSC 两个新成员。这些是 Week 2 整周的主线。\n\n### 妹妹笔记里的常用词\n\n你在妹妹笔记里如果看到这些词，应该不陌生了：\n\n- **OB** = 黑电平\n- **LSC** = 镜头阴影校正\n- **shading** = 暗角现象\n- **uniformity** = 均匀性，常指经过 LSC 后画面的亮度均匀程度\n\n这些都是调教对话里的高频词。\n\n<figure>\n<svg viewBox=\"0 0 720 100\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"ISP 早期流水线\">\n  <defs>\n    <marker id=\"ah3\" markerWidth=\"10\" markerHeight=\"10\" refX=\"9\" refY=\"3\" orient=\"auto\">\n      <path d=\"M0,0 L0,6 L9,3 z\" fill=\"#3b82f6\"/>\n    </marker>\n  </defs>\n  <g font-family=\"sans-serif\" font-size=\"12\" fill=\"#e2e8f0\">\n    <rect x=\"10\" y=\"30\" width=\"80\" height=\"40\" rx=\"6\" fill=\"#1e293b\" stroke=\"#22c55e\"/>\n    <text x=\"50\" y=\"55\" text-anchor=\"middle\" fill=\"#22c55e\">RAW</text>\n\n    <rect x=\"120\" y=\"30\" width=\"100\" height=\"40\" rx=\"6\" fill=\"#1e293b\" stroke=\"#334155\"/>\n    <text x=\"170\" y=\"48\" text-anchor=\"middle\">黑电平 OB</text>\n    <text x=\"170\" y=\"62\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">减偏置</text>\n\n    <rect x=\"250\" y=\"30\" width=\"100\" height=\"40\" rx=\"6\" fill=\"#1e293b\" stroke=\"#334155\"/>\n    <text x=\"300\" y=\"48\" text-anchor=\"middle\">Lens Shading</text>\n    <text x=\"300\" y=\"62\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">校暗角</text>\n\n    <rect x=\"380\" y=\"30\" width=\"100\" height=\"40\" rx=\"6\" fill=\"#1e293b\" stroke=\"#334155\"/>\n    <text x=\"430\" y=\"48\" text-anchor=\"middle\">Demosaic</text>\n    <text x=\"430\" y=\"62\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">→ RGB</text>\n\n    <rect x=\"510\" y=\"30\" width=\"100\" height=\"40\" rx=\"6\" fill=\"#1e293b\" stroke=\"#334155\"/>\n    <text x=\"560\" y=\"48\" text-anchor=\"middle\">白平衡</text>\n    <text x=\"560\" y=\"62\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">AWB gain</text>\n\n    <rect x=\"640\" y=\"30\" width=\"60\" height=\"40\" rx=\"6\" fill=\"#1e293b\" stroke=\"#334155\"/>\n    <text x=\"670\" y=\"55\" text-anchor=\"middle\" fill=\"#94a3b8\">…</text>\n\n    <line x1=\"90\" y1=\"50\" x2=\"118\" y2=\"50\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah3)\"/>\n    <line x1=\"220\" y1=\"50\" x2=\"248\" y2=\"50\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah3)\"/>\n    <line x1=\"350\" y1=\"50\" x2=\"378\" y2=\"50\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah3)\"/>\n    <line x1=\"480\" y1=\"50\" x2=\"508\" y2=\"50\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah3)\"/>\n    <line x1=\"610\" y1=\"50\" x2=\"638\" y2=\"50\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah3)\"/>\n  </g>\n</svg>\n<figcaption>图：ISP 流水线前 5 步（Week 2 主线）</figcaption>\n</figure>\n",
       "glossary": [
-        { "term": "Black Level", "zh": "黑电平", "explain": "传感器在无光照下输出的非零偏置值，由暗电流和电路偏置组成。" },
-        { "term": "OB", "zh": "黑电平", "explain": "Optical Black，黑电平的另一称呼，也指传感器边缘那圈遮光参考像素。" },
-        { "term": "Lens Shading", "zh": "镜头阴影 / 暗角", "explain": "镜头光路导致画面边缘比中心暗的物理现象。" },
-        { "term": "LSC", "zh": "镜头阴影校正", "explain": "Lens Shading Correction，ISP 中用预先标定的增益表把边角亮度拉回来的模块。" },
-        { "term": "Uniformity", "zh": "均匀性", "explain": "调教里指画面亮度/颜色在不同位置的一致程度，是 LSC 校准的衡量指标。" }
+        {
+          "term": "Black Level",
+          "zh": "黑电平",
+          "explain": "传感器在无光照下输出的非零偏置值，由暗电流和电路偏置组成。"
+        },
+        {
+          "term": "OB",
+          "zh": "黑电平",
+          "explain": "Optical Black，黑电平的另一称呼，也指传感器边缘那圈遮光参考像素。"
+        },
+        {
+          "term": "Lens Shading",
+          "zh": "镜头阴影 / 暗角",
+          "explain": "镜头光路导致画面边缘比中心暗的物理现象。"
+        },
+        {
+          "term": "LSC",
+          "zh": "镜头阴影校正",
+          "explain": "Lens Shading Correction，ISP 中用预先标定的增益表把边角亮度拉回来的模块。"
+        },
+        {
+          "term": "Uniformity",
+          "zh": "均匀性",
+          "explain": "调教里指画面亮度/颜色在不同位置的一致程度，是 LSC 校准的衡量指标。"
+        }
       ]
     },
     {
@@ -61,9 +121,19 @@
     }
   ],
   "references": [
-    { "source": "维基百科 · CMOS image sensor", "url": "https://en.wikipedia.org/wiki/CMOS_active-pixel_sensor" },
-    { "source": "维基百科 · Rolling shutter", "url": "https://en.wikipedia.org/wiki/Rolling_shutter" },
-    { "source": "高通 3A 7.0 Tuning Guide", "page": 22, "section": "3.8 调试 LED 闪光灯的 LSC（背景术语）" }
+    {
+      "source": "维基百科 · CMOS image sensor",
+      "url": "https://en.wikipedia.org/wiki/CMOS_active-pixel_sensor"
+    },
+    {
+      "source": "维基百科 · Rolling shutter",
+      "url": "https://en.wikipedia.org/wiki/Rolling_shutter"
+    },
+    {
+      "source": "高通 3A 7.0 Tuning Guide",
+      "page": 22,
+      "section": "3.8 调试 LED 闪光灯的 LSC（背景术语）"
+    }
   ],
   "dailyQuizId": "daily-day-03"
 }

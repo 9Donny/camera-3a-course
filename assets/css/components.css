@@ -138,3 +138,12 @@
 .md table { border-collapse: collapse; margin: 12px 0; }
 .md th, .md td { border: 1px solid var(--border); padding: 6px 12px; }
 .md th { background: var(--surface-2); }
+
+/* Lesson 内的 SVG 原理图 */
+.md figure { margin: 20px 0; text-align: center; }
+.md figure svg { max-width: 100%; height: auto; }
+.md figcaption { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+.md svg .axis { stroke: var(--text-dim); stroke-width: 1; }
+.md svg .label { fill: var(--text-muted); font-size: 12px; font-family: var(--font-sans); }
+.md svg .label-strong { fill: var(--text); font-size: 13px; font-weight: 600; font-family: var(--font-sans); }
+.md svg .arrow { stroke: var(--accent); stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
