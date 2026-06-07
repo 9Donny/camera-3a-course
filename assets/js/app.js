@@ -53,7 +53,7 @@ const router = new Router()
   .on("#/notes", async () => {
     renderSidebar("#/notes");
     const { renderNotesList } = await import("./views/notes-view.js");
-    renderNotesList(content, { router });
+    renderNotesList(content, { router, progress });
   })
   .on("#/notes/:dayId", async (p) => {
     renderSidebar("#/notes");

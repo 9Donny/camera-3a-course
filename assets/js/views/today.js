@@ -74,6 +74,7 @@ export async function renderToday(content, { progress, router, persistProgress }
     ${sections}
     ${refs ? `<section class="lesson-section"><h2>📚 参考资料</h2><ul>${refs}</ul></section>` : ""}
     <div class="lesson-footer">
+      <a class="btn secondary" href="#/notes/${dayId}">📝 写笔记</a>
       <a class="btn secondary" href="#/quiz/daily-${dayId}">📊 今日小测</a>
       <button class="btn" id="completeBtn" ${isCompleted ? "disabled" : ""}>${btnLabel}</button>
     </div>
