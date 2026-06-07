@@ -160,13 +160,37 @@ export function renderSync(content) {
     const payload = JSON.stringify({
       email: cfg.email,
       password: cfg.password,
-      device: "", // 让目标设备自己填
+      device: "",
     });
-    // base64url 编码（URL 安全）
     const b64 = btoa(unescape(encodeURIComponent(payload)))
       .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-    // 用当前页面的 origin + 当前 path
-    const url = `${location.origin}${location.pathname}?syncconfig=${b64}#/sync`;
+
+    // 关键：当前 host 如果是 localhost / 127.0.0.1，手机打开链接会指向手机自己
+    // 让用户提供 Mac 的局域网 IP 地址（记住到 localStorage 下次直接用）
+    let host = location.host;
+    const isLocal = /^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host);
+    if (isLocal) {
+      const remembered = localStorage.getItem("camera3a:lanHost") || "";
+      const port = location.port || "8080";
+      const placeholder = remembered || `192.168.x.x:${port}`;
+      const input = prompt(
+        "你当前用 localhost 打开课程，手机用这个链接会连到自己（不是 Mac）。\n\n" +
+        "请输入 Mac 的局域网 IP 地址 + 端口，比如 192.168.31.72:8080\n" +
+        "（在 Mac 终端跑：ifconfig | grep \"inet 192\"）\n\n" +
+        "下次会记住这个地址。",
+        remembered || `192.168.0.0:${port}`
+      );
+      if (!input) return;
+      const cleaned = input.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+      if (!/^\d{1,3}(\.\d{1,3}){3}(:\d+)?$/.test(cleaned) && !/^[\w-]+(\.[\w-]+)+(:\d+)?$/.test(cleaned)) {
+        setStatus(`❌ 地址格式不对：${cleaned}（应该像 192.168.31.72:8080）`, "err");
+        return;
+      }
+      host = cleaned.includes(":") ? cleaned : `${cleaned}:${port}`;
+      localStorage.setItem("camera3a:lanHost", host);
+    }
+
+    const url = `${location.protocol}//${host}${location.pathname}?syncconfig=${b64}#/sync`;
     shareLink.value = url;
     shareWrap.style.display = "block";
     btnCopy.style.display = "inline-block";
