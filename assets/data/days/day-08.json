@@ -1,0 +1,144 @@
+{
+  "id": "day-08",
+  "week": 2,
+  "module": "M2",
+  "title": "ISP Pipeline 总览：一张 RAW 怎么变成 JPEG",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "上岸：从硬件世界进入数字世界",
+      "type": "concept",
+      "content": "### Week 1 我们在哪里\n\n回想 Day 7 的硬件全景图：光子穿过镜头 → 击中 CFA 滤镜 → 在像素阱里变电荷 → 电压 → ADC → 数字 RAW 值。\n\n这条链路结束的地方，是一张**每像素只有 1 个数字（10 或 12 bit）+ 带 OB 偏置 + 边缘有暗角 + 看着花花绿绿（Bayer 排列）**的「裸照片」。\n\n打开 RAW 图你会看到：\n\n- 整张图偏暗（OB 没去掉）\n- 四角更暗（没做 LSC）\n- 颜色不对（白纸不是白的，Demosaic 没插值）\n- 像素是马赛克小格子\n\n这就是 **传感器看到的真相**。它和你手机相册里那张色彩鲜艳、轮廓清晰、HDR 高光控制得很好的 JPEG，差着十万八千里。\n\n中间发生了什么？\n\n答案就是这一周的主角：**ISP Pipeline（图像信号处理流水线）**。\n\n### ISP 是什么\n\nISP = **Image Signal Processor**，图像信号处理器。\n\n物理上，它是高通 Snapdragon 芯片里专门负责图像处理的一块硬件单元。逻辑上，它是一条由 **20-30 个模块**组成的**流水线**：\n\n```\nRAW → [模块1] → [模块2] → [模块3] → ... → [模块N] → YUV/JPEG\n```\n\n每个模块做一件具体的事（比如「去黑电平」、「去马赛克」、「调整白平衡」）。**前一个模块的输出 = 下一个模块的输入**，串成一条链。\n\n你在 Day 1-7 已经看到几个名字：OB、LSC、Demosaic。这些都是 ISP 流水线的早期模块。\n\n### Camera Tuning 工程师的真实工作\n\n再回看 PRD 里的岗位 JD：\n\n> 熟悉 Camera 基本结构、成像原理、**ISP 流程**以及 3A 算法\n\nISP 流程**和** 3A 算法 —— 是两件事：\n\n- **3A 算法（AE/AWB/AF）**：实时决策**该用什么参数**（曝光、白平衡、对焦），输出**控制信号**给 sensor 和 ISP\n- **ISP Pipeline**：拿着这些参数 + RAW 数据，实际**加工出最终图像**\n\n打个比方：\n\n- 3A = **指挥官**，告诉每个模块「这次曝光用 1/100 秒，色温按 5000K 算，对焦到 50 cm 处」\n- ISP Pipeline = **流水线工人**，拿到指令后真的去执行 30 道工序\n\n**Camera Tuning 工程师两边都要懂**：3A 算法的决策机制（Week 3-7 的内容），以及 ISP 流水线每个模块的参数（这一周）。\n\n### 本周路线图\n\nWeek 2 我们会按 RAW → JPEG 的真实流转顺序，逐天深入：\n\n- **Day 8（今天）**：鸟瞰整条 pipeline，记住模块清单和顺序\n- **Day 9**：OB / LSC / Demosaic 三个早期模块的细节（你已经混过脸）\n- **Day 10**：白平衡 WB + CCM 色彩矩阵\n- **Day 11**：Gamma + Tone Mapping —— 决定画面亮暗对比的关键\n- **Day 12**：LTM / GTM / ADRC —— 现代 HDR 调教的核心\n- **Day 13**：降噪 + 锐化 + 对比度模块汇总\n- **Day 14**：Week 2 总结 + 综合实战 + 周考\n\n学完 Week 2 你会**完整地讲出**「一张 RAW 是怎么变成 JPEG 的」，并且能回答 PRD 收集的多道面试题（影响对比度的模块、Gamma 优先级、TMC 作用、LTM 算法、ADRC gain）。\n\n这是 3A 调教的**地图基础**。Week 3 进 AEC 时你会发现：「哦，AE 算的 ISO 是 sensor 的 Analog Gain，ISO 也会影响 ISP 后段的 Tone Mapping 选项 —— Week 2 学过的」。一切都串起来了。",
+      "glossary": [
+        {
+          "term": "ISP",
+          "zh": "图像信号处理器",
+          "explain": "Image Signal Processor，把 RAW 数据加工成 JPEG/YUV 的硬件流水线。手机里它在 Snapdragon SoC 内。"
+        },
+        {
+          "term": "Pipeline",
+          "zh": "流水线",
+          "explain": "由多个串联模块组成的数据流处理链，前一模块的输出是后一模块的输入。"
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "title": "高通 Spectra 架构：你将工作的平台",
+      "type": "concept",
+      "content": "### Spectra 是什么\n\n你将来在工作中天天打交道的对象，叫 **Qualcomm Spectra**。它是高通 Snapdragon 芯片里**专门负责相机和影像处理的子系统**。\n\n不同代号的 Spectra 对应不同代的旗舰芯片：\n\n| Snapdragon | Spectra 代号 | 上市年份 | 典型机型 |\n|---|---|---|---|\n| 8 Gen 1 | Spectra 18-bit | 2022 | 小米 12 Pro |\n| 8 Gen 2 | Spectra（无新名） | 2023 | 小米 13 Pro |\n| 8 Gen 3 | Spectra | 2024 | 小米 14 |\n| 7 Gen 1 / 7+ Gen 2 | Spectra | 2022-2023 | 中端机 |\n| 7s Gen 2 | 较弱版 Spectra | 2023 | 红米 K70E 等 |\n\n你行业前辈调试的 **7450 平台**，对应骁龙 7s Gen 2 / 7+ Gen 1 这一代的 Spectra。\n\n### Spectra 的 4 个核心能力\n\n要把 ISP 看成一个公司，Spectra 就是它的总部，下面 4 个部门：\n\n1. **IFE（Image Front End，图像前端）**：处理 RAW 进来的最早几步\n   - OB / LSC / Demosaic / WB 等\n   - 输出格式：Bayer → RGB\n\n2. **BPS（Bayer Processing Segment，Bayer 处理段）**\n   - 在 IFE 和 IPE 之间，做一些专门的 Bayer 域处理\n   - 比如 Bayer 域降噪、HDR 合成（多帧 RAW 合成）\n\n3. **IPE（Image Processing Engine，图像处理引擎）**：处理 RGB → YUV 的后段\n   - CCM / Gamma / Tone Mapping / 色彩增强 / 降噪 / 锐化\n   - 输出格式：YUV / JPEG\n\n4. **CPP（Camera Post Processor，后处理器）**\n   - 缩放、色彩空间转换、最终 JPEG 编码\n   - 给 App 输出最终图像\n\n你不需要记住 4 个英文缩写各自的实现细节，但要记住**模块 → 部门**的对应关系：\n\n```\nRAW → IFE（OB/LSC/Demosaic）→ BPS（高级 Bayer 处理）→ IPE（色彩/Gamma/降噪）→ CPP（编码）→ JPEG\n```\n\n### 为什么分这么多段\n\n两个工程理由：\n\n1. **不同模块吃的数据格式不一样**：Demosaic 之前是 Bayer，之后是 RGB；某些模块（如某些降噪）专门吃 Bayer，某些（如锐化）专门吃 YUV\n\n2. **硬件并行**：IFE 在处理第 N 帧的时候，IPE 可以在处理第 N-1 帧。流水线并行能保证 30 fps 录视频每秒处理 30 帧不掉帧\n\n你将来**调试时会用到 Chromatix 工具**（高通官方调教软件），它的界面就是按 IFE/BPS/IPE/CPP 分区的。今天先记住名字，Week 8 我们会专门一节学 Chromatix 操作。\n\n### 看到 7450 文档不慌\n\n你行业前辈的笔记会有大量 7450 / Spectra 相关的术语：「这一帧 IPE 的 Gamma 曲线设的是 ...」、「BPS 的 Demosaic 阈值改一下」。\n\n现在你看到这些**应该不再发懵**：\n\n- IPE 的 Gamma → 在 ISP 后段、影响图像对比度\n- BPS 的 Demosaic → 在 ISP 中段、把 Bayer 还原成 RGB\n\n后面 Day 9-13 我们会逐个把这些模块讲透。\n\n<figure>\n<svg viewBox=\"0 0 720 200\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"高通 Spectra 4 段架构\">\n<defs>\n<marker id=\"ah8a\" markerWidth=\"10\" markerHeight=\"10\" refX=\"9\" refY=\"3\" orient=\"auto\">\n<path d=\"M0,0 L0,6 L9,3 z\" fill=\"#3b82f6\"/>\n</marker>\n</defs>\n<g font-family=\"sans-serif\" font-size=\"13\" fill=\"#e2e8f0\">\n<text x=\"360\" y=\"20\" text-anchor=\"middle\" fill=\"#cbd5e1\" font-size=\"14\">高通 Spectra ISP 四段架构</text>\n<rect x=\"20\" y=\"50\" width=\"80\" height=\"60\" rx=\"6\" fill=\"#0f172a\" stroke=\"#22c55e\" stroke-width=\"2\"/>\n<text x=\"60\" y=\"78\" text-anchor=\"middle\" fill=\"#22c55e\" font-weight=\"bold\">RAW</text>\n<text x=\"60\" y=\"96\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">Bayer</text>\n<rect x=\"120\" y=\"50\" width=\"120\" height=\"60\" rx=\"6\" fill=\"#1e293b\" stroke=\"#3b82f6\"/>\n<text x=\"180\" y=\"72\" text-anchor=\"middle\" fill=\"#3b82f6\" font-weight=\"bold\">IFE</text>\n<text x=\"180\" y=\"88\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">前端</text>\n<text x=\"180\" y=\"103\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">OB / LSC / Demosaic</text>\n<rect x=\"260\" y=\"50\" width=\"100\" height=\"60\" rx=\"6\" fill=\"#1e293b\" stroke=\"#a78bfa\"/>\n<text x=\"310\" y=\"72\" text-anchor=\"middle\" fill=\"#a78bfa\" font-weight=\"bold\">BPS</text>\n<text x=\"310\" y=\"88\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">Bayer 处理</text>\n<text x=\"310\" y=\"103\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">降噪 / HDR 合成</text>\n<rect x=\"380\" y=\"50\" width=\"120\" height=\"60\" rx=\"6\" fill=\"#1e293b\" stroke=\"#f59e0b\"/>\n<text x=\"440\" y=\"72\" text-anchor=\"middle\" fill=\"#f59e0b\" font-weight=\"bold\">IPE</text>\n<text x=\"440\" y=\"88\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">RGB→YUV 后段</text>\n<text x=\"440\" y=\"103\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">CCM/Gamma/LTM/锐化</text>\n<rect x=\"520\" y=\"50\" width=\"100\" height=\"60\" rx=\"6\" fill=\"#1e293b\" stroke=\"#22c55e\"/>\n<text x=\"570\" y=\"72\" text-anchor=\"middle\" fill=\"#22c55e\" font-weight=\"bold\">CPP</text>\n<text x=\"570\" y=\"88\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">后处理</text>\n<text x=\"570\" y=\"103\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">缩放 / JPEG 编码</text>\n<rect x=\"640\" y=\"50\" width=\"60\" height=\"60\" rx=\"6\" fill=\"#0f172a\" stroke=\"#22c55e\" stroke-width=\"2\"/>\n<text x=\"670\" y=\"78\" text-anchor=\"middle\" fill=\"#22c55e\" font-weight=\"bold\">JPEG</text>\n<line x1=\"100\" y1=\"80\" x2=\"118\" y2=\"80\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah8a)\"/>\n<line x1=\"240\" y1=\"80\" x2=\"258\" y2=\"80\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah8a)\"/>\n<line x1=\"360\" y1=\"80\" x2=\"378\" y2=\"80\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah8a)\"/>\n<line x1=\"500\" y1=\"80\" x2=\"518\" y2=\"80\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah8a)\"/>\n<line x1=\"620\" y1=\"80\" x2=\"638\" y2=\"80\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah8a)\"/>\n<text x=\"60\" y=\"135\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">输入</text>\n<text x=\"180\" y=\"135\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">每像素 1 通道</text>\n<text x=\"310\" y=\"135\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">每像素 3 通道</text>\n<text x=\"440\" y=\"135\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">YUV 数据</text>\n<text x=\"570\" y=\"135\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">最终输出</text>\n<text x=\"670\" y=\"135\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">交付</text>\n<text x=\"360\" y=\"170\" text-anchor=\"middle\" fill=\"#cbd5e1\" font-size=\"11\">每段并行执行：处理第 N 帧的同时已经在收第 N+1 帧</text>\n<text x=\"360\" y=\"188\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">→ 30 fps 视频不掉帧的工程基础</text>\n</g>\n</svg>\n<figcaption>图：高通 Spectra ISP 四段流水线架构</figcaption>\n</figure>\n",
+      "glossary": [
+        {
+          "term": "Spectra",
+          "zh": "高通影像子系统",
+          "explain": "Snapdragon 里专门负责相机和图像处理的硬件子系统名称。每代旗舰芯片有不同版本。"
+        },
+        {
+          "term": "IFE",
+          "zh": "图像前端",
+          "explain": "Image Front End，Spectra 里负责 RAW → RGB 早期处理的部分（OB/LSC/Demosaic/WB）。"
+        },
+        {
+          "term": "BPS",
+          "zh": "Bayer 处理段",
+          "explain": "Bayer Processing Segment，IFE 和 IPE 之间的中间段，做高级 Bayer 域处理。"
+        },
+        {
+          "term": "IPE",
+          "zh": "图像处理引擎",
+          "explain": "Image Processing Engine，Spectra 里负责 RGB → YUV 后段处理（CCM/Gamma/降噪/锐化）。"
+        },
+        {
+          "term": "CPP",
+          "zh": "相机后处理器",
+          "explain": "Camera Post Processor，最后做缩放、色彩空间转换、JPEG 编码。"
+        },
+        {
+          "term": "Chromatix",
+          "zh": "Chromatix 调教工具",
+          "explain": "高通官方提供的 Camera Tuning 软件，所有调试都通过它进行。Week 8 会专门讲。"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "title": "完整 Pipeline 模块清单（30 个模块）",
+      "type": "concept",
+      "content": "### 一张大图\n\n下面是高通 Spectra 完整的 ISP Pipeline 主线（简化版，实际还有更多分支）：\n\n```\n[传感器输出]\n        ↓\n   ┌─────── IFE（图像前端）────────┐\n   │   1. RAW Defect Pixel Correction（坏点校正）\n   │   2. OB / Black Level Subtract（黑电平去除）\n   │   3. Lens Shading Correction（暗角校正）\n   │   4. Bayer Statistics（Bayer 域统计 → 给 3A）\n   │   5. PD（PDAF 相位检测，给 AF）\n   │   6. Demosaic（Bayer → RGB）\n   │   7. White Balance Gain（WB 增益）\n   │   8. CCM（色彩矩阵 RGB → 标准 RGB）\n   └────────────────────────────────┘\n        ↓\n   ┌─────── BPS / IPE 中前段 ─────┐\n   │   9. Bayer Noise Reduction（Bayer 域降噪）\n   │   10. HDR Multi-frame Merge（多帧 HDR 合成）\n   │   11. Gamma（伽马曲线）\n   │   12. Color Space Conversion（RGB → YUV）\n   └────────────────────────────────┘\n        ↓\n   ┌─────── IPE 后段 ──────────────┐\n   │   13. Tone Mapping（GTM/LTM）\n   │   14. ADRC（动态范围压缩）\n   │   15. Color Enhancement（色彩增强、饱和度）\n   │   16. Skin Tone（肤色优化）\n   │   17. YUV Noise Reduction（YUV 域降噪）\n   │   18. Edge Enhancement（锐化）\n   │   19. Chroma Suppression（彩色抑制）\n   └────────────────────────────────┘\n        ↓\n   ┌─────── CPP（后处理）──────────┐\n   │   20. Scale（缩放）\n   │   21. Color Space Convert（最终色彩空间）\n   │   22. JPEG Encode（编码）\n   └────────────────────────────────┘\n        ↓\n   [JPEG 文件]\n```\n\n22 个主要模块。如果展开 HDR 多帧合成、PDAF 处理、色彩校准等子模块，会到 30+ 个。\n\n### 你今天必须记住的 5 件事\n\n看着 22 个模块头大很正常。今天你只需要内化 5 个核心事实：\n\n1. **Demosaic 是分水岭**：之前是 Bayer 图（每像素 1 通道），之后是 RGB 图（每像素 3 通道）\n\n2. **白平衡（WB）紧挨着 Demosaic**：因为 WB 是对 R/G/B 三个通道**分别打增益**，必须在 Demosaic 之后\n\n3. **Gamma 在 RGB → YUV 之前**：Gamma 是对 RGB 数据做的非线性变换\n\n4. **降噪有两个位置**：Bayer 域降噪（早，BPS 段）+ YUV 域降噪（晚，IPE 段）—— 同一张图被降噪了**两次**，目标各不同（一个保色彩、一个保细节）\n\n5. **锐化在最后段**：所有处理完成后再锐化，避免锐化噪声 / 锐化压缩瑕疵\n\n这 5 条是 Week 2 的「**地图地标**」，记住了再深入每个模块就有方向感。\n\n### 不需要全部背下来\n\n要点是建立**对模块的「位置感」**：\n\n- 调亮度 → 想到 Gamma 和 Tone Mapping\n- 调色彩 → 想到 WB 和 CCM 和 Color Enhancement\n- 调清晰度 → 想到 Sharpen\n- 调噪点 → 想到 Bayer NR 和 YUV NR\n\n每次面试遇到「XX 调起来效果不好怎么排查」，第一件事就是**定位是哪个模块**。\n\n<figure>\n<svg viewBox=\"0 0 760 360\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"ISP Pipeline 22 模块全图\">\n<g font-family=\"sans-serif\" font-size=\"11\" fill=\"#e2e8f0\">\n<text x=\"380\" y=\"20\" text-anchor=\"middle\" fill=\"#cbd5e1\" font-size=\"14\">ISP Pipeline 22 主模块（按数据流向）</text>\n<rect x=\"20\" y=\"40\" width=\"720\" height=\"80\" rx=\"6\" fill=\"rgba(59,130,246,0.08)\" stroke=\"#3b82f6\" stroke-dasharray=\"4 4\"/>\n<text x=\"60\" y=\"58\" fill=\"#3b82f6\" font-weight=\"bold\" font-size=\"11\">IFE（前端）</text>\n<g font-size=\"10\">\n<rect x=\"40\" y=\"68\" width=\"100\" height=\"20\" fill=\"#1e293b\" stroke=\"#3b82f6\"/><text x=\"90\" y=\"82\" text-anchor=\"middle\">1. 坏点校正</text>\n<rect x=\"148\" y=\"68\" width=\"100\" height=\"20\" fill=\"#1e293b\" stroke=\"#3b82f6\"/><text x=\"198\" y=\"82\" text-anchor=\"middle\">2. OB 黑电平</text>\n<rect x=\"256\" y=\"68\" width=\"100\" height=\"20\" fill=\"#1e293b\" stroke=\"#3b82f6\"/><text x=\"306\" y=\"82\" text-anchor=\"middle\">3. LSC 暗角</text>\n<rect x=\"364\" y=\"68\" width=\"100\" height=\"20\" fill=\"#1e293b\" stroke=\"#3b82f6\"/><text x=\"414\" y=\"82\" text-anchor=\"middle\">4. Bayer 统计</text>\n<rect x=\"472\" y=\"68\" width=\"80\" height=\"20\" fill=\"#1e293b\" stroke=\"#3b82f6\"/><text x=\"512\" y=\"82\" text-anchor=\"middle\">5. PD 相位</text>\n<rect x=\"560\" y=\"68\" width=\"80\" height=\"20\" fill=\"#1e293b\" stroke=\"#22c55e\" stroke-width=\"2\"/><text x=\"600\" y=\"82\" text-anchor=\"middle\" fill=\"#22c55e\">6. Demosaic</text>\n<rect x=\"40\" y=\"92\" width=\"80\" height=\"20\" fill=\"#1e293b\" stroke=\"#3b82f6\"/><text x=\"80\" y=\"106\" text-anchor=\"middle\">7. WB Gain</text>\n<rect x=\"128\" y=\"92\" width=\"80\" height=\"20\" fill=\"#1e293b\" stroke=\"#3b82f6\"/><text x=\"168\" y=\"106\" text-anchor=\"middle\">8. CCM</text>\n</g>\n<rect x=\"20\" y=\"135\" width=\"720\" height=\"60\" rx=\"6\" fill=\"rgba(167,139,250,0.08)\" stroke=\"#a78bfa\" stroke-dasharray=\"4 4\"/>\n<text x=\"60\" y=\"153\" fill=\"#a78bfa\" font-weight=\"bold\" font-size=\"11\">BPS / IPE 中前段</text>\n<g font-size=\"10\">\n<rect x=\"40\" y=\"163\" width=\"120\" height=\"20\" fill=\"#1e293b\" stroke=\"#a78bfa\"/><text x=\"100\" y=\"177\" text-anchor=\"middle\">9. Bayer 降噪</text>\n<rect x=\"168\" y=\"163\" width=\"120\" height=\"20\" fill=\"#1e293b\" stroke=\"#a78bfa\"/><text x=\"228\" y=\"177\" text-anchor=\"middle\">10. HDR 合成</text>\n<rect x=\"296\" y=\"163\" width=\"100\" height=\"20\" fill=\"#1e293b\" stroke=\"#a78bfa\"/><text x=\"346\" y=\"177\" text-anchor=\"middle\">11. Gamma</text>\n<rect x=\"404\" y=\"163\" width=\"160\" height=\"20\" fill=\"#1e293b\" stroke=\"#22c55e\" stroke-width=\"2\"/><text x=\"484\" y=\"177\" text-anchor=\"middle\" fill=\"#22c55e\">12. 色彩空间转换</text>\n</g>\n<rect x=\"20\" y=\"210\" width=\"720\" height=\"80\" rx=\"6\" fill=\"rgba(245,158,11,0.08)\" stroke=\"#f59e0b\" stroke-dasharray=\"4 4\"/>\n<text x=\"60\" y=\"228\" fill=\"#f59e0b\" font-weight=\"bold\" font-size=\"11\">IPE 后段</text>\n<g font-size=\"10\">\n<rect x=\"40\" y=\"238\" width=\"120\" height=\"20\" fill=\"#1e293b\" stroke=\"#f59e0b\"/><text x=\"100\" y=\"252\" text-anchor=\"middle\">13. Tone Mapping</text>\n<rect x=\"168\" y=\"238\" width=\"100\" height=\"20\" fill=\"#1e293b\" stroke=\"#f59e0b\"/><text x=\"218\" y=\"252\" text-anchor=\"middle\">14. ADRC</text>\n<rect x=\"276\" y=\"238\" width=\"120\" height=\"20\" fill=\"#1e293b\" stroke=\"#f59e0b\"/><text x=\"336\" y=\"252\" text-anchor=\"middle\">15. 色彩增强</text>\n<rect x=\"404\" y=\"238\" width=\"100\" height=\"20\" fill=\"#1e293b\" stroke=\"#f59e0b\"/><text x=\"454\" y=\"252\" text-anchor=\"middle\">16. 肤色优化</text>\n<rect x=\"40\" y=\"262\" width=\"120\" height=\"20\" fill=\"#1e293b\" stroke=\"#f59e0b\"/><text x=\"100\" y=\"276\" text-anchor=\"middle\">17. YUV 降噪</text>\n<rect x=\"168\" y=\"262\" width=\"120\" height=\"20\" fill=\"#1e293b\" stroke=\"#f59e0b\"/><text x=\"228\" y=\"276\" text-anchor=\"middle\">18. 锐化</text>\n<rect x=\"296\" y=\"262\" width=\"120\" height=\"20\" fill=\"#1e293b\" stroke=\"#f59e0b\"/><text x=\"356\" y=\"276\" text-anchor=\"middle\">19. 彩色抑制</text>\n</g>\n<rect x=\"20\" y=\"305\" width=\"720\" height=\"40\" rx=\"6\" fill=\"rgba(34,197,94,0.08)\" stroke=\"#22c55e\" stroke-dasharray=\"4 4\"/>\n<text x=\"60\" y=\"323\" fill=\"#22c55e\" font-weight=\"bold\" font-size=\"11\">CPP（后处理）</text>\n<g font-size=\"10\">\n<rect x=\"40\" y=\"318\" width=\"80\" height=\"20\" fill=\"#1e293b\" stroke=\"#22c55e\"/><text x=\"80\" y=\"332\" text-anchor=\"middle\">20. 缩放</text>\n<rect x=\"128\" y=\"318\" width=\"120\" height=\"20\" fill=\"#1e293b\" stroke=\"#22c55e\"/><text x=\"188\" y=\"332\" text-anchor=\"middle\">21. 色彩空间转换</text>\n<rect x=\"256\" y=\"318\" width=\"120\" height=\"20\" fill=\"#1e293b\" stroke=\"#22c55e\"/><text x=\"316\" y=\"332\" text-anchor=\"middle\">22. JPEG 编码</text>\n</g>\n<text x=\"700\" y=\"350\" text-anchor=\"end\" fill=\"#22c55e\" font-size=\"10\" font-weight=\"bold\">绿框 = 关键分水岭</text>\n</g>\n</svg>\n<figcaption>图：22 个主模块按 IFE / BPS-IPE / IPE 后段 / CPP 四段分组</figcaption>\n</figure>\n",
+      "glossary": [
+        {
+          "term": "Defect Pixel Correction",
+          "zh": "坏点校正",
+          "explain": "校正传感器里的坏点像素（恒亮/恒暗），用周围正常像素插值替代。"
+        },
+        {
+          "term": "Color Space Conversion",
+          "zh": "色彩空间转换",
+          "explain": "RGB → YUV 的数学变换。YUV 把亮度（Y）和色彩（UV）分开，节省存储。"
+        },
+        {
+          "term": "Color Enhancement",
+          "zh": "色彩增强",
+          "explain": "在 IPE 后段调饱和度、色相，让特定颜色（草绿、天蓝、肤色）更出彩。"
+        },
+        {
+          "term": "Edge Enhancement",
+          "zh": "边缘增强 / 锐化",
+          "explain": "强化图像边缘对比度，让画面看起来更清晰。"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "title": "ISP Pipeline 在系统里的位置",
+      "type": "concept",
+      "content": "### 全链路：从手指点拍照到看到照片\n\n你按下手机相机的快门按钮，到屏幕显示出最终照片，发生了什么？\n\n```\n[App 调相机 API]\n      ↓\n[Camera Service 接收请求]\n      ↓\n[CamX/CHI 框架]   ← 高通的相机框架代码\n      ↓\n[3A 算法跑] →→→ 决定 sensor 设置 + ISP 参数\n      ↓\n[Sensor 曝光 → 输出 RAW]\n      ↓\n[ISP Pipeline 处理] ← 我们这周要学的\n      ↓\n[输出 JPEG / YUV]\n      ↓\n[相册 App / 视频文件]\n```\n\n你看到的「按一下，咔嚓出照片」，背后是这一长串。**Camera Tuning 工程师只调中间的 ISP 模块参数**，别的链路（App、CamX、Sensor 驱动）由其他岗位负责。\n\n### CamX/CHI：连接 App 和 ISP 的胶水\n\nCamX 和 CHI 是高通自己写的相机框架代码（C++），位于安卓 `vendor/qcom` 目录下。\n\n你将来工作要打交道的：\n\n- **CamX**（Camera eXtension）：高通的核心相机框架，对接 ISP 硬件\n- **CHI**（Camera Hardware Interface）：CamX 的下层抽象层\n\n你**不会动这些代码**（那是相机框架开发岗的活），但你的调教结果（Chromatix 生成的参数文件）最终会被 CamX 加载并应用到 ISP。\n\n### Tuning 工程师的具体输入和输出\n\n每天工作的真实流程：\n\n**输入**：\n- 一张 sensor 的 RAW 测试图（实验室拍的，或工程机抓的）\n- 一份 Chromatix 配置（XML 格式，包含全部 ISP 参数）\n- 一个目标效果描述（「夜景人脸不要过曝」、「绿色更鲜艳一点」）\n\n**输出**：\n- 修改后的 Chromatix XML 文件\n- 一份调教记录文档（哪些参数改了、为什么改、改前改后对比图）\n\n**工具**：\n- **Chromatix**：调参主工具（你将来 80% 时间用它）\n- **MATLAB/Python**：算 LUT 表、画曲线（少数复杂调校用）\n- **专业图像查看器**：看 RAW、看带 EXIF 的 JPEG\n\n### Q：我作为新手怎么开始上手\n\n你行业前辈刚入行时，前几个月可能就一直在做：\n\n1. 拍标准 ColorChecker 色卡，对比相机和真实色彩偏差\n2. 调 CCM 矩阵几个值，让色卡颜色更准\n3. 在测试用例上跑一遍，看其他指标有没有掉\n4. 提交 Chromatix XML 给主管 review\n\n这就是 Camera Tuning 真实的入门工作。学完这一周你会知道**ColorChecker、CCM 矩阵、测试用例**这些词分别代表什么。\n\n<figure>\n<svg viewBox=\"0 0 700 240\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"按下快门到照片的全链路\">\n<defs>\n<marker id=\"ah8b\" markerWidth=\"10\" markerHeight=\"10\" refX=\"9\" refY=\"3\" orient=\"auto\">\n<path d=\"M0,0 L0,6 L9,3 z\" fill=\"#3b82f6\"/>\n</marker>\n</defs>\n<g font-family=\"sans-serif\" font-size=\"12\" fill=\"#e2e8f0\">\n<text x=\"350\" y=\"20\" text-anchor=\"middle\" fill=\"#cbd5e1\" font-size=\"14\">从按快门到看到照片</text>\n<rect x=\"20\" y=\"50\" width=\"120\" height=\"40\" rx=\"6\" fill=\"#1e293b\" stroke=\"#fbbf24\"/>\n<text x=\"80\" y=\"74\" text-anchor=\"middle\" fill=\"#fbbf24\">App 调相机</text>\n<rect x=\"170\" y=\"50\" width=\"140\" height=\"40\" rx=\"6\" fill=\"#1e293b\" stroke=\"#94a3b8\"/>\n<text x=\"240\" y=\"74\" text-anchor=\"middle\">CamX/CHI 框架</text>\n<rect x=\"340\" y=\"50\" width=\"140\" height=\"40\" rx=\"6\" fill=\"#1e293b\" stroke=\"#3b82f6\"/>\n<text x=\"410\" y=\"68\" text-anchor=\"middle\" fill=\"#3b82f6\">3A 算法决策</text>\n<text x=\"410\" y=\"83\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">参数 → sensor + ISP</text>\n<rect x=\"510\" y=\"50\" width=\"160\" height=\"40\" rx=\"6\" fill=\"#1e293b\" stroke=\"#22c55e\"/>\n<text x=\"590\" y=\"68\" text-anchor=\"middle\" fill=\"#22c55e\">Sensor 曝光</text>\n<text x=\"590\" y=\"83\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">输出 RAW</text>\n<line x1=\"140\" y1=\"70\" x2=\"168\" y2=\"70\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah8b)\"/>\n<line x1=\"310\" y1=\"70\" x2=\"338\" y2=\"70\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah8b)\"/>\n<line x1=\"480\" y1=\"70\" x2=\"508\" y2=\"70\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah8b)\"/>\n<line x1=\"590\" y1=\"90\" x2=\"590\" y2=\"120\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah8b)\"/>\n<rect x=\"170\" y=\"130\" width=\"500\" height=\"60\" rx=\"6\" fill=\"rgba(59,130,246,0.12)\" stroke=\"#3b82f6\" stroke-width=\"2\"/>\n<text x=\"420\" y=\"153\" text-anchor=\"middle\" fill=\"#60a5fa\" font-weight=\"bold\" font-size=\"14\">ISP Pipeline 处理（Week 2 主线）</text>\n<text x=\"420\" y=\"172\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">22 个模块 IFE → BPS → IPE → CPP</text>\n<text x=\"420\" y=\"184\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">这是 Camera Tuning 工程师调参的对象</text>\n<rect x=\"280\" y=\"200\" width=\"160\" height=\"30\" rx=\"6\" fill=\"#0f172a\" stroke=\"#22c55e\" stroke-width=\"2\"/>\n<text x=\"360\" y=\"220\" text-anchor=\"middle\" fill=\"#22c55e\">JPEG → 相册</text>\n<line x1=\"420\" y1=\"190\" x2=\"360\" y2=\"200\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah8b)\"/>\n</g>\n</svg>\n<figcaption>图：按下快门到看到照片的完整链路，绿框是 Tuning 工程师工作的范围</figcaption>\n</figure>\n",
+      "glossary": [
+        {
+          "term": "CamX",
+          "zh": "Camera eXtension",
+          "explain": "高通的核心相机框架，对接 ISP 硬件。Tuning 工程师不改这部分，但调教结果通过它生效。"
+        },
+        {
+          "term": "CHI",
+          "zh": "相机硬件接口",
+          "explain": "Camera Hardware Interface，CamX 的下层抽象，对接更具体的 ISP 寄存器。"
+        },
+        {
+          "term": "ColorChecker",
+          "zh": "标准色卡",
+          "explain": "调教必备工具，包含 24 种标准颜色 + 6 个灰度块。X-Rite 公司的产品。Tuning 工程师每天都会用。"
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的地基\n\n1. **ISP 是流水线**：20-30 个模块串成的数据加工链\n2. **高通 Spectra**：Snapdragon 里的相机子系统，分 IFE/BPS/IPE/CPP 4 段\n3. **22 个主模块清单**：从坏点校正到 JPEG 编码\n4. **5 个地标**：Demosaic 是 Bayer/RGB 分水岭、WB 紧跟 Demosaic、Gamma 在 YUV 转换前、降噪有两个位置、锐化在最后\n5. **Tuning 工作流**：Chromatix 改 XML → 跑 RAW 测试 → 对比效果 → 提交\n\n### 自我检查\n\n用自己的话答这 5 题：\n\n1. ISP Pipeline 里 Demosaic 之前和之后图像格式有什么区别？\n2. 高通 Spectra 的 IFE / BPS / IPE / CPP 大致各负责哪些模块？\n3. 为什么白平衡必须在 Demosaic 之后？\n4. ISP 流水线里有几次降噪？分别在什么阶段？\n5. Camera Tuning 工程师每天工作的输入和输出是什么？\n\n### 笔记建议\n\n- 把 22 个模块清单**抄一遍**到笔记，建立位置感\n- 标记你完全没听说过的模块名，明天后天我们会逐个深入\n\n### 明天预告\n\nDay 9 我们回到 Day 3 提过的 OB / LSC，再加上 Day 2 的 Demosaic，一次讲透 IFE 段最关键的 3 个模块。这是你将来 Tuning 工作中遇到的第一组真实参数。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    {
+      "source": "高通 3A 7.0 Tuning Guide",
+      "page": 14,
+      "section": "ISP 上下文背景"
+    },
+    {
+      "source": "高通 3A 10 Deep Dive",
+      "page": 8,
+      "section": "Architecture Overview"
+    },
+    {
+      "source": "维基百科 · Image processor",
+      "url": "https://en.wikipedia.org/wiki/Image_processor"
+    },
+    {
+      "source": "Qualcomm Spectra ISP（官方）",
+      "url": "https://www.qualcomm.com/products/technology/processors/spectra"
+    }
+  ],
+  "dailyQuizId": "daily-day-08"
+}

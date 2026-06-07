@@ -1,0 +1,54 @@
+{
+  "id": "daily-day-09",
+  "module": "M2",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "OB（黑电平）值为什么要每帧重新算，而不是固定值？",
+      "options": [
+        "因为 sensor 永远在变",
+        "因为 OB 受温度和 ISO 增益影响",
+        "因为算法限制",
+        "因为节省存储"
+      ],
+      "answer": "因为 OB 受温度和 ISO 增益影响",
+      "explain": "暗电流随温度变；放大器偏置随 ISO 变。所以 OB 是动态的，用 sensor 边缘的 OB Pixel 实时统计。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "高通 LSC 增益表通常采样多大的网格？",
+      "options": ["8×8", "17×13", "32×32", "64×48"],
+      "answer": "17×13",
+      "explain": "17×13 是高通 LSC 常用的稀疏网格大小。运行时双线性插值出每像素增益。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "LSC 校准时要分 ___ 个通道（含 G 分两种）分别做增益表。",
+      "answer": ["4", "四"],
+      "explain": "R / Gr / Gb / B 四个通道。镜头对不同波长折射率不同，分通道避免边角颜色偏移。"
+    },
+    {
+      "id": "q4",
+      "type": "choice",
+      "prompt": "Demosaic 「拉链效应」最容易出现在什么场景？",
+      "options": [
+        "均匀的灰色背景",
+        "高对比的边缘（黑白格子等）",
+        "暗光场景",
+        "低 ISO 拍摄"
+      ],
+      "answer": "高对比的边缘（黑白格子等）",
+      "explain": "双线性插值跨越高对比边缘平均，会跳出错误的中间色（紫/绿条纹）。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "为什么 LSC 必须在 Demosaic 之前做？",
+      "referenceAnswer": "因为 Bayer 域里我们直接知道每个像素的颜色（R/Gr/Gb/B），方便分通道补偿增益。Demosaic 之后是 RGB，每像素都有 3 个值，分通道意义模糊。LSC 在 Bayer 域做最自然。"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "id": "daily-day-10",
+  "module": "M2",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "白炽灯下白纸看着偏黄，因为？",
+      "options": [
+        "白纸本身有色差",
+        "白炽灯里红光成分多，反射回来的也红光多",
+        "传感器有缺陷",
+        "这是错觉"
+      ],
+      "answer": "白炽灯里红光成分多，反射回来的也红光多",
+      "explain": "白炽灯色温约 3000K 偏暖，红黄成分多。白纸反射后传感器也读到红多 → 看着偏黄。"
+    },
+    {
+      "id": "q2",
+      "type": "fill",
+      "prompt": "白平衡（WB）通常以 ___ 通道作为增益基准（gain=1）。",
+      "answer": ["G", "g", "绿色", "绿"],
+      "explain": "G_gain=1.0 作基准，调 R 和 B 增益让白色物体三通道值相等。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "CCM 矩阵主对角线大于 1 的目的是？",
+      "options": [
+        "减少噪声",
+        "强化每个通道自身的纯度",
+        "节省计算量",
+        "压缩动态范围"
+      ],
+      "answer": "强化每个通道自身的纯度",
+      "explain": "CCM 主对角线 > 1 自身增强；非对角线 < 0 减掉其他通道的「污染」（滤镜不纯）。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "Camera Tuning 工程师校准 CCM 用的标准色卡（24 色 + 6 灰）叫 ___。",
+      "answer": ["ColorChecker", "colorchecker", "色卡"],
+      "explain": "X-Rite ColorChecker，含 24 种已知色和 6 个灰度块，是 CCM 校准的必备工具。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "为什么 WB 必须在 CCM 之前做？",
+      "referenceAnswer": "CCM 矩阵是基于「白平衡后的标准 RGB」校准的。如果 CCM 在 WB 之前，CCM 工作在不平衡的 RGB 上，纠正方向会错。正确顺序：WB（让基准对齐）→ CCM（让色彩纯净）。"
+    }
+  ]
+}

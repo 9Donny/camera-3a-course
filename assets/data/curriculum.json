@@ -64,6 +64,13 @@
     { "id": "day-04", "week": 1, "module": "M1", "title": "镜头、光圈与马达对焦", "goal": "认识镜头模组所有部件 + VCM 工作原理 + 多摄一致性挑战" },
     { "id": "day-05", "week": 1, "module": "M1", "title": "快门、曝光时间与帧率", "goal": "掌握帧率↔曝光时间关系 + Antibanding + 曝光优先 vs 增益优先" },
     { "id": "day-06", "week": 1, "module": "M1", "title": "闪光灯：LED 与色温", "goal": "理解预闪+主闪机制 + flux 反直觉参数 + 标准光源 D65" },
-    { "id": "day-07", "week": 1, "module": "M1", "title": "Week 1 总结 + 硬件全景图", "goal": "用一张大图串起 Week 1 所有概念 + 周考准备" }
+    { "id": "day-07", "week": 1, "module": "M1", "title": "Week 1 总结 + 硬件全景图", "goal": "用一张大图串起 Week 1 所有概念 + 周考准备" },
+    { "id": "day-08", "week": 2, "module": "M2", "title": "ISP Pipeline 总览：一张 RAW 怎么变成 JPEG", "goal": "记住 22 模块清单 + Spectra 4 段架构 (IFE/BPS/IPE/CPP)" },
+    { "id": "day-09", "week": 2, "module": "M2", "title": "ISP 早期三剑客：OB / LSC / Demosaic 深入", "goal": "理解黑电平校正、暗角补偿、去马赛克的工程原理" },
+    { "id": "day-10", "week": 2, "module": "M2", "title": "白平衡 (WB) 与色彩矩阵 (CCM)：让白纸变白", "goal": "掌握 WB 三通道增益 + CCM 3×3 矩阵 + ColorChecker 校准" },
+    { "id": "day-11", "week": 2, "module": "M2", "title": "Gamma 与 Tone Mapping：决定画面对比度的关键", "goal": "懂 γ=2.2 + GTM/LTM 区别 + 答 PRD 第 14 题（Gamma 优先）" },
+    { "id": "day-12", "week": 2, "module": "M2", "title": "LTM / GTM / ADRC：现代 HDR 调教的核心", "goal": "默写 LTM 4 步 + TMC 作用 + Dark Boost/ADRC gain 推导（PRD-Q9/13/16）" },
+    { "id": "day-13", "week": 2, "module": "M2", "title": "降噪、锐化与影响对比度的模块", "goal": "懂降噪 vs 细节取舍 + USM 锐化 + 答 PRD 第 7 题" },
+    { "id": "day-14", "week": 2, "module": "M2", "title": "Week 2 总结：ISP Pipeline 全景图", "goal": "完整画出 22 模块流水线 + 周考 + 进入 Week 3" }
   ]
 }

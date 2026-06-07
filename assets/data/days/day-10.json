@@ -1,0 +1,119 @@
+{
+  "id": "day-10",
+  "week": 2,
+  "module": "M2",
+  "title": "白平衡 (WB) 与色彩矩阵 (CCM)：让白纸变白",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "为什么白纸不一定是白的",
+      "type": "concept",
+      "content": "### 一个生活实验\n\n你拿一张普通 A4 白纸，分别在 3 个场景下用手机拍：\n\n1. **正午阳光下**（色温约 5500K）\n2. **室内白炽灯下**（色温约 3000K，偏黄）\n3. **室内 LED 白光**（色温约 4000K，偏冷白）\n\n如果**关掉手机的「自动白平衡」**（手动模式选「日光」白平衡），三张照片会是这样：\n\n- 正午：白纸是白的 ✓\n- 白炽灯：白纸偏黄（黄黄的）✗\n- LED 白光：白纸偏冷蓝（青色调）✗\n\n但你平时拍出来都是白的，对吧？因为手机里**「自动白平衡（AWB）」**算法在帮你调整。\n\n这一节我们看 ISP 是怎么把「偏黄的纸」变回白色的。Week 5-6 我们再深入「**自动**判断色温」的算法（AWB），今天先看 ISP 拿到色温后的**校正动作**。\n\n### 物理原理：不同光源含不同颜色的成分\n\n看似白的光，实际上是各种波长光的混合。不同光源混的比例不同：\n\n| 光源 | 红光成分 | 绿光成分 | 蓝光成分 |\n|---|---|---|---|\n| 白炽灯（3000K） | **多** | 中 | 少 |\n| 中性日光（5500K） | 中 | 中 | 中（均衡）|\n| 阴影 / 北窗光（7500K） | 少 | 中 | **多** |\n\n白纸反射的是**入射光**。在白炽灯下，红光多，所以白纸表面反射的也是红光多 → 传感器读到的是「偏红/橙色」。\n\n相机要让白纸看起来白，就要：\n\n```\n如果场景偏红（白炽灯）→ 把红色减弱、把蓝色加强\n如果场景偏蓝（阴影）→ 把蓝色减弱、把红色加强\n```\n\n这就是**白平衡（White Balance, WB）**的核心思想。",
+      "glossary": [
+        {
+          "term": "White Balance (WB)",
+          "zh": "白平衡",
+          "explain": "调整 R/G/B 三个通道的相对强度，让画面里的白色物体看起来真的是白色。"
+        },
+        {
+          "term": "Color Temperature",
+          "zh": "色温",
+          "explain": "光源颜色的标定，单位开尔文（K）。低色温暖（红黄），高色温冷（蓝白）。"
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "title": "WB Gain：三个增益修正",
+      "type": "concept",
+      "content": "### 公式\n\n白平衡的实现简单得让人意外。每个像素经过 3 个独立的增益：\n\n```\nR_out = R_in × R_gain\nG_out = G_in × G_gain\nB_out = B_in × B_gain\n```\n\n通常约定 **G_gain = 1.0**（绿色作基准），调 R 和 B 两个增益。\n\n### 一个具体例子\n\n场景：白炽灯下拍白纸。\n\n传感器读到的 RGB 值（代表「白纸」）：\n\n```\n白炽灯下：R=180  G=120  B=60\n```\n\n显然 R 远多于 B —— 因为白炽灯里红光成分多，白纸反射回来的红光也多。\n\n要让这个白色变成「真白」（R=G=B），ISP 计算 WB 增益：\n\n```\nR_gain = G / R = 120 / 180 ≈ 0.67\nG_gain = 1.0（基准）\nB_gain = G / B = 120 / 60 = 2.0\n```\n\n应用增益：\n\n```\nR_out = 180 × 0.67 = 120\nG_out = 120 × 1.0 = 120\nB_out = 60  × 2.0 = 120\n```\n\nR=G=B=120，**白纸真的变白了**。\n\n### 这个「白纸」从哪来\n\n这是 AWB 算法的工作 —— 它要**自动找到画面里的「白色物体」**（或大致猜出它），用上面的方法算 R_gain / B_gain。Week 5-6 整整两周都在讲这个怎么找。\n\n今天你只需要记住：\n\n- AWB 算法每帧给 ISP 一组 (R_gain, G_gain, B_gain) 数值\n- ISP 的 WB 模块拿到就乘进去，每个像素分别处理\n- 全图统一用同一组增益\n\n### WB Gain 的位置：紧跟 Demosaic\n\n你看 Day 8 的 22 模块清单，**WB 紧跟在 Demosaic 后面**。原因：\n\n- **WB 必须在 RGB 域**（每像素 3 通道）操作，不能在 Bayer 域\n- Demosaic 之前是 Bayer，所以 WB 必须放在 Demosaic 之后\n\n### 调坏了会怎么样\n\n- **R_gain 太大**：画面整体偏红 / 偏粉\n- **B_gain 太大**：画面整体偏蓝 / 偏青\n- **R_gain 和 B_gain 都偏低**：画面整体偏绿\n- **AWB 算错色温**（比如把白炽灯当成日光）：「**偏色**」 —— Tuning 工程师最头疼的 bug 之一",
+      "glossary": [
+        {
+          "term": "WB Gain",
+          "zh": "白平衡增益",
+          "explain": "对 R/G/B 三个通道的乘法系数，让白色物体的 RGB 三通道值相等。"
+        },
+        {
+          "term": "Color Cast",
+          "zh": "偏色",
+          "explain": "白平衡算错时，画面整体染上某种颜色调（偏红/偏蓝/偏绿）。"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "title": "CCM 色彩矩阵：让红的更红、绿的更绿",
+      "type": "concept",
+      "content": "### WB 之后还有什么问题\n\nWB 让白色变白了，但你拿到的图还是有问题：\n\n- 红色看起来不够鲜艳，有点像橙色\n- 绿色看起来灰灰的\n- 蓝色不饱和\n\n原因：**sensor 的 R/G/B 滤镜不是「完美」的红绿蓝**。\n\n理想中：红色滤镜只让 600 nm 红光通过，完全挡住绿和蓝。但实际滤镜：\n- 红色滤镜：放 80% 红光 + 漏 15% 绿光 + 漏 5% 蓝光\n- 绿色滤镜：放 80% 绿光 + 漏 10% 红 + 漏 10% 蓝\n- 蓝色滤镜：放 75% 蓝光 + 漏 10% 红 + 漏 15% 绿\n\n这种「滤镜不纯」让传感器输出的「红」实际上是「红 + 一点点绿和蓝的混合」 → 看起来不够纯。\n\n### CCM 是什么\n\nCCM = **Color Correction Matrix**，色彩校正矩阵。它是一个 **3×3 矩阵**，对每个像素的 RGB 做线性变换：\n\n```\n[R_out]   [m11 m12 m13] [R_in]\n[G_out] = [m21 m22 m23] [G_in]\n[B_out]   [m31 m32 m33] [B_in]\n```\n\n展开：\n\n```\nR_out = m11×R + m12×G + m13×B\nG_out = m21×R + m22×G + m23×B\nB_out = m31×R + m32×G + m33×B\n```\n\n一个典型 CCM 矩阵（D65 光源下）：\n\n```\n[ 1.6  -0.3  -0.3]\n[-0.2   1.4  -0.2]\n[-0.1  -0.3   1.4]\n```\n\n注意主对角线 > 1 —— **强化每个通道自身**。非对角线 < 0 —— **减去其他通道的「污染」**。这就是 CCM 干的事：\n\n- 算 R_out 时：加强自己的 R，**减掉**误进来的 G 和 B → 红得更纯\n- G 和 B 同理\n\n### CCM 怎么校准出来\n\n这是 Tuning 工程师**入门第一周可能就要做**的活：\n\n1. 准备一个 **ColorChecker** 标准色卡（24 种已知 RGB 真值的颜色）\n2. 在 D65 标准光源下拍色卡的 RAW\n3. ISP 跑前几个模块（OB / LSC / Demosaic / WB）后，得到色卡 24 种颜色的 RGB 实测值\n4. 用最小二乘法解：求一个 3×3 矩阵 M，让 `M × RGB_实测 ≈ RGB_真值`\n5. 把这个 M 写到 sensor 的 ChromatixCCM 配置里\n\n实际中要校准 **多个色温下的 CCM**：D65 / D50 / A 光源 / 荧光灯 ... 各算一份。运行时 ISP 根据 AWB 估算的当前色温 **从这几份 CCM 里插值**出最合适的。\n\n### 调教参数\n\n你将来在 Chromatix 看到的 CCM 调教，常见有：\n\n- **CCM 矩阵 9 个值**：直接调每个值\n- **Saturation Boost**：在 CCM 之上额外乘一个饱和度系数（让颜色更鲜艳）\n- **Gamut Mapping**：色域裁剪（比如把超出 sRGB 范围的颜色拉回来）\n\n小米的「重口味」风格 vs iPhone 的「清淡」风格，**很大程度是 CCM + Saturation 调出来的**。\n\n### 一个排错思路\n\n用户报「肤色偏红」：\n\n1. 先看 AWB —— 是不是色温估错了？\n2. 再看 CCM —— 红色通道是不是过强？\n3. 最后看 Color Enhancement —— 是不是肤色专门被加强了过头？\n\n这三个模块都可能影响肤色，**按这个顺序排查**。",
+      "glossary": [
+        {
+          "term": "CCM",
+          "zh": "色彩校正矩阵",
+          "explain": "Color Correction Matrix，3×3 矩阵，把 sensor 实测 RGB 变换到标准 RGB 色彩空间。"
+        },
+        {
+          "term": "ColorChecker",
+          "zh": "标准色卡",
+          "explain": "X-Rite 公司的 24 色色卡，含 6 个肤色 / 蓝绿天等典型色 + 6 个灰阶。Tuning 工程师每天用。"
+        },
+        {
+          "term": "Gamut Mapping",
+          "zh": "色域映射",
+          "explain": "把超出目标色域（如 sRGB）的颜色压到色域内的算法。"
+        },
+        {
+          "term": "Saturation",
+          "zh": "饱和度",
+          "explain": "颜色的鲜艳程度。CCM 之外可单独调一个总饱和度系数。"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "title": "WB → CCM 的位置和顺序",
+      "type": "concept",
+      "content": "### 为什么 WB 在 CCM 之前\n\n你可能问：能不能 CCM 在前 WB 在后？\n\n答案：**不能**。原因是物理上 WB 和 CCM 各自的前提：\n\n- **WB** 假设：「白色物体的 R/G/B 应该相等」\n- **CCM** 假设：「滤镜响应的偏差是固定的，可以用一个固定矩阵纠正」\n\nCCM 矩阵是**针对「白平衡后」的标准 RGB 校准的**。如果 CCM 跑在 WB 之前：\n\n- 白炽灯下 R=180 G=120 B=60\n- CCM 输出 ≈ 增强的 R / G / B（仍然不平衡）\n- 然后 WB 试图再平衡，但已经被 CCM 扭曲过了\n- 结果颜色错乱\n\n所以正确顺序：**WB（让基准对齐）→ CCM（让色彩纯净）**。\n\n### Spectra 里的位置\n\n按 Day 8 的 22 模块清单：\n\n```\n6. Demosaic         （Bayer → RGB）\n7. WB Gain          （让白色变白）\n8. CCM              （让红更红、绿更绿）\n... 后面是色彩空间转换 / Gamma / 降噪 / 锐化\n```\n\nWB 和 CCM 紧挨着，都在 IFE 段（图像前端）。它们一起决定**画面色彩的「基础」**。\n\n后面 IPE 段还有一个叫 **Color Enhancement**（色彩增强）的模块，再做一次「锦上添花」 —— 让特定颜色（草绿、天蓝、肤色）更鲜艳。但 Color Enhancement 是基于已经正确的色彩做的，所以**地基（WB+CCM）打不好，再美化也没用**。\n\n### Tuning 工程师的色彩调教全流程\n\n你将来调一款新 sensor 的色彩，标准流程是：\n\n1. **校准 LSC**（保证均匀光下整张图色彩一致）\n2. **校准多个色温的 CCM**（D65 / D50 / A）\n3. **配置 AWB 参考点**（让 AWB 能正确估色温，Week 5）\n4. **调 Saturation 和 Color Enhancement**（让画面有「自家厂商」的味道）\n\n这一周的 WB+CCM 是步骤 2，Week 5-6 的 AWB 是步骤 3。\n\n### 行业前辈笔记里看到这些词不要慌\n\n- **CCM 矩阵**：今天讲的 3×3 矩阵\n- **CC**：CCM 的简写\n- **AWB Gain / WB Gain**：WB 模块给 R/G/B 三通道的增益\n- **CCT**：相关色温（Correlated Color Temperature），AWB 估出来的色温值\n- **D65 CCM**：D65 光源下校准的那份 CCM\n\n这些都是 Day 10 学过的内容。",
+      "glossary": [
+        {
+          "term": "Color Enhancement",
+          "zh": "色彩增强",
+          "explain": "在 IPE 后段对特定颜色（如肤色、草绿）做有选择的增强，让画面更出彩。"
+        },
+        {
+          "term": "AWB Gain",
+          "zh": "AWB 增益",
+          "explain": "AWB 算法计算出来的 R/G/B 增益值，等同于 WB Gain。Week 5-6 主线。"
+        },
+        {
+          "term": "CCT",
+          "zh": "相关色温",
+          "explain": "Correlated Color Temperature，AWB 估算出来的当前场景色温，单位 K。"
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天学了 3 件事\n\n1. **WB 增益**：对 R/G/B 三通道分别打增益，让白纸变白；公式 `RGB_out = RGB_in × (R_g, G_g, B_g)`，G 通常为 1\n2. **CCM 矩阵**：3×3 线性变换，纠正 sensor 滤镜不纯的问题；用 ColorChecker + 最小二乘法校准\n3. **顺序**：Demosaic → WB（让白对齐）→ CCM（让色纯）；都在 IFE 段\n\n### 自我检查\n\n1. 白炽灯下白纸为什么会偏黄？相机怎么修正？\n2. WB Gain 通常以哪个通道为基准？\n3. CCM 主对角线为什么大于 1？非对角线为什么小于 0？\n4. CCM 校准用什么测试图？为什么需要校准多个色温？\n5. WB 必须在 CCM 之前还是之后？为什么？\n\n### 笔记建议\n\n- 把 WB 公式（RGB×gain）和一个 CCM 矩阵实例**抄到笔记**，面试时可能要画\n- 找你自己用过的手机参数，看色彩风格描述（如「真彩色 / 鲜艳模式」）—— 这就是 CCM + Saturation 的不同 preset\n\n### 明天预告\n\nDay 11 我们学**最容易拉开调教水平差距**的一对模块：Gamma 和 Tone Mapping。包含 PRD 第 14 题：「Gamma 调试优先还是 LTM 优先？」",
+      "glossary": []
+    }
+  ],
+  "references": [
+    {
+      "source": "维基百科 · Color correction",
+      "url": "https://en.wikipedia.org/wiki/Color_correction"
+    },
+    {
+      "source": "维基百科 · ColorChecker",
+      "url": "https://en.wikipedia.org/wiki/ColorChecker"
+    },
+    {
+      "source": "高通 3A 7.0 Tuning Guide",
+      "page": 88,
+      "section": "AWB 章节背景"
+    }
+  ],
+  "dailyQuizId": "daily-day-10"
+}

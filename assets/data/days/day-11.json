@@ -1,0 +1,128 @@
+{
+  "id": "day-11",
+  "week": 2,
+  "module": "M2",
+  "title": "Gamma 与 Tone Mapping：决定画面对比度的关键",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "为什么需要 Gamma：人眼不是线性的",
+      "type": "concept",
+      "content": "### 一个反直觉的事实\n\n你拿一个亮度计，测两个灯泡的亮度：\n- 灯 A：100 流明\n- 灯 B：200 流明\n\n物理上 B 是 A 的 **2 倍亮**。但你睁眼看它们，**感觉上 B 只比 A 亮一点点**，不会觉得「亮一倍」。\n\n这是因为**人眼对光的感知是非线性的**。具体说，人眼对暗部的亮度变化敏感，对亮部的变化不敏感：\n\n- 从 1 流明到 2 流明：人眼感觉「亮多了」（×2 倍）\n- 从 100 到 200 流明：人眼感觉「就那样」（×2 倍但感受小）\n\n用数学话讲：**人眼亮度响应 ≈ 物理亮度的 0.45 次方**（非线性曲线）。\n\n### Sensor 是线性的\n\nDay 1 我们说过：传感器读到的电荷数 ∝ 进光量。这是个**线性关系**。\n\n所以 RAW 数据是「物理亮度的线性表示」，但**显示给人眼时**，如果直接把这种线性数据丢上屏幕：\n\n- 暗部细节人眼能感受到，但 RAW 里数值很集中（容易丢）\n- 亮部 RAW 里数值差别很大，但人眼感受不出来\n\n结果：**画面看起来发灰、没层次**。\n\n### Gamma 校正的本质\n\n**Gamma 就是把 RAW 的线性亮度，转换成「人眼感受非线性」的曲线**。\n\n经典公式：\n\n```\nL_out = L_in ^ (1 / γ)\n\n其中 γ ≈ 2.2（sRGB 标准）\n```\n\n所以 1/γ ≈ 0.45 —— 正好和人眼曲线对应。\n\n效果：**亮部被压缩、暗部被拉伸**。\n\n```\n输入 0.0 → 输出 0.0    （黑还是黑）\n输入 0.1 → 输出 0.35   （暗部拉伸 3.5 倍）\n输入 0.5 → 输出 0.73   （中间灰被拉亮）\n输入 1.0 → 输出 1.0    （白还是白）\n```\n\n这样**线性 RAW 经过 Gamma 后，看上去就是人眼感觉「自然」的亮度曲线**。\n\n### 实际是 LUT，不是公式\n\nISP 不会真的对每个像素跑 `pow()` 函数（太慢）。Gamma 用 **LUT**（Look-Up Table，查找表）实现：\n\n- 提前计算好 256 个（或 1024 个）输入到输出的映射\n- 运行时每个像素直接查表\n\nChromatix 里的 Gamma 模块就是一张可调的 LUT 曲线。Tuning 工程师调它的形状。\n\n<figure>\n<svg viewBox=\"0 0 600 280\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"Gamma 曲线对比\">\n<g font-family=\"sans-serif\" font-size=\"12\" fill=\"#e2e8f0\">\n<text x=\"300\" y=\"20\" text-anchor=\"middle\" fill=\"#cbd5e1\" font-size=\"14\">Gamma 曲线：把线性 RAW 转成人眼非线性感知</text>\n<line x1=\"60\" y1=\"240\" x2=\"540\" y2=\"240\" stroke=\"#94a3b8\"/>\n<line x1=\"60\" y1=\"60\" x2=\"60\" y2=\"240\" stroke=\"#94a3b8\"/>\n<text x=\"300\" y=\"265\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">输入（线性 RAW）</text>\n<text x=\"40\" y=\"150\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\" transform=\"rotate(-90 40 150)\">输出</text>\n<text x=\"60\" y=\"255\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">0</text>\n<text x=\"540\" y=\"255\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">1</text>\n<text x=\"50\" y=\"240\" text-anchor=\"end\" fill=\"#94a3b8\" font-size=\"10\">0</text>\n<text x=\"50\" y=\"60\" text-anchor=\"end\" fill=\"#94a3b8\" font-size=\"10\">1</text>\n<line x1=\"60\" y1=\"240\" x2=\"540\" y2=\"60\" stroke=\"#475569\" stroke-width=\"1\" stroke-dasharray=\"4 4\"/>\n<text x=\"540\" y=\"55\" text-anchor=\"end\" fill=\"#475569\" font-size=\"10\">y=x（线性）</text>\n<path d=\"M 60 240 Q 90 150 200 110 T 540 60\" fill=\"none\" stroke=\"#3b82f6\" stroke-width=\"2.5\"/>\n<text x=\"200\" y=\"135\" fill=\"#3b82f6\" font-size=\"11\">Gamma γ=2.2</text>\n<text x=\"200\" y=\"150\" fill=\"#3b82f6\" font-size=\"10\">暗部拉伸、亮部压缩</text>\n<path d=\"M 60 240 C 200 240 300 80 540 60\" fill=\"none\" stroke=\"#22c55e\" stroke-width=\"2.5\"/>\n<text x=\"380\" y=\"155\" fill=\"#22c55e\" font-size=\"11\">S 形曲线</text>\n<text x=\"380\" y=\"170\" fill=\"#22c55e\" font-size=\"10\">对比度强</text>\n<path d=\"M 60 240 C 200 130 360 100 540 60\" fill=\"none\" stroke=\"#f59e0b\" stroke-width=\"2.5\"/>\n<text x=\"120\" y=\"200\" fill=\"#f59e0b\" font-size=\"11\">提亮中段</text>\n<text x=\"120\" y=\"215\" fill=\"#f59e0b\" font-size=\"10\">人像模式</text>\n</g>\n</svg>\n<figcaption>图：Gamma 曲线的几种风格 —— 形状决定画面性格</figcaption>\n</figure>\n",
+      "glossary": [
+        {
+          "term": "Gamma",
+          "zh": "伽马校正",
+          "explain": "把线性亮度转换为非线性显示亮度的过程。经典 γ=2.2，对应 1/γ≈0.45 次方曲线。"
+        },
+        {
+          "term": "LUT",
+          "zh": "查找表",
+          "explain": "Look-Up Table，预先算好的输入→输出映射表。运行时直接查表代替计算公式，大大加速。"
+        },
+        {
+          "term": "Linear Domain",
+          "zh": "线性域",
+          "explain": "RAW 数据所处的域，亮度值 = 进光量的线性比例。"
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "title": "Gamma 调教：曲线形状决定画面性格",
+      "type": "concept",
+      "content": "### Gamma 不只是 γ=2.2\n\n虽然标准 Gamma 是 2.2 次方，但实际厂商的 Gamma 曲线**形状各异**。一张「鲜艳明亮」的图和一张「电影感低沉」的图，差异很大程度来自 Gamma 曲线的差别。\n\n常见的几种 Gamma 风格：\n\n**1. 标准 Gamma（γ=2.2）**：sRGB 默认，画面平稳\n\n**2. S 形 Gamma**：暗部更暗、亮部更亮、中间快速过渡\n   - 视觉效果：**对比度强、有戏剧感**\n   - 代价：暗部细节和高光细节都损失\n\n**3. 倒 S 形 Gamma**：暗部和亮部都被压平，中间扁平\n   - 视觉效果：**对比度低、信息量保留**\n   - 用途：Log 模式、需要后期调色的场景\n\n**4. 提亮中段**：把中间灰拉亮（曲线在中间凸起）\n   - 视觉效果：**整体明亮、肤色透亮**\n   - 用途：人像模式\n\n手机厂商的「**真彩色模式**」、「**鲜艳模式**」、「**电影模式**」 —— 后端实现很多就是不同 Gamma 曲线。\n\n### Gamma LUT 的调教方式\n\nChromatix 里 Gamma 是一条**可拖拽的曲线**：\n\n- 横轴：输入亮度 0 ~ 1023（10 bit）\n- 纵轴：输出亮度 0 ~ 255（8 bit）\n- 中间几个**控制点**可拖动，曲线自动平滑\n\n常见控制点位置：\n\n| 输入位置 | 含义 | 调高效果 |\n|---|---|---|\n| 0% | 黑点 | 黑色变灰（一般不动）|\n| 10-20% | 暗部 | 暗部变亮（保细节）|\n| 50% | 中间灰 | 整体变亮 |\n| 80-90% | 高光 | 高光更亮（小心过曝）|\n| 100% | 白点 | 通常固定在 255 |\n\n### 调教时不要乱动\n\nGamma 是 ISP 后段最敏感的模块之一。它**全局影响所有像素**：\n\n- 你为了让暗部亮一点，把曲线 10% 处往上拉\n- → 整张图所有暗部全亮了\n- → 但你可能只想让人脸暗部亮，不想要天空也亮\n- → 如果想要「局部亮、其他不动」，你需要的不是 Gamma 而是 **LTM**（明天讲）\n\nGamma 的特点：**全局、线性 LUT、影响所有像素**。\n\n### 一个反例\n\n小白 Tuning 工程师常犯的错：\n\n> 「主管说让暗部更亮一点」\n> → 他把 Gamma 暗部那段往上拉了\n> → 结果：暗部确实亮了，但**高光被推到 255 过曝**，**对比度暴跌**\n> → 主管：「不对啊，我要的是暗部亮但其他不变」\n> → 小白：「???」\n\n答案是：**Gamma 不能解决「局部要亮」的问题，那是 LTM 的活**（Day 12）。\n\n这也是 PRD 第 14 题「Gamma 调试优先还是 LTM 优先」的来源 —— 我们 s4 节展开。",
+      "glossary": [
+        {
+          "term": "S-curve",
+          "zh": "S 形曲线",
+          "explain": "暗部更暗、亮部更亮的 Gamma 形状，对比度强、有戏剧感。"
+        },
+        {
+          "term": "Log Mode",
+          "zh": "Log 模式",
+          "explain": "用极平的 Gamma（倒 S 形）尽量保留信息，方便后期调色。专业视频用。"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "title": "Tone Mapping：从「物理动态范围」到「显示动态范围」",
+      "type": "concept",
+      "content": "### 一个挑战：动态范围不匹配\n\n现实场景的亮度范围非常大：\n\n- 直射阳光：几万 cd/m²\n- 阴影里的纸：几 cd/m²\n- 比值 = **1 万倍以上**（13-16 EV）\n\n传感器的动态范围（能区分的最暗到最亮的比值）：\n\n- 普通手机 sensor：约 **10-12 EV**（1024-4096 倍）\n- 旗舰手机 sensor：约 **13-14 EV**\n- 多帧 HDR 后：可达 **15-16 EV**\n\n显示设备的动态范围：\n\n- 普通屏幕：**8 EV**（256 倍，0-255）\n- HDR 屏幕：**10-13 EV**\n\n问题：**传感器收到 14 EV 的信息，要塞进 8 EV 的屏幕**。怎么塞？\n\n这就是 **Tone Mapping（色调映射）** 的工作：把高动态范围的 RAW 数据，**有选择地压缩到屏幕能显示的低动态范围**。\n\n### 简单 Tone Mapping：直接缩放\n\n最朴素的方法：\n\n```\n显示亮度 = (RAW 亮度 / RAW 最大值) × 255\n```\n\n但这样：\n\n- 中间亮度被严重压缩\n- 暗部细节几乎丢光\n- 画面看起来又灰又平\n\n这就是为什么需要**非线性的 Tone Mapping 曲线**。\n\n### 进阶 Tone Mapping：自适应曲线\n\n现代 ISP 的 Tone Mapping 算法做的事：\n\n1. 分析当前画面的**亮度分布**（直方图）\n2. 根据分布**动态生成**一条曲线\n3. 让暗部细节保留 + 高光不过曝 + 整体亮度合适\n\n比如：\n\n- 画面整体偏暗（夜景）→ 曲线把暗部大幅拉亮，高光稍微压一下\n- 画面整体偏亮（晴天）→ 曲线压亮部、保暗部\n- 画面对比度大（逆光）→ 曲线两端都温和压缩，避免高光死白和暗部死黑\n\n这就是高通文档里说的 **TMC（Tone Mapping Curve，色调映射曲线）**。\n\n### TMC 的两个流派\n\n现代 ISP 的 Tone Mapping 分两类：\n\n**1. GTM（Global Tone Mapping，全局色调映射）**\n- 整张图用同一条曲线\n- 每个像素查同一张 LUT\n- 优点：简单、快、效果稳定\n- 缺点：**不能解决「同一张图里，亮部和暗部需要不同处理」**\n\n例子：拍逆光人像\n- 人脸（中间亮度）需要拉亮\n- 天空（高光）需要压暗保细节\n- GTM 用一条曲线 → **没法兼顾**\n\n**2. LTM（Local Tone Mapping，局部色调映射）**\n- 不同区域用不同的曲线\n- 算每个区域局部的亮度，单独决定怎么处理\n- 优点：**逆光场景超强**，能做到亮部暗部各司其职\n- 缺点：复杂、慢、容易出 halo（光晕瑕疵）\n\nLTM 是 **现代手机能拍出 HDR 效果的核心**。明天 Day 12 我们专门深入。",
+      "glossary": [
+        {
+          "term": "Tone Mapping",
+          "zh": "色调映射",
+          "explain": "把高动态范围（HDR）的图像数据压缩到低动态范围（SDR）显示设备上的过程。"
+        },
+        {
+          "term": "Dynamic Range",
+          "zh": "动态范围",
+          "explain": "图像或设备能同时区分的最暗到最亮的比值，单位 EV。"
+        },
+        {
+          "term": "TMC",
+          "zh": "色调映射曲线",
+          "explain": "Tone Mapping Curve，决定怎么把 HDR 压到 SDR 的曲线。"
+        },
+        {
+          "term": "GTM",
+          "zh": "全局色调映射",
+          "explain": "Global Tone Mapping，整张图用一条曲线。"
+        },
+        {
+          "term": "LTM",
+          "zh": "局部色调映射",
+          "explain": "Local Tone Mapping，不同区域用不同曲线，能处理逆光等大动态场景。"
+        },
+        {
+          "term": "Halo",
+          "zh": "光晕瑕疵",
+          "explain": "LTM 在高对比边缘容易产生的浅色光环 artifact。"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "title": "PRD 第 14 题：Gamma 调试优先还是 LTM 优先？",
+      "type": "concept",
+      "content": "### 标准答案\n\n**Gamma 优先**。\n\n这是 PRD 收集的面试题，也是非常现实的工程问题。今天必须能默念。\n\n### 为什么 Gamma 优先\n\n用一句话说：\n\n> **Gamma 影响全局亮度，LTM 影响局部亮度。先调好全局，再调局部。**\n\n详细推理：\n\n**1. 调试有先后逻辑**\n\n你要调一张图的最终效果，逻辑顺序应该是：\n\n```\n先确定全局基调（这张图整体偏亮还是偏暗）\n   ↓\n再处理局部异常（哪一部分需要单独抢救）\n```\n\nGamma 决定全局基调（整张图的亮度曲线）。LTM 处理局部异常（逆光人脸暗、夜景灯过曝）。\n\n如果你**先调 LTM**：\n\n- 你看到逆光人脸暗 → 调 LTM 拉亮人脸\n- 但全局曲线还没定好，可能整张图都偏暗\n- 你又去调 Gamma → 整张图变亮，但人脸**被 LTM 拉过 + Gamma 又拉一次** = 过曝\n- 你又去调 LTM 把人脸压回去...\n- **死循环**\n\n如果**先调 Gamma**：\n\n- Gamma 把全局基调定好（人脸刚好合适，但天空过曝）\n- LTM 单独处理天空的过曝问题\n- 一次调好，逻辑清晰\n\n**2. Gamma 是 ISP 流水线上较早的模块**\n\n看 Day 8 的 22 模块清单：\n\n```\n11. Gamma\n12. 色彩空间转换\n13. Tone Mapping (LTM/GTM)\n```\n\nGamma 在 Tone Mapping **之前**做。流水线上越早的模块，越是「基础」，应该先调好。\n\n如果 Gamma 没定好就调 LTM，等于**在不稳定的输入上做精细化加工**。\n\n**3. 调试效率**\n\nGamma 是一条曲线，几个控制点。LTM 涉及多区域、复杂参数。**先把简单的固定下来**，再调复杂的。\n\n### 如果面试官追问\n\n> 「Gamma 调好了之后呢？LTM 怎么补？」\n\n答：\n\n> 「Gamma 定全局亮度后，看具体场景：\n> - 高对比场景（逆光、夜景灯）→ 用 LTM 压高光、提暗部\n> - 整体偏暗 → 调 Dark Boost（明天讲）\n> - 整体偏亮 → 调 ADRC（明天讲）」\n\n这就把 Gamma + LTM + Dark Boost + ADRC 4 个模块的关系讲清楚了 —— 面试官会觉得你**真的懂 ISP 调试逻辑**，不是背名词。\n\n### 综合一张图\n\n```\n调亮度 / 对比度的工具箱（按调试优先级）：\n\n1. Gamma          — 全局基调，最先定\n   ├─ S 形 → 强对比\n   └─ 平 → 低对比\n\n2. LTM            — 局部抢救\n   ├─ 暗部拉亮（保细节）\n   └─ 高光压暗（防过曝）\n\n3. GTM            — 全局动态范围压缩\n   └─ 通常和 LTM 配合（明天讲混合）\n\n4. Dark Boost     — 暗部强化\n   └─ 影响暗部，不动亮部\n\n5. ADRC           — 自动动态压缩\n   └─ 整体动态范围控制\n```\n\n看到这张图你会发现：**Gamma 最先调，因为它影响最大**。这就是 PRD 第 14 题的核心。",
+      "glossary": [
+        {
+          "term": "Dark Boost",
+          "zh": "暗部增强",
+          "explain": "专门拉亮画面暗部的增益，不影响亮部。Day 12 详细讲。"
+        },
+        {
+          "term": "ADRC",
+          "zh": "自适应动态范围压缩",
+          "explain": "Adaptive Dynamic Range Compression，自动压缩动态范围让画面更舒服。Day 12 详细讲。"
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天学了 4 件事\n\n1. **Gamma 是什么**：把线性 RAW 转换成人眼非线性感知的曲线，γ≈2.2\n2. **Gamma 调教**：S 形曲线对比度强、平缓曲线信息量保留多；用 LUT 实现\n3. **Tone Mapping**：把 14 EV 的 HDR 数据压到 8 EV 的屏幕；分 GTM（全局）和 LTM（局部）\n4. **PRD 第 14 题**：**Gamma 优先 LTM**（Gamma 影响全局，LTM 影响局部，先调全局再调局部）\n\n### 自我检查\n\n1. 为什么 RAW 不能直接显示？要做 Gamma 校正？\n2. γ=2.2 是什么意思？为什么是这个数？\n3. S 形 Gamma 和倒 S 形 Gamma 各在什么场景下用？\n4. GTM 和 LTM 的核心区别？什么场景必须用 LTM？\n5. 默写 PRD 第 14 题答案：「Gamma 优先还是 LTM 优先？为什么？」\n\n### 笔记建议\n\n- **必须把 PRD 第 14 题答案抄到笔记里**：「Gamma 优先。Gamma 影响全局亮度，LTM 影响局部亮度，先调好全局再调局部。」\n- 思考：你用过的手机里，哪一款的「鲜艳模式」对比度最强？大概是什么 Gamma 形状？\n\n### 明天预告\n\nDay 12 是 Week 2 的高潮：**LTM / GTM / TMC / ADRC** —— 涵盖 PRD 第 9、13、16 三道题。学完这些，你就懂为什么旗舰手机 HDR 拍照那么好。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    {
+      "source": "维基百科 · Gamma correction",
+      "url": "https://en.wikipedia.org/wiki/Gamma_correction"
+    },
+    {
+      "source": "维基百科 · Tone mapping",
+      "url": "https://en.wikipedia.org/wiki/Tone_mapping"
+    },
+    {
+      "source": "高通 3A 7.0 Tuning Guide",
+      "section": "Tone Mapping 章节"
+    }
+  ],
+  "dailyQuizId": "daily-day-11"
+}

@@ -1,0 +1,247 @@
+[
+  {
+    "id": "fc-w2-d8-1",
+    "front": "ISP Pipeline 是什么？",
+    "back": "Image Signal Processor 流水线。手机 SoC（如骁龙）里专门把 RAW 数据加工成 JPEG/YUV 的硬件单元，由 20-30 个串联模块组成。",
+    "tags": ["Day 8", "ISP", "概念"],
+    "srcDay": "day-08"
+  },
+  {
+    "id": "fc-w2-d8-2",
+    "front": "高通 Spectra 4 段架构？",
+    "back": "IFE（图像前端：OB/LSC/Demosaic/WB）→ BPS（Bayer 处理：Bayer 降噪、HDR 合成）→ IPE（图像处理引擎：CCM/Gamma/LTM/降噪/锐化）→ CPP（后处理：缩放/JPEG 编码）。",
+    "tags": ["Day 8", "Spectra", "架构"],
+    "srcDay": "day-08"
+  },
+  {
+    "id": "fc-w2-d8-3",
+    "front": "Demosaic 是 ISP 哪个分水岭？",
+    "back": "Bayer 域 vs RGB 域分水岭。之前每像素 1 通道（R/G/B 单一），之后每像素 3 通道（完整 RGB）。",
+    "tags": ["Day 8", "ISP", "数据流"],
+    "srcDay": "day-08"
+  },
+  {
+    "id": "fc-w2-d8-4",
+    "front": "ISP 流水线里降噪有几次？为什么？",
+    "back": "2 次。Bayer 域降噪（早，IFE/BPS）去散粒噪声 + YUV 域降噪（晚，IPE）去色彩噪声。两次目标不同：源头物理噪声 + 后期色度细修。",
+    "tags": ["Day 8", "Day 13", "降噪"],
+    "srcDay": "day-08"
+  },
+  {
+    "id": "fc-w2-d8-5",
+    "front": "Tuning 工程师每天工作的输入和输出？",
+    "back": "输入：sensor 的 RAW 测试图 + 当前 Chromatix XML 配置 + 目标效果描述。输出：修改后的 Chromatix XML + 调教记录文档（参数变化、原因、对比图）。",
+    "tags": ["Day 8", "Tuning"],
+    "srcDay": "day-08"
+  },
+  {
+    "id": "fc-w2-d9-1",
+    "front": "OB（黑电平）的物理来源 3 部分？",
+    "back": "1) 暗电流（sensor 无光时漏电荷，温度敏感）；2) 电路偏置（放大器/ADC 输入偏置）；3) 量化偏置（ADC 起点值）。10-bit RAW 里 OB ≈ 64，12-bit ≈ 256。",
+    "tags": ["Day 9", "OB"],
+    "srcDay": "day-09"
+  },
+  {
+    "id": "fc-w2-d9-2",
+    "front": "为什么 OB 不能用固定值减，要每帧重算？",
+    "back": "OB 受温度和 ISO 增益影响：温度上升暗电流翻倍；ISO 提高放大器偏置同步放大。所以每帧用 sensor 边缘的 OB Pixel 实时统计。",
+    "tags": ["Day 9", "OB"],
+    "srcDay": "day-09"
+  },
+  {
+    "id": "fc-w2-d9-3",
+    "front": "LSC 增益表常用什么大小？为什么分通道校准？",
+    "back": "高通常用 17×13 网格（运行时双线性插值）。分 R/Gr/Gb/B 四通道因为镜头对不同波长折射率不同 + IR-cut 滤镜方向性 → 边缘各通道衰减不同。不分通道会出现「四角发紫/发青」。",
+    "tags": ["Day 9", "LSC", "数值"],
+    "srcDay": "day-09"
+  },
+  {
+    "id": "fc-w2-d9-4",
+    "front": "为什么 LSC 必须在 Demosaic 之前？",
+    "back": "Bayer 域里我们直接知道每个像素的颜色（R/Gr/Gb/B），方便分通道补偿。Demosaic 之后是 RGB，每像素都有 3 个值，分通道意义模糊。",
+    "tags": ["Day 9", "LSC", "顺序"],
+    "srcDay": "day-09"
+  },
+  {
+    "id": "fc-w2-d9-5",
+    "front": "Demosaic 拉链效应是什么？怎么避免？",
+    "back": "Zipper Artifact，双线性插值在高对比边缘（黑白格）跨边缘平均时跳出错误中间色（紫/绿条纹）。解决：用边缘感知算法（AHD/DCB/VNG），沿边缘方向插值不跨越边。",
+    "tags": ["Day 9", "Demosaic"],
+    "srcDay": "day-09"
+  },
+  {
+    "id": "fc-w2-d10-1",
+    "front": "白平衡（WB）的核心公式？",
+    "back": "R_out = R_in × R_gain；G_out = G_in × G_gain；B_out = B_in × B_gain。通常 G_gain = 1（基准），调 R_gain 和 B_gain 让白色物体三通道值相等。",
+    "tags": ["Day 10", "WB", "公式"],
+    "srcDay": "day-10"
+  },
+  {
+    "id": "fc-w2-d10-2",
+    "front": "白炽灯下白纸 R=180 G=120 B=60，怎么算 WB Gain 让它变白？",
+    "back": "G_gain=1（基准）；R_gain=G/R=120/180≈0.67；B_gain=G/B=120/60=2.0。应用后 R=G=B=120 真白。",
+    "tags": ["Day 10", "WB", "推导"],
+    "srcDay": "day-10"
+  },
+  {
+    "id": "fc-w2-d10-3",
+    "front": "CCM（色彩校正矩阵）是什么？为什么需要？",
+    "back": "3×3 线性变换矩阵，纠正 sensor 滤镜不纯（红色滤镜会漏一点绿和蓝）。主对角线>1（强化自身），非对角线<0（减掉其他通道污染）。",
+    "tags": ["Day 10", "CCM"],
+    "srcDay": "day-10"
+  },
+  {
+    "id": "fc-w2-d10-4",
+    "front": "CCM 怎么校准？",
+    "back": "1) 在 D65 标准光源下拍 ColorChecker 24 色卡 RAW；2) ISP 跑 OB/LSC/Demosaic/WB 后得到 24 个 RGB 实测值；3) 最小二乘法解 3×3 矩阵 M：M×RGB_实测 ≈ RGB_真值。多个色温（D65/D50/A）各校准一份。",
+    "tags": ["Day 10", "CCM", "校准"],
+    "srcDay": "day-10"
+  },
+  {
+    "id": "fc-w2-d10-5",
+    "front": "为什么 WB 必须在 CCM 之前？",
+    "back": "CCM 矩阵是基于「白平衡后的标准 RGB」校准的。如果 CCM 在 WB 前，CCM 工作在不平衡的 RGB 上纠正方向会错。正确顺序：WB（让基准对齐）→ CCM（让色彩纯净）。",
+    "tags": ["Day 10", "顺序"],
+    "srcDay": "day-10"
+  },
+  {
+    "id": "fc-w2-d11-1",
+    "front": "Gamma 是什么？为什么需要？",
+    "back": "把线性 RAW 转换成「人眼非线性感知」的曲线。人眼对暗部敏感、亮部不敏感（响应≈物理亮度的 0.45 次方）。sRGB γ=2.2，1/γ≈0.45。",
+    "tags": ["Day 11", "Gamma", "公式"],
+    "srcDay": "day-11"
+  },
+  {
+    "id": "fc-w2-d11-2",
+    "front": "S 形 Gamma 曲线 vs 平缓曲线的视觉效果？",
+    "back": "S 形：暗部更暗、亮部更亮、中间快速过渡 → 对比度强、有戏剧感。平缓（倒 S）：两端被压平 → 对比度低、信息量保留多（Log 模式用）。",
+    "tags": ["Day 11", "Gamma", "调教"],
+    "srcDay": "day-11"
+  },
+  {
+    "id": "fc-w2-d11-3",
+    "front": "Tone Mapping 解决什么问题？",
+    "back": "把高动态范围（HDR，传感器 14 EV）压缩到低动态范围（SDR，屏幕 8 EV）显示。简单缩放会让中间亮度被压扁、暗部丢失，所以需要非线性曲线。",
+    "tags": ["Day 11", "Tone Mapping"],
+    "srcDay": "day-11"
+  },
+  {
+    "id": "fc-w2-d11-4",
+    "front": "GTM 和 LTM 的核心区别？",
+    "back": "GTM（全局）：整张图用同一条曲线，简单快但不能处理「同图里亮部暗部不同处理」。LTM（局部）：不同区域用不同曲线，能做逆光场景但易出 halo。",
+    "tags": ["Day 11", "Tone Mapping"],
+    "srcDay": "day-11"
+  },
+  {
+    "id": "fc-w2-d11-5",
+    "front": "PRD 第 14 题：Gamma 调试优先还是 LTM 优先？",
+    "back": "Gamma 优先。Gamma 影响全局亮度，LTM 影响局部亮度，先调好全局基调（Gamma 决定整张图亮度曲线）再处理局部异常。Gamma 也是流水线上更早的模块（11 步），是 LTM（13 步）的输入基础。",
+    "tags": ["Day 11", "PRD-Q14", "面试题"],
+    "srcDay": "day-11"
+  },
+  {
+    "id": "fc-w2-d12-1",
+    "front": "PRD 第 9 题：默写 LTM 算法的 4 步。",
+    "back": "1) 双边滤波（Bilateral Filter）生成非线性 mask 区分明暗区域；2) Halo 抑制处理边缘 artifact；3) LTM Curve Set 局部增益（多曲线针对不同区域）；4) LTM 与 LCE（局部对比度增强）混合。",
+    "tags": ["Day 12", "LTM", "PRD-Q9", "面试题"],
+    "srcDay": "day-12"
+  },
+  {
+    "id": "fc-w2-d12-2",
+    "front": "Bilateral Filter（双边滤波）相比高斯模糊好在哪？",
+    "back": "高斯模糊只按距离加权 → 边缘也被模糊。双边滤波同时按距离 + 亮度差加权 → 只在「亮度相似」邻居间平均，保持边缘锐利。是 LTM 生成 mask 的核心。",
+    "tags": ["Day 12", "LTM", "算法"],
+    "srcDay": "day-12"
+  },
+  {
+    "id": "fc-w2-d12-3",
+    "front": "PRD 第 13 题：TMC 的作用是什么？",
+    "back": "LTM 和 GTM 的混合比例统计。最终输出 = α × LTM + (1-α) × GTM，LTM/GTM 占比和 = 1。TMC 根据画面亮度分布动态决定 α：高对比 α 拉高用 LTM，低对比 α 拉低用 GTM。",
+    "tags": ["Day 12", "TMC", "PRD-Q13", "面试题"],
+    "srcDay": "day-12"
+  },
+  {
+    "id": "fc-w2-d12-4",
+    "front": "PRD 第 16 题：Dark Boost gain 的计算公式 + 限制？",
+    "back": "Dark Boost gain = long_target / safe_target。受三个限制取最小：1) MaxDarkBoostGain 上限；2) Dark_low_target / safe_target；3) MaxADRCGain（避免和 ADRC 冲突）。",
+    "tags": ["Day 12", "Dark Boost", "PRD-Q16", "面试题", "公式"],
+    "srcDay": "day-12"
+  },
+  {
+    "id": "fc-w2-d12-5",
+    "front": "PRD 第 16 题：ADRC gain 的计算公式 + short_target 怎么算？",
+    "back": "ADRC gain = safe_target / short_target，受 MaxDRCGain 限制取最小。short_target = min(bright_low_target, bright_high_target, safe_target)。",
+    "tags": ["Day 12", "ADRC", "PRD-Q16", "面试题", "公式"],
+    "srcDay": "day-12"
+  },
+  {
+    "id": "fc-w2-d12-6",
+    "front": "Tone Mapping 模块的调教优先级？",
+    "back": "Gamma → TMC（LTM/GTM 混合比例）→ Dark Boost → ADRC → LCE/LTM Halo Suppression。最先调全局曲线（Gamma），再调混合策略，最后调微调参数。",
+    "tags": ["Day 12", "调教"],
+    "srcDay": "day-12"
+  },
+  {
+    "id": "fc-w2-d12-7",
+    "front": "safe_target 是什么？谁算的？谁用？",
+    "back": "AE 算法（Week 3）算出的「当前场景应该达到的目标亮度」。所有 Tone Mapping 类模块（Gamma、TMC、LTM、GTM、ADRC、Dark Boost）都参考它。是 AE 和 ISP 后段的关键接口。",
+    "tags": ["Day 12", "AE", "接口"],
+    "srcDay": "day-12"
+  },
+  {
+    "id": "fc-w2-d13-1",
+    "front": "Camera Tuning 的核心矛盾？",
+    "back": "「降噪 vs 细节」永远在打架。降噪强 → 画面干净但纹理被涂抹（油画感）。降噪弱 → 细节保留但噪点明显。手机厂商「画质风格」很大程度就是这个取舍点不同。",
+    "tags": ["Day 13", "调教"],
+    "srcDay": "day-13"
+  },
+  {
+    "id": "fc-w2-d13-2",
+    "front": "降噪算法的 3 个流派？",
+    "back": "1) 空间域（双边滤波，主流，硬件 ISP 用）；2) 变换域（小波/DCT，PC 软件用）；3) 神经网络（NN-based，旗舰手机的「夜景模式」，跑在 NPU）。Tuning 工程师 80% 时间调流派 1。",
+    "tags": ["Day 13", "降噪"],
+    "srcDay": "day-13"
+  },
+  {
+    "id": "fc-w2-d13-3",
+    "front": "Sharpen 的经典 USM 公式？",
+    "back": "锐化结果 = 原图 + (原图 - 模糊版) × strength。直觉：「原图 - 模糊版」= 边缘信息（差值），乘系数加回去强化边缘。",
+    "tags": ["Day 13", "Sharpen", "公式"],
+    "srcDay": "day-13"
+  },
+  {
+    "id": "fc-w2-d13-4",
+    "front": "锐化过强的 3 个副作用？",
+    "back": "1) 噪声放大（噪点被当边缘强化）；2) Halo 亮/暗边光环（强对比边缘旁产生光环）；3) 过锐化卡通感（边缘失去自然渐变，看着「假」）。",
+    "tags": ["Day 13", "Sharpen"],
+    "srcDay": "day-13"
+  },
+  {
+    "id": "fc-w2-d13-5",
+    "front": "PRD 第 7 题：影响对比度的模块？",
+    "back": "Gamma、LTM、GTM、TMC。Gamma 全局曲线、LTM 局部、GTM 全局、TMC 是 LTM/GTM 混合控制器。Dark Boost、ADRC、LCE 也间接影响，Sharpen 影响边缘对比度（不算整体）。",
+    "tags": ["Day 13", "PRD-Q7", "面试题"],
+    "srcDay": "day-13"
+  },
+  {
+    "id": "fc-w2-d14-1",
+    "front": "ISP Pipeline 5 个分水岭？",
+    "back": "1) Demosaic 第 6 步是 Bayer/RGB 分水岭；2) WB 紧跟 Demosaic（分通道处理）；3) Gamma 第 11 步在 RGB→YUV 之前；4) 降噪有 2 次（Bayer 域 + YUV 域）；5) Sharpen 在最后。",
+    "tags": ["Day 14", "ISP", "总结"],
+    "srcDay": "day-14"
+  },
+  {
+    "id": "fc-w2-d14-2",
+    "front": "用户报「夜景人脸太暗」，按调试优先级排查 4 步？",
+    "back": "1) 看 AE 的 safe_target（曝光本身够不够）；2) 看 LTM 的 Curve Set（局部拉亮人脸是否启用）；3) 看 Dark Boost（MaxDarkBoostGain 是否太低）；4) 看 Gamma 暗部曲线（是否压太狠）。从输入到处理、从局部到全局。",
+    "tags": ["Day 14", "排错"],
+    "srcDay": "day-14"
+  },
+  {
+    "id": "fc-w2-d14-3",
+    "front": "用户报「四角发紫」，最先排查什么模块？",
+    "back": "LSC 分通道校准。R/Gr/Gb/B 四通道增益表不平衡 → 边角颜色偏移。其次看 IR-cut 滤镜方向性、WB 增益误差。",
+    "tags": ["Day 14", "排错"],
+    "srcDay": "day-14"
+  }
+]

@@ -1,0 +1,59 @@
+{
+  "id": "daily-day-11",
+  "module": "M2",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "为什么 RAW 数据不能直接显示，要做 Gamma 校正？",
+      "options": [
+        "RAW 太大",
+        "人眼对光的感知是非线性的，但 RAW 是线性",
+        "Gamma 是为了节省存储",
+        "RAW 颜色不对"
+      ],
+      "answer": "人眼对光的感知是非线性的，但 RAW 是线性",
+      "explain": "Sensor 输出 ∝ 进光量（线性）；人眼响应 ≈ 物理亮度的 0.45 次方（非线性）。Gamma 校正这个差距。"
+    },
+    {
+      "id": "q2",
+      "type": "fill",
+      "prompt": "标准 sRGB 的 Gamma 值 γ ≈ ___（保留一位小数）。",
+      "answer": ["2.2"],
+      "explain": "sRGB γ=2.2，对应 1/γ≈0.45 次方曲线。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "S 形 Gamma 曲线的视觉效果是？",
+      "options": [
+        "对比度低、画面平稳",
+        "对比度强、有戏剧感",
+        "只影响颜色",
+        "只影响饱和度"
+      ],
+      "answer": "对比度强、有戏剧感",
+      "explain": "S 形：暗部更暗、亮部更亮、中间快速过渡。"
+    },
+    {
+      "id": "q4",
+      "type": "choice",
+      "prompt": "Tone Mapping 解决的核心问题是？",
+      "options": [
+        "RGB → YUV 转换",
+        "把高动态范围（HDR）压缩到低动态范围（SDR）显示设备",
+        "去噪",
+        "色彩还原"
+      ],
+      "answer": "把高动态范围（HDR）压缩到低动态范围（SDR）显示设备",
+      "explain": "Sensor 14 EV 动态范围 → 屏幕只有 8 EV → Tone Mapping 做有选择的压缩。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "PRD 第 14 题：Gamma 调试优先还是 LTM 优先？为什么？",
+      "referenceAnswer": "Gamma 优先。Gamma 影响全局亮度，LTM 影响局部亮度。先调好全局基调（Gamma），再处理局部异常（LTM 用于逆光等场景）。这样调试逻辑清晰，不会陷入循环。Gamma 也是流水线上更早的模块，是 LTM 的输入基础。"
+    }
+  ]
+}

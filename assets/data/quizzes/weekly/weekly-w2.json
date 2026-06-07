@@ -1,0 +1,122 @@
+{
+  "id": "weekly-w2",
+  "module": "M2",
+  "scope": "weekly",
+  "questions": [
+    {
+      "id": "wq1",
+      "type": "choice",
+      "prompt": "高通 Spectra 4 段架构按数据流向排列正确的是？",
+      "options": [
+        "IPE → IFE → BPS → CPP",
+        "IFE → BPS → IPE → CPP",
+        "BPS → IFE → IPE → CPP",
+        "IFE → IPE → BPS → CPP"
+      ],
+      "answer": "IFE → BPS → IPE → CPP",
+      "explain": "Day 8。前端 IFE → Bayer 处理 BPS → 图像处理引擎 IPE → 后处理 CPP。"
+    },
+    {
+      "id": "wq2",
+      "type": "choice",
+      "prompt": "ISP 流水线里 Demosaic 和 WB 的顺序是？",
+      "options": [
+        "WB 先，Demosaic 后",
+        "Demosaic 先，WB 后",
+        "可以任意顺序",
+        "都在同一个模块里"
+      ],
+      "answer": "Demosaic 先，WB 后",
+      "explain": "WB 需要 RGB 域（每像素 3 通道）才能分别打增益，必须在 Demosaic 之后。"
+    },
+    {
+      "id": "wq3",
+      "type": "fill",
+      "prompt": "LSC 校准必须分 ___ 个通道（含 G 分两种）做增益表。",
+      "answer": ["4", "四"],
+      "explain": "R / Gr / Gb / B 四通道分通道校准，避免边缘颜色偏移。"
+    },
+    {
+      "id": "wq4",
+      "type": "fill",
+      "prompt": "CCM 校准用的标准色卡（24 色 + 6 灰）叫 ___。",
+      "answer": ["ColorChecker", "colorchecker"],
+      "explain": "X-Rite ColorChecker，色彩校准必备工具。"
+    },
+    {
+      "id": "wq5",
+      "type": "fill",
+      "prompt": "标准 sRGB 的 Gamma 值 γ ≈ ___（保留一位小数）。",
+      "answer": ["2.2"],
+      "explain": "γ=2.2，对应 1/γ≈0.45 次方曲线匹配人眼非线性。"
+    },
+    {
+      "id": "wq6",
+      "type": "short",
+      "prompt": "PRD 第 7 题：影响对比度的模块有哪些？",
+      "referenceAnswer": "Gamma、LTM、GTM、TMC。其中 Gamma 全局曲线、LTM 局部、GTM 全局、TMC 是 LTM/GTM 混合控制器。Dark Boost、ADRC、LCE 也间接影响，但 PRD 标准答案是这 4 个。"
+    },
+    {
+      "id": "wq7",
+      "type": "short",
+      "prompt": "PRD 第 9 题：默写 LTM 算法的 4 步。",
+      "referenceAnswer": "1) Bilateral Filter 生成非线性 mask（区分亮暗区域）；2) Halo artifact 抑制（处理边缘）；3) LTM Curve Set 局部增益（多曲线针对不同区域）；4) LTM 与 LCE 混合（亮度+对比度联合）。"
+    },
+    {
+      "id": "wq8",
+      "type": "short",
+      "prompt": "PRD 第 13 题：TMC 的作用是什么？",
+      "referenceAnswer": "TMC 作为 LTM 和 GTM 的混合比例统计。最终输出 = α×LTM + (1-α)×GTM，LTM 和 GTM 占比相加 = 1。TMC 根据画面亮度分布动态决定 α：高对比场景 α 拉高用 LTM，低对比场景 α 拉低用 GTM。"
+    },
+    {
+      "id": "wq9",
+      "type": "short",
+      "prompt": "PRD 第 14 题：Gamma 调试优先还是 LTM 优先？为什么？",
+      "referenceAnswer": "Gamma 优先。Gamma 影响全局亮度，LTM 影响局部亮度，先调好全局基调（Gamma 决定整张图亮度曲线）再处理局部异常（LTM 处理逆光等）。Gamma 也是流水线上更早的模块（第 11 步），是 LTM（第 13 步）的输入基础。先调更早 + 全局的模块，再调后期 + 局部的模块，调试逻辑清晰不陷入循环。"
+    },
+    {
+      "id": "wq10",
+      "type": "short",
+      "prompt": "PRD 第 16 题：默写 Dark Boost gain 和 ADRC gain 的推导公式 + 关键限制。",
+      "referenceAnswer": "Dark Boost gain = long_target / safe_target。受 MaxDarkBoostGain 上限和 ADRC（MaxADRCGain）的限制，三者取最小。\nADRC gain = safe_target / short_target。short_target = min(bright_low_target, bright_high_target, safe_target)。受 MaxDRCGain 限制取最小。\n层层取最小是为了保证不会过分提亮 / 压缩导致噪声爆炸或细节丢失。"
+    },
+    {
+      "id": "wq11",
+      "type": "fill",
+      "prompt": "锐化经典算法 Unsharp Mask 公式：锐化结果 = 原图 + (原图 - ___) × strength。",
+      "answer": ["模糊版", "模糊", "blur"],
+      "explain": "USM 公式核心是把「原图 - 模糊版」（边缘信息）放大后加回原图。"
+    },
+    {
+      "id": "wq12",
+      "type": "choice",
+      "prompt": "ISP 流水线两次降噪的目标分别是？",
+      "options": [
+        "都是去散粒噪声",
+        "Bayer 域去散粒噪声 + YUV 域去色彩噪声",
+        "都是去色彩噪声",
+        "Bayer 域去坏点 + YUV 域去散粒噪声"
+      ],
+      "answer": "Bayer 域去散粒噪声 + YUV 域去色彩噪声",
+      "explain": "Day 13。两次降噪面对不同噪声类型 —— 源头处理 + 后期细修。"
+    },
+    {
+      "id": "wq13",
+      "type": "short",
+      "prompt": "情景题：用户报「这张图四角发紫」。从 ISP 模块角度排查至少 3 个原因。",
+      "referenceAnswer": "1) LSC 校准时 R/Gr/Gb/B 通道增益表不平衡 → 边角颜色偏移（这是最常见原因）；2) IR-cut 滤镜对不同波长光的衰减不一致，但 LSC 没补偿；3) WB 增益错误（边角 RGB 比中心偏，AWB 算的全局 gain 不适合边角）；4) CCM 在不同空间位置应用差异（少见，但极端调教时可能）。最先排查 LSC 分通道校准。"
+    },
+    {
+      "id": "wq14",
+      "type": "short",
+      "prompt": "用一句话说明 Tuning 工程师每天工作的输入和输出？",
+      "referenceAnswer": "输入：sensor 的 RAW 测试图 + 当前 Chromatix XML 配置 + 目标效果描述。输出：修改后的 Chromatix XML + 调教记录文档（参数变化、原因、对比图）。主要工具：Chromatix。"
+    },
+    {
+      "id": "wq15",
+      "type": "short",
+      "prompt": "把 Week 2 学到的 ISP 主要模块按数据流顺序写出来（至少 8 个）。",
+      "referenceAnswer": "OB 黑电平 → LSC 暗角 → Demosaic → WB 白平衡 → CCM 色彩矩阵 → Bayer 降噪 → Gamma → 色彩空间转换（RGB→YUV）→ Tone Mapping (LTM/GTM) → ADRC → YUV 降噪 → Sharpen 锐化。这条流水线把 RAW 加工成 JPEG。"
+    }
+  ]
+}

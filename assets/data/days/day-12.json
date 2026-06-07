@@ -1,0 +1,108 @@
+{
+  "id": "day-12",
+  "week": 2,
+  "module": "M2",
+  "title": "LTM / GTM / ADRC：现代 HDR 调教的核心",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "LTM 算法流程：PRD 第 9 题",
+      "type": "concept",
+      "content": "### 昨天的悬念\n\nDay 11 我们说 LTM（Local Tone Mapping）能解决 GTM 解决不了的问题：**同一张图里不同区域用不同曲线**。今天看 LTM 的具体算法。\n\n这是 PRD 收集的第 9 题：**LTM 的算法流程是什么？**\n\n你行业前辈笔记里给出的标准答案分 4 步：\n\n1. **应用双边滤波器生成非线性 mask**（Bilateral Filter → nonlinear mask）\n2. **避免边缘出现光晕瑕疵**（Halo artifact 抑制）\n3. **使用 LTM 曲线集进行局部增益调整**（LTM Curve Set）\n4. **使用 LTM 和 LCE 的组合计算 local gain**（LTM + LCE 混合）\n\n这一节我们一步步拆。\n\n### Step 1：Bilateral Filter（双边滤波）\n\nLTM 的第一步是**判断每个像素属于哪个「亮度区域」**。\n\n直接用周围像素平均（普通滤波）会有问题：\n\n- 一个亮的人脸 + 旁边暗的背景\n- 普通滤波把人脸边缘平均到背景 → 边缘模糊\n\n**双边滤波（Bilateral Filter）**比普通滤波多一个考量：\n\n- 不仅按**距离**加权（远的像素权重小）\n- 还按**亮度差**加权（亮度差大的邻居权重小）\n\n效果：**只在「亮度相似」的邻居之间平均**，边缘不会被跨过。\n\n用人话说就是：「你只听和你亮度差不多的邻居怎么说」 → 得出一张能区分明暗区域的「mask」。\n\n这张 mask 告诉 LTM：「这个区域是亮的，那个区域是暗的」。\n\n### Step 2：Halo 抑制\n\n**Halo（光晕）**是 LTM 最容易出的 artifact：\n\n场景：**很暗的房间里有一盏亮灯**。\n\n- LTM 看到亮灯 → 「这区域很亮，要压暗」\n- LTM 看到房间 → 「这区域很暗，要拉亮」\n- 在灯和房间的**边缘**：算法判断不准 → 边缘渐变区域被错误处理\n- → 灯的周围出现一圈奇怪的「亮环」 / 「暗环」 = halo\n\n现代 LTM 算法专门有一组**反 halo** 的技巧：\n\n- 用更大的滤波核检测真正的边缘\n- 在边缘附近**减弱 LTM 强度**（不要硬压硬拉）\n- 多尺度处理（粗糙尺度判断区域，精细尺度处理细节）\n\nChromatix 里 LTM 模块有 `HaloSuppression` 参数让你调反 halo 强度。\n\n### Step 3：LTM Curve Set（多曲线）\n\n传统 GTM 是**一条曲线**全图通用。LTM 是**一组曲线**：\n\n- 给「极暗区域」一条曲线（暗部大幅拉亮）\n- 给「中等亮度」一条曲线（轻度增强）\n- 给「极亮区域」一条曲线（高光压低）\n\n每个像素根据 mask 判断自己属于哪个区域，**插值**几条曲线得出最终 gain。\n\n### Step 4：LTM + LCE 混合\n\n**LCE = Local Contrast Enhancement**（局部对比度增强）。\n\nLTM 解决的是「亮度」 → 让暗部亮、亮部暗。\nLCE 解决的是「对比度」 → 让边缘更清晰。\n\n两者结合 → **既有亮度调整、又有清晰度** → 现代手机的「HDR 模式」效果。\n\n### 行业前辈笔记的标准答案\n\n面试时被问 LTM 算法，按 4 步答：\n\n1. **Bilateral Filter** → 生成区分亮暗区域的 mask\n2. **Halo 抑制** → 处理边缘 artifact\n3. **LTM Curve Set** → 多曲线针对不同亮度区域\n4. **LTM + LCE** → 亮度 + 对比度联合处理\n\n这就是 PRD 第 9 题的标准答案。",
+      "glossary": [
+        {
+          "term": "Bilateral Filter",
+          "zh": "双边滤波",
+          "explain": "考虑距离 + 亮度差的滤波算法，能在保边缘的前提下平滑区域。LTM 的核心。"
+        },
+        {
+          "term": "Halo",
+          "zh": "光晕瑕疵",
+          "explain": "LTM 在强对比边缘附近产生的浅亮 / 浅暗环。"
+        },
+        {
+          "term": "LCE",
+          "zh": "局部对比度增强",
+          "explain": "Local Contrast Enhancement，强化局部细节对比度的算法。"
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "title": "TMC 的作用：PRD 第 13 题",
+      "type": "concept",
+      "content": "### 昨天提过 TMC\n\nTMC = **Tone Mapping Curve**，色调映射曲线。Day 11 我们说现代 ISP 有 GTM 和 LTM 两种 Tone Mapping。\n\n**问题**：实际 ISP 通常**两种都用**。怎么混合？\n\n这就是 TMC 的作用 —— PRD 第 13 题：「**TMC 的作用是什么？**」\n\n标准答案（行业前辈笔记）：\n\n> TMC 作为 LTM 和 GTM 的混合比例统计。LTM 和 GTM 的占比相加必须等于 1。\n\n### 详细拆解\n\n实际 ISP 跑 Tone Mapping 时：\n\n```\n最终输出 = α × LTM_输出 + (1 - α) × GTM_输出\n```\n\n其中 **α** 是混合比例（0 到 1），由 TMC 模块**逐帧动态决定**：\n\n- **α 接近 1**（LTM 主导）：场景动态范围大（逆光、夜景灯），需要局部处理\n- **α 接近 0**（GTM 主导）：场景动态范围小（室内均匀光），全局曲线就够\n- **α 中间值**（混合）：大多数日常场景\n\n关键约束：**LTM 占比 + GTM 占比 = 1**（这就是「混合比例统计」的意思）。\n\n### TMC 怎么决定 α\n\nTMC 模块每帧分析画面：\n\n1. 算亮度直方图\n2. 算「极亮区域」和「极暗区域」的占比\n3. 极亮极暗都很多 → α 拉高（用 LTM）\n4. 亮度集中在中段 → α 拉低（用 GTM）\n\n这是个**自适应**算法 —— 不需要 Tuning 工程师每帧手动调，但你**调它的策略参数**：\n\n- **HighContrastThreshold**：判定「高对比场景」的阈值\n- **MaxLTMRatio**：LTM 占比的上限（防止过度依赖 LTM 出 halo）\n- **MinLTMRatio**：LTM 占比的下限\n\n### TMC 调起来很微妙\n\n你行业前辈笔记里专门有一句：\n\n> TMC 很少调，建议调的参数一个是 GTM 和 LTM 的混合比率，还有 dark boost ratio，tone target 和 tone anchors 这些。\n\n意思是 TMC 的内核算法**别动**，但你可以调：\n\n- **混合比例上下限**（让 LTM 多 / 少介入）\n- **Dark Boost Ratio**（暗部增强强度）\n- **Tone Target / Tone Anchors**（曲线锚点位置）\n\n这些是「外围调教」，不会破坏算法稳定性。\n\n### 一道面试题预演\n\n面试官问：**「TMC 主要调哪些参数？」**\n\n你应该能答：\n\n> TMC 很少调，因为它是自适应的混合控制器。建议调三个外围参数：\n> 1. GTM/LTM 混合比率上下限\n> 2. Dark Boost Ratio（暗部增强强度）\n> 3. Tone Target 和 Tone Anchors（曲线关键控制点）\n> \n> 内部的 TMC 决策算法（如何判断画面是否是高对比场景）通常不动。\n\n这就是 PRD 第 13 题加扩展。",
+      "glossary": [
+        {
+          "term": "TMC",
+          "zh": "色调映射曲线 / 控制器",
+          "explain": "Tone Mapping Curve / Controller，决定 LTM 和 GTM 混合比例的模块。"
+        },
+        {
+          "term": "Tone Anchors",
+          "zh": "色调锚点",
+          "explain": "TMC 曲线上的关键控制点，可以拖动调整曲线形状。"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "title": "Dark Boost 与 ADRC：PRD 第 16 题推导",
+      "type": "concept",
+      "content": "### Dark Boost：暗部专项强化\n\n**Dark Boost** 是 ISP 后段一个独立模块，专门做一件事：**让画面暗部更亮，但不影响亮部**。\n\n为什么需要？\n\n- LTM 已经处理「过暗的局部」了，但它是「自动判断」\n- Dark Boost 是 Tuning 工程师的**显式工具** —— 我直接告诉系统「整个画面暗部都要拉亮 X 倍」\n\n### Dark Boost Gain 的推导\n\n**PRD 第 16 题**：「Darkboost gain 和 ADRC gain 怎么来的？」\n\n这道题是面试时最容易考你**推导能力**的，标准答案分两步。\n\n#### Dark Boost Gain\n\n按行业前辈笔记的标准答法：\n\n```\nDarkboost gain = long_target / safe_target\n\n（取 MaxDarkBoostGain 和 Dark_low_target / safe_target 的最小值，\n 再将这个最小值与 MaxADRCGain / DRCGain 的值对比，\n 得到的最小值就是 Dark Boost Gain）\n```\n\n这里出现了几个变量：\n\n- **long_target**：长曝光的目标亮度（多帧 HDR 里）\n- **safe_target**：安全曝光的目标亮度\n- **Dark_low_target**：暗部低端的目标亮度\n- **MaxDarkBoostGain**：人为设置的最大允许 Dark Boost\n- **MaxADRCGain / DRCGain**：ADRC 给出的限制（避免和 ADRC 冲突）\n\n推导思路：\n\n1. **理论上** Dark Boost = long_target / safe_target（暗部应该亮多少倍）\n2. **但有限制 1**：不能超过 MaxDarkBoostGain（用户设的上限）\n3. **限制 2**：还要看 Dark_low_target / safe_target（最暗的暗部不能拉太多，否则失真）\n4. **限制 3**：还要看 ADRC 的限制（动态范围压缩工具的总配额）\n5. 三个限制取最小 → 真正用的 Dark Boost Gain\n\n这套层层取最小是为了**保证不会过分提亮导致噪声爆炸**。\n\n#### ADRC Gain\n\nADRC = **Adaptive Dynamic Range Compression**（自适应动态范围压缩）。它是 Day 11 提到的「整体动态范围控制」工具。\n\nADRC Gain 的推导：\n\n```\nADRC gain = safe_target / short_target\n\n（取 bright_low_target、bright_high_target 以及 safe_target 的最小值\n 作为 short_target；\n 取 safe_target / short_target 的计算值与 MaxDRCgain 比较，\n 得到的最小值就是 ADRC gain）\n```\n\n推导：\n\n1. **short_target** = 短曝光的目标亮度（高光不过曝的关键）\n   - 取 bright_low_target、bright_high_target、safe_target 中的最小值\n2. ADRC gain = safe_target / short_target（中间亮度需要压多少倍才不过曝）\n3. **限制**：不超过 MaxDRCGain\n4. 取最小 → 真正用的 ADRC Gain\n\n### Safe Target 是什么\n\n你看到推导里反复出现 **safe_target**。它是 AE 算法（Week 3）输出的一个关键值，意思是：\n\n> 「在当前场景下，画面整体应该达到的目标亮度」\n\nDay 1 我们说过 BV、目标亮度。Safe Target 是 AE 在多帧合成、亮度估计后给出的「**这次拍照的亮度目标**」。LTM、GTM、ADRC、Dark Boost **都参考它**。\n\n这就是 PRD 第 15 题「Safe target 怎么得来的」的源头。今天先记住「safe_target 是 AE 算的目标亮度，所有 Tone Mapping 类模块都看它」。\n\n### 一张关系图\n\n```\nAE 算法（Week 3）\n   ↓ 输出\n   ├─ exp_index（曝光档位）→ 写到 sensor 寄存器\n   ├─ safe_target（目标亮度）\n   ↓\nISP Tone Mapping 阶段读取 safe_target\n   │\n   ├─ Gamma          （全局曲线）\n   ├─ TMC            （决定 LTM/GTM 比例）\n   ├─ LTM            （局部增强）\n   ├─ GTM            （全局压缩）\n   ├─ Dark Boost     ← gain = long/safe，受 MaxDarkBoostGain 限制\n   ├─ ADRC           ← gain = safe/short，受 MaxDRCGain 限制\n   └─ LCE            （细节对比度）\n```\n\n### 行业前辈笔记速查\n\nPRD 第 15、16 题相关的所有目标值：\n\n- **Bright_Low_Target** / **Bright_High_Target**：亮区目标的下限 / 上限\n- **Dark_Low_Target** / **Dark_High_Target**：暗区目标的下限 / 上限\n- **safe_target**：在 4 个目标里去掉极值后的中间值\n- **long_target**：HDR 多帧里长曝光帧的目标亮度\n- **short_target**：min(bright_low, bright_high, safe_target)\n\nWeek 3 学 AEC 时这些会反复出现，今天先**混个脸熟**。",
+      "glossary": [
+        {
+          "term": "Dark Boost",
+          "zh": "暗部增强",
+          "explain": "ISP 后段模块，把画面暗部拉亮，不影响亮部。"
+        },
+        {
+          "term": "ADRC",
+          "zh": "自适应动态范围压缩",
+          "explain": "Adaptive Dynamic Range Compression，自动压缩高动态范围使其适合显示。"
+        },
+        {
+          "term": "Safe Target",
+          "zh": "安全目标",
+          "explain": "AE 算法输出的目标亮度值，所有 Tone Mapping 类模块都参考它。"
+        },
+        {
+          "term": "Long / Short Target",
+          "zh": "长 / 短曝光目标",
+          "explain": "HDR 多帧合成时，长曝光帧（拍暗部）和短曝光帧（拍亮部）各自的目标亮度。"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "title": "Tone Mapping 整链路全景",
+      "type": "concept",
+      "content": "### 把所有概念串起来\n\n你现在已经认识了 Tone Mapping 的全部成员。下面这张图是它们在 ISP 里的关系：\n\n```\nRAW 经过 IFE（OB/LSC/Demosaic/WB/CCM）\n       ↓\n     [Gamma]            ← 全局曲线（Day 11）\n       ↓\n     [TMC 控制器]       ← 决定 LTM/GTM 比例（α）\n       ↓\n   ┌───┴───┐\n   ↓       ↓\n  [GTM]   [LTM]          ← 一全局一局部，按 α 混合\n   │       │\n   │     Bilateral Filter\n   │     Halo 抑制\n   │     LTM Curve Set\n   │     LTM + LCE 混合\n   │       │\n   └───┬───┘\n       ↓ α × LTM + (1-α) × GTM\n     [ADRC gain]         ← 整体动态范围补偿\n       ↓\n     [Dark Boost gain]   ← 暗部专项拉亮\n       ↓\n   完成 Tone Mapping → 进入色彩增强 / 锐化\n```\n\n### 调教优先级（按重要性）\n\n刚入门做 Tone Mapping 调教，按这个顺序：\n\n1. **Gamma 曲线**（最先调，影响最大）\n2. **TMC 混合比例上下限**（控制 LTM 介入程度）\n3. **Dark Boost 强度**（暗部主观感受）\n4. **ADRC 强度**（高对比场景的舒适度）\n5. **LCE / LTM Halo Suppression**（细节修补）\n\n### 一个真实排错场景\n\n用户反馈：「**逆光人脸太暗**」。\n\n排查思路：\n\n1. 是不是 AE 算的曝光不够？→ 看 safe_target（**Week 3** 学）\n2. AE 没问题 → 是不是 LTM 没把人脸提亮？→ 调 LTM Curve Set\n3. LTM 不够 → 是不是 Dark Boost 太弱？→ 调 MaxDarkBoostGain\n4. 都不行 → 是不是整张图 Gamma 暗部太低？→ 调 Gamma 曲线\n\n按 1→2→3→4 顺序，**先看 AE 给的目标，再看 LTM，再看 Dark Boost，最后才动 Gamma**。\n\n### 这一周收尾\n\n学完今天，你已经认识了 ISP 里**最难、最影响画质**的模块组：Gamma + TMC + LTM + GTM + ADRC + Dark Boost。\n\n- 学会画上面那张关系图\n- 学会 PRD 第 9、13、14、16 共 4 道面试题的标准答案\n\n这是 ISP Pipeline 的「**最值钱的部分**」。明天我们看降噪 + 锐化。\n\n<figure>\n<svg viewBox=\"0 0 720 380\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"Tone Mapping 全链路\">\n<defs>\n<marker id=\"ah12\" markerWidth=\"10\" markerHeight=\"10\" refX=\"9\" refY=\"3\" orient=\"auto\">\n<path d=\"M0,0 L0,6 L9,3 z\" fill=\"#3b82f6\"/>\n</marker>\n</defs>\n<g font-family=\"sans-serif\" font-size=\"12\" fill=\"#e2e8f0\">\n<text x=\"360\" y=\"20\" text-anchor=\"middle\" fill=\"#cbd5e1\" font-size=\"14\">Tone Mapping 完整链路</text>\n<rect x=\"280\" y=\"40\" width=\"160\" height=\"40\" rx=\"6\" fill=\"#1e293b\" stroke=\"#3b82f6\"/>\n<text x=\"360\" y=\"65\" text-anchor=\"middle\" fill=\"#3b82f6\">RAW + AE safe_target</text>\n<line x1=\"360\" y1=\"80\" x2=\"360\" y2=\"100\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah12)\"/>\n<rect x=\"280\" y=\"105\" width=\"160\" height=\"40\" rx=\"6\" fill=\"#1e293b\" stroke=\"#22c55e\" stroke-width=\"2\"/>\n<text x=\"360\" y=\"125\" text-anchor=\"middle\" fill=\"#22c55e\" font-weight=\"bold\">Gamma</text>\n<text x=\"360\" y=\"138\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">全局曲线（最先调）</text>\n<line x1=\"360\" y1=\"145\" x2=\"360\" y2=\"165\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah12)\"/>\n<rect x=\"280\" y=\"170\" width=\"160\" height=\"40\" rx=\"6\" fill=\"#1e293b\" stroke=\"#a78bfa\"/>\n<text x=\"360\" y=\"190\" text-anchor=\"middle\" fill=\"#a78bfa\" font-weight=\"bold\">TMC 控制器</text>\n<text x=\"360\" y=\"203\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">决定 LTM/GTM 比例 α</text>\n<line x1=\"280\" y1=\"190\" x2=\"180\" y2=\"240\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah12)\"/>\n<line x1=\"440\" y1=\"190\" x2=\"540\" y2=\"240\" stroke=\"#3b82f6\" stroke-width=\"2\" marker-end=\"url(#ah12)\"/>\n<rect x=\"100\" y=\"245\" width=\"160\" height=\"60\" rx=\"6\" fill=\"#1e293b\" stroke=\"#f59e0b\"/>\n<text x=\"180\" y=\"265\" text-anchor=\"middle\" fill=\"#f59e0b\" font-weight=\"bold\">LTM (局部)</text>\n<text x=\"180\" y=\"280\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">Bilateral → mask</text>\n<text x=\"180\" y=\"293\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">Curve Set + LCE</text>\n<rect x=\"460\" y=\"245\" width=\"160\" height=\"60\" rx=\"6\" fill=\"#1e293b\" stroke=\"#fbbf24\"/>\n<text x=\"540\" y=\"265\" text-anchor=\"middle\" fill=\"#fbbf24\" font-weight=\"bold\">GTM (全局)</text>\n<text x=\"540\" y=\"280\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">单条曲线全图用</text>\n<text x=\"540\" y=\"293\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">动态范围压缩</text>\n<text x=\"360\" y=\"285\" text-anchor=\"middle\" fill=\"#cbd5e1\" font-size=\"14\">α : (1-α)</text>\n<text x=\"360\" y=\"300\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">混合</text>\n<line x1=\"180\" y1=\"305\" x2=\"320\" y2=\"335\" stroke=\"#3b82f6\" stroke-width=\"2\"/>\n<line x1=\"540\" y1=\"305\" x2=\"400\" y2=\"335\" stroke=\"#3b82f6\" stroke-width=\"2\"/>\n<rect x=\"220\" y=\"335\" width=\"280\" height=\"35\" rx=\"6\" fill=\"#0f172a\" stroke=\"#22c55e\" stroke-width=\"2\"/>\n<text x=\"360\" y=\"358\" text-anchor=\"middle\" fill=\"#22c55e\">→ ADRC → Dark Boost → 后续模块</text>\n</g>\n</svg>\n<figcaption>图：Gamma → TMC → LTM/GTM 混合 → ADRC/Dark Boost 完整链路</figcaption>\n</figure>\n",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天学了 4 件事（含 PRD 3 道题）\n\n1. **PRD 第 9 题：LTM 算法流程**\n   - Bilateral Filter → 生成 mask\n   - Halo 抑制\n   - LTM Curve Set\n   - LTM + LCE 混合\n\n2. **PRD 第 13 题：TMC 作用**\n   - 控制 LTM / GTM 的混合比例（占比和=1）\n   - 调教参数：混合比率上下限、Dark Boost、Tone Target、Tone Anchors\n\n3. **PRD 第 16 题：Dark Boost / ADRC gain 推导**\n   - Dark Boost = long_target / safe_target，受 MaxDarkBoostGain 和 ADRC 限制\n   - ADRC = safe_target / short_target，受 MaxDRCGain 限制\n   - short_target = min(bright_low, bright_high, safe_target)\n\n4. **完整 Tone Mapping 链路**：Gamma → TMC → LTM/GTM → ADRC → Dark Boost\n\n### 自我检查\n\n1. 默写 LTM 算法的 4 个步骤\n2. TMC 的作用是什么？LTM 和 GTM 占比关系？\n3. Dark Boost gain 的计算公式 + 受哪些限制？\n4. ADRC gain 的计算公式 + 关键变量 short_target 怎么算？\n5. 调 Tone Mapping 的优先级顺序（5 个模块）？\n\n### 笔记建议\n\n- 把 PRD 第 9、13、16 三道题的标准答案**完整抄下来**（这是面试硬通货）\n- 把 Tone Mapping 链路图画一遍\n- 把 long/short/safe/bright_low/bright_high 这些 target 之间的关系列个清单\n\n### 明天预告\n\nDay 13 我们看 ISP 后段的两个重要模块：**降噪 + 锐化**。同时回答 PRD 第 7 题：「影响对比度的模块有哪些？」 —— 用 Day 11-12 学的内容串起来。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    {
+      "source": "高通 3A 7.0 Tuning Guide",
+      "page": 22,
+      "section": "TMC / LTM / Dark Boost 章节"
+    },
+    {
+      "source": "PRD 面试题 9, 13, 16",
+      "section": "课程内 PRD"
+    },
+    {
+      "source": "行业前辈有道云笔记",
+      "section": "TMC 与 ADRC 推导部分"
+    }
+  ],
+  "dailyQuizId": "daily-day-12"
+}

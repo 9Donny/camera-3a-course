@@ -1,0 +1,54 @@
+{
+  "id": "day-14",
+  "week": 2,
+  "module": "M2",
+  "title": "Week 2 总结：ISP Pipeline 全景图",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "一周回顾：你这 6 天学了什么",
+      "type": "recap",
+      "content": "### 6 天 24 小时\n\n如果你按计划学完了 Day 8-13，这 6 天累计 24 小时学到的内容：\n\n- **Day 8**：ISP Pipeline 总览 + 高通 Spectra 架构（IFE/BPS/IPE/CPP）\n- **Day 9**：OB 黑电平 / LSC 暗角校正 / Demosaic 深入（拉链效应 + 边缘感知）\n- **Day 10**：白平衡 (WB) 三通道增益 + CCM 色彩矩阵\n- **Day 11**：Gamma 曲线 + Tone Mapping 概念（GTM vs LTM）\n- **Day 12**：LTM 算法 4 步 + TMC 混合控制 + Dark Boost / ADRC gain 推导\n- **Day 13**：双重降噪 + 锐化 USM + 影响对比度的模块汇总\n\n这一周学完，你已经能**完整地讲出**「一张 RAW 是怎么变成 JPEG 的」整条流水线。\n\n### 你现在应该具备的能力\n\n下面这些场景应该都能聊：\n\n- 同事说「这张图四角发紫」→ 你能说出至少 2 个原因（LSC 没分通道校 / IR-cut 不一致）\n- 用户报「夜景像油画」→ 你能定位到 Bayer NR / YUV NR 过强\n- 同事说「逆光人脸太暗」→ 你能按 AE→LTM→Dark Boost→Gamma 顺序排查\n- 同事说「这调一下色彩」→ 你能问「调 WB 还是 CCM 还是 Color Enhancement？」\n- 看到行业前辈笔记里的 «Bilateral Filter»、«mask»、«LCE» —— 你不再发懵\n\n如果哪条还卡，回去看对应的 Day。",
+      "glossary": []
+    },
+    {
+      "id": "s2",
+      "title": "ISP Pipeline 大全景：22 个模块再走一遍",
+      "type": "concept",
+      "content": "### 串联 6 天的内容\n\n```\n传感器输出 RAW\n         ↓\n   ┌─── IFE 段（图像前端）─────────────┐\n   │                                     │\n   │  1. 坏点校正                          ← Day 9 提过\n   │  2. OB 黑电平                         ← Day 9 详讲\n   │  3. LSC 暗角                          ← Day 9 详讲（17×13 网格 + R/G/B 分通道）\n   │  4. Bayer 域统计                      ← 给 3A 算法（Week 3-7）\n   │  5. PD 相位                           ← 给 AF\n   │  6. Demosaic                          ← Day 9 详讲（边缘感知）\n   │  7. WB 白平衡                         ← Day 10 详讲（R/G/B 增益）\n   │  8. CCM 色彩矩阵                      ← Day 10 详讲（3×3 + ColorChecker）\n   │                                     │\n   └─────────────────────────────────────┘\n         ↓ 现在是已校色的 RGB 图\n         \n   ┌─── BPS / IPE 中前段 ────────────────┐\n   │                                     │\n   │  9. Bayer 域降噪                      ← Day 13 讲（双边滤波，去散粒噪声）\n   │  10. HDR 多帧合成                     ← Week 7 详讲\n   │  11. Gamma                            ← Day 11 详讲（γ=2.2 LUT）\n   │  12. RGB → YUV                        ← Day 8 提过\n   │                                     │\n   └─────────────────────────────────────┘\n         ↓ 现在是 YUV 数据\n         \n   ┌─── IPE 后段 ────────────────────────┐\n   │                                     │\n   │  13. Tone Mapping (LTM/GTM)           ← Day 11/12 详讲\n   │  14. ADRC                             ← Day 12 详讲（safe/short）\n   │  15. Color Enhancement                ← Day 10 提过（饱和度增强）\n   │  16. Skin Tone                        ← 肤色专项优化\n   │  17. YUV 域降噪                       ← Day 13 讲（去 Chroma noise）\n   │  18. Sharpen 锐化                     ← Day 13 讲（USM 算法）\n   │  19. Chroma Suppression               ← 抑制残留色彩瑕疵\n   │                                     │\n   └─────────────────────────────────────┘\n         ↓\n         \n   ┌─── CPP 后处理 ──────────────────────┐\n   │  20. Scale 缩放                       ← App 要的尺寸\n   │  21. Color Space Convert              ← 最终色彩空间（sRGB / DCI-P3）\n   │  22. JPEG Encode                      ← 最终编码\n   └─────────────────────────────────────┘\n         ↓\n   JPEG → 相册\n```\n\n### 5 个分水岭再强化\n\n要记住：\n\n1. **Demosaic（第 6）是 Bayer/RGB 分水岭**：之前 1 通道，之后 3 通道\n2. **WB 紧跟 Demosaic**：因为 WB 是分通道处理\n3. **Gamma（第 11）在 RGB→YUV（第 12）之前**：Gamma 是对 RGB 做的非线性变换\n4. **降噪有两次**：Bayer 域（早，第 9）+ YUV 域（晚，第 17）\n5. **锐化在最后**（第 18）：所有处理完成后再锐化",
+      "glossary": []
+    },
+    {
+      "id": "s3",
+      "title": "易混淆点 FAQ",
+      "type": "concept",
+      "content": "### Q1：WB Gain 和 CCM 都改色彩，区别在哪？\n\n- **WB Gain**：让**白色变成白色**（修正色温偏差）\n- **CCM**：让**红色更红、绿色更绿**（修正滤镜不纯）\n\n顺序：WB 先（基准对齐）→ CCM 后（色彩纯净）。\n\n### Q2：LTM 和 Dark Boost 都是「拉亮暗部」，区别在哪？\n\n- **LTM**：自动判断「哪些区域偏暗」并局部拉亮\n- **Dark Boost**：Tuning 工程师**显式**指定「全图暗部都拉 X 倍」\n\nLTM 是「智能模式」，Dark Boost 是「手动模式」。两者一起用。\n\n### Q3：Bayer 域降噪和 YUV 域降噪都有什么独特优势？\n\n- **Bayer 域降噪**：在 RAW 还干净时去**散粒噪声**（暗光的颗粒感）。优势：源头处理。\n- **YUV 域降噪**：去**色彩噪声**（色斑），可以专门处理 Chroma 通道。优势：可以分开处理亮度和颜色。\n\n两次配合 → 暗光画质好。\n\n### Q4：CCM 矩阵主对角线大于 1，但可以大于 2 吗？\n\n理论可以，但实际不会。原因：\n\n- 主对角线越大，颜色饱和度越强\n- 但同时 noise 也会被相应放大（CCM 是线性变换，噪声也跟着变换）\n- 一般主对角线在 1.2-1.8 范围，超过 2.0 会有明显 artifact\n\n### Q5：Gamma 改了之后，所有 Tone Mapping 都要重调吗？\n\n是的。Gamma 是基础曲线，它一改：\n\n- LTM 的 Curve Set 要重新校准（基于新的全局曲线）\n- TMC 的混合比例阈值要重新评估\n- ADRC / Dark Boost 要重新调（因为暗部 / 亮部的位置变了）\n\n这就是为什么 PRD 第 14 题强调 **Gamma 优先**，先调好它再说别的。\n\n### Q6：Sharpen 和 LCE 都加「对比度」，区别在哪？\n\n- **Sharpen**：强化**边缘**对比度（USM 算法，全局应用）\n- **LCE**：强化**局部区域**的对比度（小范围内的）\n\nSharpen 让**线条**清晰，LCE 让**纹理**有立体感。两者都用，但目标不同。",
+      "glossary": []
+    },
+    {
+      "id": "s4",
+      "title": "Week 2 PRD 面试题汇总",
+      "type": "concept",
+      "content": "### Week 2 涉及的 PRD 面试题（共 6 道）\n\n这一周直接覆盖了 PRD 收集面试题里**最难的一组**（ISP 类）。\n\n#### PRD 第 6 题：色彩相关（Day 10）\n\n色温 / D65 / CCM / WB Gain 等知识点，是 AWB 调教的基础。\n\n#### PRD 第 7 题：影响对比度的模块（Day 13）\n\n**标准答案**：Gamma、LTM、GTM、TMC。\n\n#### PRD 第 9 题：LTM 的算法流程（Day 12）\n\n**标准答案**（4 步）：\n1. Bilateral Filter 生成 mask\n2. 避免 halo artifact\n3. LTM Curve Set 局部增益\n4. LTM + LCE 混合\n\n#### PRD 第 13 题：TMC 的作用（Day 12）\n\n**标准答案**：作为 LTM 和 GTM 的混合比例统计。LTM 和 GTM 占比相加 = 1。\n\n#### PRD 第 14 题：Gamma vs LTM 优先级（Day 11）\n\n**标准答案**：Gamma 优先。Gamma 影响全局亮度，LTM 影响局部亮度，先调好全局再调局部。\n\n#### PRD 第 16 题：Dark Boost / ADRC gain 推导（Day 12）\n\n**Dark Boost gain** = long_target / safe_target，受 MaxDarkBoostGain 和 ADRC 限制。\n**ADRC gain** = safe_target / short_target，受 MaxDRCGain 限制。\nshort_target = min(bright_low, bright_high, safe_target)。\n\n### 一份建议的 cheatsheet\n\n建议你今天**单独整理一份「Week 2 面试题 cheatsheet」**：\n\n```\n--- ISP 类面试题速查 ---\n\nQ7：影响对比度模块？\n→ Gamma + LTM + GTM + TMC\n\nQ9：LTM 算法 4 步？\n→ Bilateral Filter mask → Halo 抑制 → Curve Set → LTM+LCE 混合\n\nQ13：TMC 作用？\n→ LTM/GTM 混合控制器，占比和 = 1\n\nQ14：Gamma vs LTM 优先级？\n→ Gamma 优先（全局先于局部）\n\nQ16：Dark Boost / ADRC gain 推导？\n→ DB = long/safe，受 max 限制\n→ ADRC = safe/short，受 maxDRC 限制\n\n+ 不在 PRD 列表但常考：\n\n→ ISP Pipeline 主要模块？OB→LSC→Demosaic→WB→CCM→Gamma→Tone Mapping→Sharpen\n→ Bayer NR vs YUV NR？源头去散粒 vs 后期去色彩\n→ Sharpen USM 公式？原图 + (原图 - 模糊版) × strength\n```\n\n这是 Week 2 给你的**最值钱产出**。\n\n### 下一步\n\nWeek 3-7 是 3A 算法主线（AE/AWB/AF）。你这一周学的 ISP 模块知识会**反复被引用**：\n\n- AE 算的 ISO → 影响 sensor Analog Gain → 影响 Bayer 域降噪强度\n- AE 算的 safe_target → LTM/ADRC/Dark Boost 都参考它\n- AWB 算的 CCT → 决定用哪份 CCM 矩阵\n- AF 不直接交互 ISP，但需要从 RAW（Demosaic 前）取 PDAF 数据\n\nWeek 2 是 3A 的**地图基础**。\n\n现在打开 #/quiz 做 Week 2 周考，验证一下吸收程度。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "Week 2 周考 + 下周预告",
+      "type": "recap",
+      "content": "### Week 2 周考\n\n做完今天的内容，去 [📊 考核中心] → **Week 2 周考**：\n\n- 15 题（选择 / 填空 / 简答 / 综合情景）\n- 含 6 道 PRD 面试题\n- 答到 80%+ 进 Week 3，60-80% 建议补 1-2 个模块\n\n### Week 3 我们要学什么\n\n下周整周聚焦 **AEC 第一阶段**：\n\n- Day 15：高通 AE 算法总览 + 64×48 数据块统计（PRD 第 1、17 题）\n- Day 16：曝光表深入（PRD 第 12 题，已在 Day 5 提过）\n- Day 17：Lux Index 计算（PRD 第 5 题）\n- Day 18：亮度目标 (Target) 与 Safe Target 推导（PRD 第 15 题）\n- Day 19：收敛逻辑 + 抗带状\n- Day 20：Bright Region / Dark Region 测光\n- Day 21：Week 3 周考\n\nWeek 3 是你**第一次接触真正的 3A 算法**。从 Week 2 学的「ISP 模块如何工作」过渡到「AE 算法如何决策每个模块的参数」。\n\n### 给自己一个奖励\n\n你已经走过 14 天。Week 1 + Week 2 是 60 天里**最难的入门段** —— 因为概念新、英文术语密集。挺过来了，后面 3A 算法部分会发现：「啊，这些参数其实很多在 Week 2 见过」。\n\n按下「✅ 完成本日学习」，做完 Week 2 周考，本周收工。\n\nWeek 3 见。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    {
+      "source": "Day 8-13 全部 references 汇总"
+    },
+    {
+      "source": "高通 3A 7.0 Tuning Guide",
+      "section": "ISP Pipeline 章节背景"
+    }
+  ],
+  "dailyQuizId": "daily-day-14"
+}

@@ -1,0 +1,48 @@
+{
+  "id": "daily-day-08",
+  "module": "M2",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "下列哪一项不是高通 Spectra 的 4 段式架构组成？",
+      "options": ["IFE（图像前端）", "BPS（Bayer 处理段）", "IPE（图像处理引擎）", "SPS（信号处理段）"],
+      "answer": "SPS（信号处理段）",
+      "explain": "Spectra 4 段是 IFE → BPS → IPE → CPP（后处理）。SPS 不存在。"
+    },
+    {
+      "id": "q2",
+      "type": "fill",
+      "prompt": "ISP 流水线里把 Bayer 图（每像素 1 通道）还原成 RGB 图（每像素 3 通道）的模块叫 ___。",
+      "answer": ["Demosaic", "demosaic", "去马赛克"],
+      "explain": "Demosaic 是 Bayer/RGB 分水岭，之前 1 通道，之后 3 通道。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "白平衡（WB）模块为什么必须在 Demosaic 之后？",
+      "options": [
+        "WB 速度比 Demosaic 慢",
+        "WB 需要每像素 3 通道才能分别打增益",
+        "Demosaic 之后才能做色彩处理",
+        "Bayer 域不能做白平衡"
+      ],
+      "answer": "WB 需要每像素 3 通道才能分别打增益",
+      "explain": "WB 要对 R/G/B 三通道分别乘增益，必须在 RGB 域。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "ISP 流水线里降噪有 ___ 次（数字）。",
+      "answer": ["2", "两", "两次"],
+      "explain": "Bayer 域降噪（早，去散粒噪声）+ YUV 域降噪（晚，去色彩噪声）。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "用一句话说明 Camera Tuning 工程师每天工作的输入和输出是什么？",
+      "referenceAnswer": "输入：sensor 的 RAW 测试图 + 当前 Chromatix XML 配置 + 目标效果描述。输出：修改后的 Chromatix XML + 调教记录文档（参数变化、原因、对比图）。主要工具是 Chromatix。"
+    }
+  ]
+}

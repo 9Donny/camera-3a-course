@@ -1,0 +1,119 @@
+{
+  "id": "day-09",
+  "week": 2,
+  "module": "M2",
+  "title": "ISP 早期三剑客：OB / Lens Shading / Demosaic 深入",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "为什么这三个模块要放在一起",
+      "type": "concept",
+      "content": "### 流水线第一站\n\n昨天我们看了完整的 ISP Pipeline 22 个模块。从前往后数，最早执行的「真活」是这 3 个：\n\n```\nRAW → 坏点校正 → [OB 黑电平] → [LSC 暗角] → ... → [Demosaic] → ...\n```\n\n（坏点校正太简单，今天不展开 —— 就是把坏点用周围正常像素插值替代）\n\nOB / LSC / Demosaic 是**任何调教工程师上岗第一天就要面对的 3 个模块**。Day 3 我们简单提过 OB 和 LSC，今天讲透。\n\n### 共同特点：都是「数据修正」\n\n这三个模块的工作不是「让画面更好看」，而是「把传感器输出的扭曲数据**校正回真实**」：\n\n- **OB 校正**：把传感器的「黑色偏置」减掉，让黑色真的是黑\n- **LSC 校正**：把镜头造成的「四角偏暗」补回来\n- **Demosaic**：把每像素只 1 色的 Bayer 图，还原成每像素 3 色的 RGB\n\n它们之后的所有模块（白平衡、Gamma、降噪、锐化）都是「调画面的味道」。所以 OB/LSC/Demosaic 这一组叫 **数据预处理**，是一切美化的前提。\n\n### Tuning 工程师的「校准」工作\n\n这三个模块都需要**校准（calibration）** —— 在实验室里用标准光源拍特定测试图，得出一组数值，写到 sensor 配置里。\n\n这个工作：\n\n- 一个 sensor 型号校准一次，所有出厂手机用同一组数值\n- 校准过程不在 Tuning 工程师日常里 —— 通常由**生产工厂**和**OTP 校准团队**完成\n- 但 Tuning 工程师**要懂校准过程**，因为：\n  - 如果你拿到的 RAW 看起来「整张偏紫」或「四角发绿」，第一反应应该是「OB / LSC 校准是不是错了」\n  - 在实验室里你也会偶尔需要重新校准 sensor（比如换了新批次镜头）\n\n今天我们一个个来。",
+      "glossary": [
+        {
+          "term": "Calibration",
+          "zh": "校准",
+          "explain": "在受控环境（标准光源、均匀板、暗箱）下测量传感器的偏差，生成一组校正参数，写到 sensor 配置里。"
+        },
+        {
+          "term": "OTP",
+          "zh": "一次性可编程存储",
+          "explain": "One-Time Programmable，sensor 出厂时把校准数据烧到这块存储里，不可改写。"
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "title": "OB 黑电平校正：从「整张偏暗」到「真黑」",
+      "type": "concept",
+      "content": "### OB 是什么的物理来源\n\nDay 3 已经提过：传感器即使在完全黑暗中（盖住镜头），输出也不是 0，而是一个**正的偏置值**。它由三部分组成：\n\n1. **暗电流**：传感器本身在无光下漏出的电荷（温度越高越严重）\n2. **电路偏置**：放大器、ADC 输入的固定偏置电压\n3. **量化偏置**：ADC 量化时的最小起点值\n\n这三个加起来，10-bit RAW 里 OB 通常是 **64**（满量程的 1/16），12-bit RAW 通常是 **256**。\n\n### 不校正的后果\n\n如果不减掉 OB：\n\n- 整张图的黑色变成「灰色」（偏亮）\n- 后续 Gamma、Tone Mapping 都按这个错误的「黑」工作 → 整张图发灰、对比度低\n- 暗部细节看不到\n\n所以 ISP 第一步必须做 OB 校正。\n\n### 校正怎么做\n\n物理上，sensor 出厂时**会有一圈遮光像素**（叫 Optical Black 或 OB Pixel），在 sensor 边缘 8-32 行 / 列。这些像素被金属盖住，永远看不到光，**它们的输出就是 OB 的真实值**。\n\nISP 工作流程：\n\n```\n1. 读取 OB 像素 → 算出当前帧的 OB 值\n2. 整张图减去这个 OB\n3. 截断到 0（防止减成负数）\n```\n\n### 为什么不固定一个值减掉\n\n你可能会问：OB 不是固定值吗？为什么要每帧重新算？\n\n答案：**OB 受温度和增益影响**。\n\n- 温度上升 10°C → 暗电流可能翻倍 → OB 增加\n- ISO（模拟增益）上升 → 放大器偏置同步放大 → OB 也变\n\nsensor 是动态的，所以高通文档里说**「每帧用 OB Pixel 实时统计」**，比固定数值减更准。\n\n### 调教参数\n\nOB 校正的可调参数比较少（毕竟是从光学黑像素直接读的）。Tuning 工程师主要看：\n\n- **OBOffset**：在 sensor OB 基础上额外减一个值（如果发现暗部纹理有点过曝）\n- **OBClampLevel**：截断阈值（避免把暗部细节当成 OB 减没了）\n\n大多数情况下不需要动 —— OB 校正是「校准好了就别再碰」的模块。\n\n### 一个排错思路\n\n你拿到一张测试图，发现整张偏暗、对比度差：\n\n- 如果**只是暗部发灰** → 大概率 OB 没减干净（多减了 → 把暗部纹理推到 0；少减了 → 整体偏亮）\n- 用 RAW 查看器对比 OB 像素值和实际暗部值\n- 修 OBOffset 或重新校准 sensor\n\n<figure>\n<svg viewBox=\"0 0 600 200\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"OB 校正前后对比\">\n<g font-family=\"sans-serif\" font-size=\"13\" fill=\"#e2e8f0\">\n<text x=\"300\" y=\"20\" text-anchor=\"middle\" fill=\"#cbd5e1\">OB 校正前后对比</text>\n<text x=\"150\" y=\"50\" text-anchor=\"middle\" fill=\"#94a3b8\">校正前 RAW</text>\n<rect x=\"50\" y=\"60\" width=\"200\" height=\"100\" fill=\"#475569\"/>\n<text x=\"150\" y=\"115\" text-anchor=\"middle\" fill=\"#fff\" font-size=\"11\">整张偏暗（黑色不够黑）</text>\n<text x=\"150\" y=\"180\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">所有像素值 + OB 偏置 (≈64)</text>\n<text x=\"320\" y=\"105\" fill=\"#3b82f6\" font-size=\"20\">→</text>\n<text x=\"320\" y=\"125\" fill=\"#94a3b8\" font-size=\"11\">减去 OB</text>\n<text x=\"450\" y=\"50\" text-anchor=\"middle\" fill=\"#94a3b8\">校正后</text>\n<rect x=\"350\" y=\"60\" width=\"200\" height=\"100\" fill=\"#0f172a\"/>\n<text x=\"450\" y=\"115\" text-anchor=\"middle\" fill=\"#fff\" font-size=\"11\">真黑（暗部清晰）</text>\n<text x=\"450\" y=\"180\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">所有像素值 - OB，截断到 0</text>\n</g>\n</svg>\n<figcaption>图：减去 OB 偏置后画面整体对比度恢复</figcaption>\n</figure>\n",
+      "glossary": [
+        {
+          "term": "Black Level Correction",
+          "zh": "黑电平校正",
+          "explain": "ISP 第一步：从 RAW 减去黑电平偏置，让黑色真的是 0。"
+        },
+        {
+          "term": "OB Pixel",
+          "zh": "光学黑像素",
+          "explain": "sensor 边缘被金属遮住的像素，永远不感光。读取它们的值就是 OB 真实大小。"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "title": "LSC 暗角校正：把四角变亮回来",
+      "type": "concept",
+      "content": "### 物理来源（Day 4 复习）\n\n光线穿过镜头到达传感器边缘时：\n\n- 路径更长（边缘像素离镜头中心更远）\n- 入射角更大（光线斜着进入像素阱）\n- 还可能被镜筒、光圈叶片**部分遮挡**\n\n结果是**画面四角进光量比中心少 30-50%**，俗称「暗角」（Vignetting）。\n\n### LSC 的本质：一张「亮度补偿表」\n\nISP 的 LSC（Lens Shading Correction）模块做的事很简单：\n\n```\n输出像素值 = 输入像素值 × LSC_Gain[x, y]\n```\n\n每个像素位置 (x, y) 都有一个**增益值**：\n\n- 中心位置：增益 ≈ 1.0（不变）\n- 边角位置：增益 = 1.5-2.0（拉亮回来）\n\n这张「增益表」是事先校准出来的，存在 sensor 配置里。\n\n### 校准过程\n\n你将来在实验室里做 LSC 校准的步骤：\n\n1. 把手机摄像头对着**均匀光源**（一块均匀打光的白板，或专业灯箱）\n2. 拍一张 RAW 图\n3. 软件分析每个位置的实际亮度 / 中心亮度的比值\n4. 求倒数 → 得到该位置的增益\n5. 整张图采样成 **17×13 网格**（高通常用，低分辨率版省存储），存入 sensor 配置\n6. ISP 运行时**双线性插值** —— 任意像素位置的增益从最近的网格点插值算出\n\n### 不只一张表：颜色相关的 LSC\n\n你可能没想到：**红 / 绿 / 蓝三个通道的 LSC 增益是不一样的**。\n\n原因是镜头对不同波长的光折射率略有差异（色差），加上 IR-cut 滤镜也是有方向性的 → 边缘的红光衰减和蓝光衰减程度不同。\n\n所以 LSC 校准要对 **R / Gr / Gb / B 四个通道**（Bayer 阵列里 G 分两种）**分别**做一张增益表。如果不分 → 边角颜色会偏（典型 bug：四角发紫或发青）。\n\n### 调教里的两类 LSC 问题\n\n**1. 暗角校不干净**：\n- 现象：四角还是有点暗\n- 排查：增益表网格采样太粗，或者 IR-cut 不一致\n- 调：重新校准 LSC，用更密的采样网格\n\n**2. 颜色偏移**：\n- 现象：四角发紫 / 发青\n- 排查：R/G/B 增益不平衡\n- 调：单独调整某个通道的 LSC 表\n\n这部分内容你行业前辈笔记里大概率会有。\n\n### 为什么 LSC 在 Demosaic 之前\n\n注意流水线顺序：\n\n```\nOB → LSC → Demosaic → ...\n```\n\nLSC 在 Demosaic **之前**做，是因为：\n\n- Bayer 域里我们能直接知道每个像素的颜色（R/G/B），方便分通道补偿\n- Demosaic 之后是 RGB，每像素都有 3 个值，分通道意义模糊\n\n这是一个工程上的优化。\n\n<figure>\n<svg viewBox=\"0 0 700 240\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"LSC 17×13 增益网格\">\n<g font-family=\"sans-serif\" font-size=\"12\" fill=\"#e2e8f0\">\n<text x=\"350\" y=\"20\" text-anchor=\"middle\" fill=\"#cbd5e1\">LSC 增益表（17×13 网格示意）</text>\n<text x=\"170\" y=\"50\" text-anchor=\"middle\" fill=\"#94a3b8\">增益值（中心 1.0，四角 1.8）</text>\n<defs>\n<radialGradient id=\"lscGrad\" cx=\"50%\" cy=\"50%\" r=\"70%\">\n<stop offset=\"0%\" stop-color=\"#22c55e\" stop-opacity=\"0.2\"/>\n<stop offset=\"100%\" stop-color=\"#ef4444\" stop-opacity=\"0.6\"/>\n</radialGradient>\n</defs>\n<rect x=\"40\" y=\"60\" width=\"260\" height=\"170\" fill=\"url(#lscGrad)\" stroke=\"#334155\"/>\n<g font-size=\"10\" fill=\"#fff\">\n<text x=\"50\" y=\"75\">1.8</text><text x=\"160\" y=\"75\" text-anchor=\"middle\">1.4</text><text x=\"285\" y=\"75\" text-anchor=\"end\">1.8</text>\n<text x=\"50\" y=\"150\" dy=\"0\">1.4</text><text x=\"160\" y=\"150\" text-anchor=\"middle\" fill=\"#22c55e\" font-weight=\"bold\">1.0</text><text x=\"285\" y=\"150\" text-anchor=\"end\">1.4</text>\n<text x=\"50\" y=\"225\">1.8</text><text x=\"160\" y=\"225\" text-anchor=\"middle\">1.4</text><text x=\"285\" y=\"225\" text-anchor=\"end\">1.8</text>\n</g>\n<g stroke=\"rgba(255,255,255,0.15)\" stroke-width=\"0.5\">\n<line x1=\"100\" y1=\"60\" x2=\"100\" y2=\"230\"/>\n<line x1=\"160\" y1=\"60\" x2=\"160\" y2=\"230\"/>\n<line x1=\"220\" y1=\"60\" x2=\"220\" y2=\"230\"/>\n<line x1=\"40\" y1=\"100\" x2=\"300\" y2=\"100\"/>\n<line x1=\"40\" y1=\"145\" x2=\"300\" y2=\"145\"/>\n<line x1=\"40\" y1=\"190\" x2=\"300\" y2=\"190\"/>\n</g>\n<text x=\"500\" y=\"80\" fill=\"#94a3b8\" font-size=\"11\">中心 1.0：原始亮度</text>\n<text x=\"500\" y=\"100\" fill=\"#94a3b8\" font-size=\"11\">边缘 1.4-1.8：拉亮 40-80%</text>\n<text x=\"500\" y=\"125\" fill=\"#fbbf24\" font-size=\"11\">⚠️ R/Gr/Gb/B 各一张表</text>\n<text x=\"500\" y=\"142\" fill=\"#94a3b8\" font-size=\"11\">分通道校准避免颜色偏移</text>\n<text x=\"500\" y=\"170\" fill=\"#94a3b8\" font-size=\"11\">运行时双线性插值</text>\n<text x=\"500\" y=\"187\" fill=\"#94a3b8\" font-size=\"11\">从 17×13 网格点</text>\n<text x=\"500\" y=\"204\" fill=\"#94a3b8\" font-size=\"11\">算出每像素增益</text>\n</g>\n</svg>\n<figcaption>图：LSC 增益表（中心 1.0、四角 1.8 拉亮 80%）</figcaption>\n</figure>\n",
+      "glossary": [
+        {
+          "term": "Vignetting",
+          "zh": "暗角",
+          "explain": "镜头光路造成画面边缘比中心暗的现象，物理决定，必须用 LSC 算法补偿。"
+        },
+        {
+          "term": "Lens Shading Correction (LSC)",
+          "zh": "镜头阴影校正",
+          "explain": "ISP 模块，按预先校准的增益表给每个像素打 gain，把暗角补亮。"
+        },
+        {
+          "term": "Bilinear Interpolation",
+          "zh": "双线性插值",
+          "explain": "从稀疏网格点（如 17×13）插值出任意位置的值。LSC、Tone Mapping 都用。"
+        },
+        {
+          "term": "Mesh",
+          "zh": "网格",
+          "explain": "LSC 增益表的另一种叫法。17×13 mesh 表示横向 17 个采样点、纵向 13 个。"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "title": "Demosaic 深入：拉链效应是怎么消除的",
+      "type": "concept",
+      "content": "### Day 2 复习\n\nDay 2 我们说 Demosaic 是把 Bayer 图（每像素只 1 色）插值还原成 RGB 图（每像素 3 色）的算法。最简单的是**双线性插值**：缺什么颜色，就找邻居里那个颜色的几个像素求平均。\n\n双线性插值有个老问题：在**高对比边缘**（比如黑白格子）上会出现彩色条纹，俗称**拉链效应**（Zipper Artifact）。\n\n### 为什么有拉链效应\n\n看一个 Bayer 排列的边缘场景：\n\n```\n左边全黑（值=0），右边全白（值=255）：\n\nR0 G0 R0 G0 | R255 G255 R255 G255\nG0 B0 G0 B0 | G255 B255 G255 B255\n```\n\n双线性插值算横跨边界处某个 R 像素的 G 值：\n- 左边邻居 G0\n- 右边邻居 G255\n- 平均 = G127.5\n\n但**实际上这个 R 像素**所在位置应该是「全黑」或「全白」 —— G 值取 127 既不黑也不白，画面上看就是个**灰色像素夹在黑白边缘里**。\n\n这种「边缘上跳出错误中间色」就是拉链效应。\n\n### 进阶 Demosaic 算法：边缘感知\n\n现代相机的 Demosaic 都不用纯双线性了。**边缘感知**算法（Edge-Aware）的思路：\n\n```\n要算位置 P 的 G 值时，先看看 P 附近是不是有强边缘：\n  ├─ 横向边缘（左暗右亮）→ 沿边缘方向插值（用上下的 G）\n  ├─ 纵向边缘（上暗下亮）→ 沿边缘方向插值（用左右的 G）\n  └─ 没明显边缘 → 退化为双线性\n```\n\n核心是「**沿边缘插值，不要跨边缘**」。\n\n常见的边缘感知 Demosaic：\n\n- **AHD**（Adaptive Homogeneity-Directed）：高通早期 ISP 用过，根据周围像素「同质性」选方向\n- **DCB**：分两步，先大致 demosaic，再用结果反过来精修\n- **VNG**（Variable Number of Gradients）：算 8 个方向梯度，选最小的几个方向插值\n- **AMaZE**：开源 dcraw 用的高质量算法\n\n实际手机 ISP 的 Demosaic 是高通自己实现的（更接近 AHD 思路），用户/Tuning 工程师不写算法本身，但能调它的**敏感度参数**。\n\n### 调教参数（重点）\n\nChromatix 里 Demosaic 模块常见参数：\n\n- **EdgeStrength**：边缘检测的敏感度。值大 → 更多地方被判为「有边缘」→ 走边缘插值\n  - 太大：噪点也被当边缘 → Demosaic 后噪点变粗糙\n  - 太小：真边缘没被识别 → 拉链效应回来\n\n- **DirectionalThreshold**：选哪个方向插值的阈值\n\n- **ColorArtifactSuppression**：彩色边缘抑制，专门压制拉链效应残留\n  - 太大：真彩色边缘也被弱化 → 颜色生气不足\n\n这些参数通常厂商出厂调好了，但你**遇到边缘 artifact 时要会调**。\n\n### 排错典型场景\n\n**1. 黑白格子边缘有彩色条纹**：\n- Demosaic 拉链效应没压住\n- 调高 ColorArtifactSuppression\n\n**2. 文字边缘锯齿**：\n- Demosaic 边缘检测太弱\n- 调高 EdgeStrength\n\n**3. 草地 / 树叶细节像油画**：\n- Demosaic 边缘检测太强 → 大量平滑\n- 调低 EdgeStrength + DirectionalThreshold\n\n<figure>\n<svg viewBox=\"0 0 700 220\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"Demosaic 拉链效应\">\n<g font-family=\"sans-serif\" font-size=\"12\" fill=\"#e2e8f0\">\n<text x=\"350\" y=\"20\" text-anchor=\"middle\" fill=\"#cbd5e1\">拉链效应：双线性 vs 边缘感知 Demosaic</text>\n<text x=\"170\" y=\"55\" text-anchor=\"middle\" fill=\"#ef4444\" font-weight=\"bold\">双线性插值（错）</text>\n<g transform=\"translate(50,70)\">\n<rect x=\"0\" y=\"0\" width=\"40\" height=\"40\" fill=\"#000\"/>\n<rect x=\"40\" y=\"0\" width=\"40\" height=\"40\" fill=\"#000\"/>\n<rect x=\"80\" y=\"0\" width=\"40\" height=\"40\" fill=\"#a855f7\"/>\n<rect x=\"120\" y=\"0\" width=\"40\" height=\"40\" fill=\"#a855f7\"/>\n<rect x=\"160\" y=\"0\" width=\"40\" height=\"40\" fill=\"#fff\"/>\n<rect x=\"200\" y=\"0\" width=\"40\" height=\"40\" fill=\"#fff\"/>\n<rect x=\"0\" y=\"40\" width=\"40\" height=\"40\" fill=\"#000\"/>\n<rect x=\"40\" y=\"40\" width=\"40\" height=\"40\" fill=\"#22c55e\"/>\n<rect x=\"80\" y=\"40\" width=\"40\" height=\"40\" fill=\"#a855f7\"/>\n<rect x=\"120\" y=\"40\" width=\"40\" height=\"40\" fill=\"#22c55e\"/>\n<rect x=\"160\" y=\"40\" width=\"40\" height=\"40\" fill=\"#fff\"/>\n<rect x=\"200\" y=\"40\" width=\"40\" height=\"40\" fill=\"#fff\"/>\n<text x=\"120\" y=\"105\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">边缘出现紫色/绿色条纹</text>\n</g>\n<text x=\"510\" y=\"55\" text-anchor=\"middle\" fill=\"#22c55e\" font-weight=\"bold\">边缘感知（对）</text>\n<g transform=\"translate(390,70)\">\n<rect x=\"0\" y=\"0\" width=\"40\" height=\"40\" fill=\"#000\"/>\n<rect x=\"40\" y=\"0\" width=\"40\" height=\"40\" fill=\"#000\"/>\n<rect x=\"80\" y=\"0\" width=\"40\" height=\"40\" fill=\"#000\"/>\n<rect x=\"120\" y=\"0\" width=\"40\" height=\"40\" fill=\"#fff\"/>\n<rect x=\"160\" y=\"0\" width=\"40\" height=\"40\" fill=\"#fff\"/>\n<rect x=\"200\" y=\"0\" width=\"40\" height=\"40\" fill=\"#fff\"/>\n<rect x=\"0\" y=\"40\" width=\"40\" height=\"40\" fill=\"#000\"/>\n<rect x=\"40\" y=\"40\" width=\"40\" height=\"40\" fill=\"#000\"/>\n<rect x=\"80\" y=\"40\" width=\"40\" height=\"40\" fill=\"#000\"/>\n<rect x=\"120\" y=\"40\" width=\"40\" height=\"40\" fill=\"#fff\"/>\n<rect x=\"160\" y=\"40\" width=\"40\" height=\"40\" fill=\"#fff\"/>\n<rect x=\"200\" y=\"40\" width=\"40\" height=\"40\" fill=\"#fff\"/>\n<text x=\"120\" y=\"105\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">沿边缘方向插值，保持锐利</text>\n</g>\n<text x=\"350\" y=\"180\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">双线性跨边缘平均 = 错误中间色（紫/绿）</text>\n<text x=\"350\" y=\"198\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"11\">边缘感知判断方向 → 沿边缘插值不跨边</text>\n</g>\n</svg>\n<figcaption>图：拉链效应来源（左）vs 边缘感知 Demosaic（右）</figcaption>\n</figure>\n",
+      "glossary": [
+        {
+          "term": "Zipper Artifact",
+          "zh": "拉链效应",
+          "explain": "Demosaic 在高对比边缘产生的彩色条纹瑕疵。"
+        },
+        {
+          "term": "Edge-Aware Demosaic",
+          "zh": "边缘感知去马赛克",
+          "explain": "沿边缘方向插值的算法，能减少拉链效应。AHD/DCB/VNG/AMaZE 都属于这类。"
+        },
+        {
+          "term": "Color Artifact Suppression",
+          "zh": "彩色瑕疵抑制",
+          "explain": "Demosaic 后专门压制残留彩色条纹的子模块。"
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天学了 3 件事\n\n1. **OB 黑电平校正**：用 sensor 边缘 OB Pixel 实时统计，每帧减去；不减整张图发灰\n2. **LSC 暗角校正**：用 17×13 网格的增益表补偿四角；R/Gr/Gb/B 分通道校准；放在 Demosaic 之前\n3. **Demosaic 深入**：边缘感知算法（AHD/DCB/VNG）解决拉链效应；调教时调 EdgeStrength 和 ColorArtifactSuppression\n\n### 自我检查\n\n1. OB 偏置由哪三部分组成？为什么要每帧重新算而不是固定值？\n2. LSC 校准用什么测试图？为什么要分 R/Gr/Gb/B 四通道？\n3. 为什么 LSC 必须在 Demosaic 之前？\n4. 双线性 Demosaic 在什么场景下出现拉链效应？怎么避免？\n5. Demosaic 后画面草地像油画，应该调哪个参数？\n\n### 笔记建议\n\n- 把 IFE 段流水线**前 6 步**画一遍：坏点校正 → OB → LSC → Bayer 统计 → PD → Demosaic\n- 思考：为什么 LSC 要分 R/G/B 通道，而 OB 不用？（答案：OB 是黑电平偏置，与颜色无关；LSC 受镜头色差影响）\n\n### 明天预告\n\nDay 10 进入 ISP 「色彩部门」：白平衡 (WB) + 色彩矩阵 (CCM)。学完你会理解「为什么白纸看着是白的」、「为什么有些手机拍出来颜色比真实更鲜艳」 —— 这是后面 Week 5-6 学 AWB 算法的基础。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    {
+      "source": "高通 3A 7.0 Tuning Guide",
+      "page": 22,
+      "section": "3.8 调试 LED 闪光灯的 LSC（背景术语）"
+    },
+    {
+      "source": "维基百科 · Demosaicing",
+      "url": "https://en.wikipedia.org/wiki/Demosaicing"
+    },
+    {
+      "source": "维基百科 · Vignetting",
+      "url": "https://en.wikipedia.org/wiki/Vignetting"
+    }
+  ],
+  "dailyQuizId": "daily-day-09"
+}

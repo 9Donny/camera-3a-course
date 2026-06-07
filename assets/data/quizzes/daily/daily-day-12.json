@@ -1,0 +1,46 @@
+{
+  "id": "daily-day-12",
+  "module": "M2",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "short",
+      "prompt": "PRD 第 9 题：默写 LTM 算法的 4 个步骤。",
+      "referenceAnswer": "1. 应用双边滤波器（Bilateral Filter）生成非线性 mask（区分明暗区域）；2. 避免边缘出现光晕瑕疵（halo 抑制）；3. 使用 LTM 曲线集（Curve Set）进行局部增益调整；4. 使用 LTM 和 LCE（局部对比度增强）的组合计算 local gain。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "PRD 第 13 题：TMC 的作用是？",
+      "options": [
+        "降噪算法",
+        "锐化算法",
+        "LTM 和 GTM 的混合比例统计，占比和=1",
+        "色彩增强"
+      ],
+      "answer": "LTM 和 GTM 的混合比例统计，占比和=1",
+      "explain": "TMC 控制 α，最终输出 = α×LTM + (1-α)×GTM。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "PRD 第 16 题：Dark Boost gain = ___ / safe_target（填变量名）。",
+      "answer": ["long_target", "long target", "long-target"],
+      "explain": "Dark Boost gain = long_target / safe_target，再受 MaxDarkBoostGain 和 ADRC 限制取最小。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "ADRC gain = safe_target / ___ （填变量名）。",
+      "answer": ["short_target", "short target"],
+      "explain": "ADRC gain = safe_target / short_target，short_target = min(bright_low, bright_high, safe_target)。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "「LTM 和 Dark Boost 都拉亮暗部」，两者的本质区别是什么？",
+      "referenceAnswer": "LTM 是「智能模式」：自动判断哪些区域偏暗并局部拉亮，由 Bilateral Filter mask 驱动。Dark Boost 是 Tuning 工程师的「显式工具」：直接告诉系统全图暗部都拉 X 倍。两者互补：LTM 处理「场景智能识别」，Dark Boost 处理「整体偏好调整」。"
+    }
+  ]
+}

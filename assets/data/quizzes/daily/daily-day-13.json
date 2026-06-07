@@ -1,0 +1,52 @@
+{
+  "id": "daily-day-13",
+  "module": "M2",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "short",
+      "prompt": "PRD 第 7 题：影响对比度的模块有哪些？",
+      "referenceAnswer": "Gamma、LTM、GTM、TMC。其中 Gamma 是全局曲线（最先调），LTM/GTM 是 Tone Mapping（局部 vs 全局），TMC 是 LTM/GTM 混合控制器。Dark Boost、ADRC、LCE 也间接影响，但 PRD 标准答案是这 4 个。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "为什么 ISP 流水线里要做两次降噪？",
+      "options": [
+        "性能考虑",
+        "Bayer 域去散粒噪声 + YUV 域去色彩噪声，目标不同",
+        "硬件限制",
+        "降噪一次不够干净"
+      ],
+      "answer": "Bayer 域去散粒噪声 + YUV 域去色彩噪声，目标不同",
+      "explain": "两次降噪面对不同噪声类型：Bayer 域 RAW 还干净时去物理散粒噪声；YUV 域专门处理色度通道的彩色斑点。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "经典锐化算法 Unsharp Mask 公式：锐化结果 = 原图 + (原图 - ___) × strength。",
+      "answer": ["模糊版", "模糊", "blur", "blurred"],
+      "explain": "USM = 原图 + (原图 - 模糊版) × strength。差值是边缘信息，乘系数加回去强化边缘。"
+    },
+    {
+      "id": "q4",
+      "type": "choice",
+      "prompt": "锐化（Sharpen）调过强会出现什么 artifact？",
+      "options": [
+        "暗角",
+        "halo（亮/暗边光环）",
+        "色温偏移",
+        "果冻效应"
+      ],
+      "answer": "halo（亮/暗边光环）",
+      "explain": "强对比边缘旁边会出现一圈过亮 / 过暗环。和 LTM 的 halo 类似处理思路。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "用户报「夜景画面像油画、细节模糊」，从 ISP 模块角度怎么排查？",
+      "referenceAnswer": "1. 先看 ISO（Week 3）—— 是不是 ISO 拉太高，触发了高强度降噪？2. 看 Bayer 域降噪强度（DenoiseStrength + ISO 关联曲线）；3. 看 YUV 域 Chroma 降噪是否过强；4. 看 Sharpen 是否被降噪后的「软」画面带跑偏；5. 综合调降噪和锐化的平衡点。这是降噪 vs 细节这对永恒矛盾的体现。"
+    }
+  ]
+}

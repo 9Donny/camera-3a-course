@@ -1,0 +1,48 @@
+{
+  "id": "daily-day-14",
+  "module": "M2",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "Demosaic 是 ISP Pipeline 里的什么分水岭？",
+      "options": [
+        "RAW vs JPEG",
+        "Bayer 域 vs RGB 域",
+        "IFE vs IPE",
+        "硬件 vs 软件"
+      ],
+      "answer": "Bayer 域 vs RGB 域",
+      "explain": "Demosaic 之前每像素 1 通道（Bayer），之后每像素 3 通道（RGB）。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "调 Tone Mapping 的优先级，最先调哪个模块？",
+      "options": ["LTM", "GTM", "Gamma", "ADRC"],
+      "answer": "Gamma",
+      "explain": "PRD 第 14 题。Gamma 全局先于 LTM 局部；Gamma 在流水线更早，是 LTM 的输入基础。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "AE 算的目标亮度叫 ___，所有 Tone Mapping 类模块（LTM/GTM/ADRC/Dark Boost）都参考它。",
+      "answer": ["safe_target", "safe target", "Safe Target"],
+      "explain": "AE 算法每帧给 ISP 一个 safe_target，是 Tone Mapping 类模块的共同输入。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "高通 Spectra 的 4 段架构：IFE → ___ → IPE → CPP（填中间一段）。",
+      "answer": ["BPS", "bps"],
+      "explain": "BPS = Bayer Processing Segment，做 Bayer 域降噪、HDR 多帧合成等。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "用户报「逆光人脸太暗」，从 ISP / AE 角度，按调试优先级排查至少 4 个步骤。",
+      "referenceAnswer": "1. 看 AE 算的 safe_target —— 是不是曝光不够（AE 没识别为逆光）；2. 看 LTM —— 是否启用了局部拉亮人脸的 Curve Set；3. 看 Dark Boost —— MaxDarkBoostGain 是否太低；4. 看 Gamma 暗部曲线 —— 是否压得太狠。按 AE → LTM → Dark Boost → Gamma 排查，先看输入再看处理，先看局部再动全局。"
+    }
+  ]
+}

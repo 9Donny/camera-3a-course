@@ -1,0 +1,102 @@
+{
+  "id": "day-13",
+  "week": 2,
+  "module": "M2",
+  "title": "降噪、锐化与影响对比度的模块（PRD 第 7 题）",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "ISP 流水线最难的取舍：降噪 vs 细节",
+      "type": "concept",
+      "content": "### 一句行业老话\n\n> 「降噪和细节，**永远在打架**。」\n\n这是每个 Camera Tuning 工程师面对的核心矛盾。\n\n- **降噪强**：画面干净，但**纹理被涂抹**（草地像油画、文字边缘模糊）\n- **降噪弱**：细节保留，但**噪点明显**（暗光下颗粒感强）\n\n手机厂商的「**画质风格**」很大程度就是这个取舍点的不同选择：\n\n- iPhone 偏「保留细节、容忍轻噪点」\n- 华为偏「重度降噪、画面油画感」\n- 小米偏「中间路线」\n\n这些都是 Tuning 调出来的。\n\n### 为什么需要两次降噪\n\nDay 8 我们说过 ISP 流水线里有**两次降噪**：\n\n```\n... → Bayer 域降噪（早期，IFE/BPS 段）→ Demosaic → ... → YUV 域降噪（后期，IPE 段）→ 锐化 → ...\n```\n\n**两次降噪的目标不同**：\n\n| 维度 | Bayer 域降噪 | YUV 域降噪 |\n|---|---|---|\n| 数据格式 | 每像素 1 通道（R/G/B 分开） | Y（亮度）+ UV（色度）|\n| 主要任务 | **去散粒噪声**（Day 1 学的）| 去**色彩噪声**（Color Noise）|\n| 时机 | RAW 还干净时，去本源噪声 | 经过 Gamma / Tone Mapping 后，可能放大了某些噪声 |\n| 风险 | 太强会损失 Demosaic 的细节 | 太强会让画面油画感 |\n\n**典型场景**：\n\n- Bayer 域降噪 → 主要去暗光下传感器底层产生的散粒噪声\n- YUV 域降噪 → 主要去色彩通道（U/V）上的 chroma noise（彩色斑点）\n\n两次配合，**先在源头处理、再在最终阶段微调**。\n\n### 噪声的种类\n\n降噪算法要先识别噪声。常见的噪声类型：\n\n1. **Luma Noise（亮度噪声）**：每个像素亮度的随机抖动 → 颗粒感\n2. **Chroma Noise（色彩噪声）**：颜色随机抖动 → 彩色斑点（暗部最明显）\n3. **Banding Noise（条纹噪声）**：行 / 列方向的固定纹路\n4. **Pattern Noise（图案噪声）**：感光元件本身的固定缺陷\n\n降噪算法主要对付前两种 Luma 和 Chroma noise，后两种由 sensor 校准（Day 9 的坏点校正）解决。",
+      "glossary": [
+        {
+          "term": "Luma Noise",
+          "zh": "亮度噪声",
+          "explain": "每像素亮度值的随机抖动，看起来是颗粒感。暗光下最明显。"
+        },
+        {
+          "term": "Chroma Noise",
+          "zh": "色彩噪声",
+          "explain": "U/V 色度通道的随机抖动，看起来是彩色斑点。"
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "title": "降噪算法的 3 个流派",
+      "type": "concept",
+      "content": "### 流派 1：空间域降噪（最常见）\n\n**核心思想**：每个像素的值，**用周围邻居的值**做加权平均。\n\n最简单的：**高斯模糊**。但它是「无脑平滑」 → 边缘也被模糊掉。\n\n进阶版：**双边滤波（Bilateral Filter）**。Day 12 LTM 提过，按距离 + 亮度差加权 → **保边缘的平滑**。\n\n现代手机 ISP 里降噪基本都是双边滤波的变种。\n\n常见参数：\n\n- **NoiseProfile**：噪声水平估计（按 ISO 高低决定降噪强度）\n- **EdgeThreshold**：判定「这是边缘」的阈值\n- **DenoiseStrength**：降噪整体强度\n\n### 流派 2：变换域降噪\n\n**核心思想**：把图像变换到**频率域**（用小波变换 / DCT），噪声集中在高频，降噪 = 砍掉高频成分。\n\n手机 ISP 偶尔用，但因为算力消耗大，更多见于桌面专业软件（Photoshop / DxO）。\n\n### 流派 3：神经网络降噪（NN-based）\n\n**核心思想**：用大量「带噪图 + 干净图」对训练神经网络，让它学会「认出噪声」。\n\n现代旗舰手机已经在用：\n\n- 苹果的 Deep Fusion\n- 谷歌的 Night Sight\n- 小米 / vivo 的「夜枭」/「超级夜景」\n\n这些**不在 ISP 硬件 pipeline 里**，是在 AI 加速器（NPU）上跑的额外流程，作为后处理。Tuning 工程师**通常不调神经网络降噪**（那是算法工程师的活），但要懂它在 pipeline 里的位置。\n\n### Tuning 工作里调什么\n\n你日常 80% 时间调的是**流派 1（空间域 + 双边滤波类）**，因为：\n\n- 它是 ISP 硬件原生的，调起来反馈快\n- 参数直观（强度、阈值）\n- 是「最影响主观画质」的工具\n\n### 一个调教思路\n\n用户报「**夜景颗粒感重**」：\n\n1. 先看 ISO（**Week 3** 学）—— 是不是 ISO 拉太高？\n2. ISO 没问题 → 调 Bayer 域降噪强度（DenoiseStrength + ISO 关联曲线）\n3. 还有 → 调 YUV 域 Chroma 降噪（Chroma Noise 通常很烦人）\n4. 都不行 → 看是不是 Tone Mapping 把噪声放大了（Day 12 学的 Dark Boost 容易放大暗部噪声）\n\n按这个顺序排查，**不要直接拉降噪到最强** —— 那样就成「油画」了。\n\n### 行业前辈笔记里看到的术语\n\n- **NR**：Noise Reduction（降噪）\n- **BNR / Bayer NR**：Bayer 域降噪\n- **YUV NR / Chroma NR**：YUV / 色彩降噪\n- **TNR**：Temporal Noise Reduction（时域降噪，多帧合成）\n- **SNR**：Signal-to-Noise Ratio（信噪比）",
+      "glossary": [
+        {
+          "term": "Spatial Denoising",
+          "zh": "空间域降噪",
+          "explain": "用空间邻域像素加权平均的降噪算法，主流。"
+        },
+        {
+          "term": "Temporal Denoising",
+          "zh": "时域降噪",
+          "explain": "用时间上多帧的同位置像素平均的降噪。多帧 HDR 模式常用。"
+        },
+        {
+          "term": "NR / Denoise",
+          "zh": "降噪",
+          "explain": "Noise Reduction 简称。"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "title": "锐化（Sharpen）：让画面看起来「清晰」",
+      "type": "concept",
+      "content": "### 为什么降噪后还要锐化\n\nDay 13 第二节说降噪会让画面**整体变软**（边缘也被部分平滑）。所以降噪后必须有**锐化**模块**人为强化边缘**，让画面看起来清晰。\n\n这就是 ISP 后段那对孪生兄弟：\n\n```\n... → 降噪（平滑掉噪声 + 损失一些细节）→ 锐化（强化边缘 + 找回锐利感）→ ...\n```\n\n### 锐化的本质：边缘对比度\n\n锐化算法的核心：**找到边缘像素，让边缘两侧的对比更强烈**。\n\n经典算法叫 **Unsharp Mask（USM，反锐化掩模）**：\n\n```\n锐化结果 = 原图 + (原图 - 模糊版) × strength\n```\n\n直觉理解：\n\n- 「原图 - 模糊版」 = 边缘信息（差值）\n- 把这个差值乘以一个系数加回去 → 边缘被强化\n\n效果：边缘变得更分明，画面感「锐利」。\n\n### 调教参数\n\n常见 Sharpen 参数：\n\n- **Strength（锐化强度）**：差值乘的系数；太大 → 边缘出现「白边」（halo）\n- **Threshold（阈值）**：只有亮度差超过阈值的像素才被锐化 → 防止把噪声当边缘\n- **Radius（半径）**：模糊版用多大邻域；越大锐化效果越粗糙但更明显\n\n### 锐化的副作用\n\n锐化是把双刃剑：\n\n**副作用 1：噪声放大**\n- 噪点本身就是「随机的小亮度差」\n- 锐化算法会把它们当成「边缘」来强化\n- → 锐化后噪点更明显\n\n**副作用 2：halo（亮边）**\n- 强对比边缘旁边出现一圈亮 / 暗光环\n- 类似 Day 12 LTM 的 halo，处理方式也类似\n\n**副作用 3：过锐化看起来不自然**\n- 真实场景的边缘有渐变\n- 过度锐化让所有东西看起来像「卡通线条」\n- 用户感受：「**这手机拍照太假了**」\n\n### 平衡技巧\n\n实际调教时：\n\n1. 先把降噪调到「噪点可接受」的水平\n2. 然后调锐化「不出 halo」的最大值\n3. 看真实场景图：如果文字 / 树叶 / 头发清晰 = 够了\n4. 如果出现「白边」或「卡通感」 = 退\n\n好的 Tuning 工程师**调出来让画面「自然清晰」**，不是越锐越好。\n\n### 一个测试方法\n\n你行业前辈的笔记里大概率会提到：\n\n- 拍**斜向黑白条纹**（45° 角的格子）\n- 看条纹的边缘 —— 平滑 = 降噪过强；锯齿 = Demosaic 弱；白边 = 锐化过强；自然渐变 = 调好了\n\n### 锐化 vs Demosaic\n\nDay 9 我们说 Demosaic 也会影响清晰度（边缘感知算法）。和锐化的区别：\n\n- **Demosaic 的边缘处理**：在「Bayer 还原 RGB」时不要丢边缘（**保护**）\n- **锐化的边缘处理**：在已经有 RGB 的基础上**强化**边缘对比度\n\n两个都是边缘工具，但作用阶段和方式不同。",
+      "glossary": [
+        {
+          "term": "Sharpen",
+          "zh": "锐化",
+          "explain": "ISP 后段模块，强化图像边缘对比度让画面更清晰。"
+        },
+        {
+          "term": "Unsharp Mask (USM)",
+          "zh": "反锐化掩模",
+          "explain": "经典锐化算法：原图 + (原图 - 模糊版) × strength。"
+        },
+        {
+          "term": "Sharpen Halo",
+          "zh": "锐化光晕",
+          "explain": "锐化过强时强对比边缘旁边出现的亮 / 暗环。"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "title": "PRD 第 7 题：影响对比度的模块",
+      "type": "concept",
+      "content": "### 标准答案\n\n这是 PRD 收集的第 7 题：「**影响对比度的模块有哪些？**」\n\n标准答案（行业前辈笔记）：\n\n> **Gamma、LTM、GTM、TMC**\n\n四个模块。今天看完应该都很熟了。\n\n### 为什么是这四个\n\n「对比度」 = 画面**最亮**和**最暗**的差距 + **明暗过渡的陡峭程度**。能影响这个的模块：\n\n**1. Gamma**：\n- 决定亮度曲线形状\n- S 形 Gamma → 暗部更暗 + 亮部更亮 = 对比度强\n- 平缓 Gamma → 暗部不那么暗 + 亮部不那么亮 = 对比度弱\n\n**2. LTM（局部色调映射）**：\n- 暗部拉亮 + 亮部压暗\n- 这操作**降低**了对比度（让两端都向中间靠）\n- LTM 强 → 对比度弱（画面平稳但不戏剧）\n\n**3. GTM（全局色调映射）**：\n- 同样压缩动态范围\n- GTM 强 → 对比度弱\n\n**4. TMC**：\n- 控制 LTM/GTM 比例\n- 间接影响对比度\n\n### 你可能想加但**不在标准答案里**的模块\n\n你可能想到这些也影响对比度：\n\n- **Saturation（饱和度）**：影响色彩鲜艳，**不影响亮度对比度**\n- **CCM**：影响色彩，几乎不影响亮度对比度（除非矩阵极端）\n- **Sharpen（锐化）**：影响**边缘**对比度，不影响**整体**对比度\n- **Dark Boost**：拉暗部 → 降低对比度（这个其实可以算上）\n- **ADRC**：压缩动态范围 → 降低对比度（这个也可以算上）\n\n严格来说，**所有 Tone Mapping 类模块**（包括 Dark Boost、ADRC、LCE）都影响对比度。但**面试问的是「主要的」**，按 4 个核心答即可。\n\n如果面试官追问：\n\n> 「除了这 4 个还有吗？」\n\n你可以加：\n\n> 「Dark Boost 和 ADRC 也属于 Tone Mapping 类，间接影响对比度。LCE（局部对比度增强）专门做局部边缘对比度。但**主要**还是 Gamma + LTM/GTM + TMC 这四个。」\n\n这种答法把 PRD 的标准答案和「补充」分清楚 —— 让面试官知道**你不是死记硬背**。\n\n### Day 7 学过的 PRD 第 14 题串起来\n\nPRD 第 14 题：Gamma vs LTM 优先级。\n\n现在你学完整个 Tone Mapping 链路，应该能更深刻地答：\n\n> 「Gamma 优先。Gamma 是 ISP 流水线第 11 步，LTM 是第 13 步，**Gamma 在 LTM 之前**。在调试逻辑上，应该**先调最早 + 最全局**的模块（Gamma 决定曲线形状），再调**后期 + 局部**的模块（LTM 处理逆光等异常区域）。这样调试不会陷入循环。」\n\n这个答法把 PRD 第 7 题（影响对比度）和第 14 题（调教优先级）**联动**起来。\n\n<figure>\n<svg viewBox=\"0 0 700 240\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"影响对比度的模块\">\n<g font-family=\"sans-serif\" font-size=\"12\" fill=\"#e2e8f0\">\n<text x=\"350\" y=\"20\" text-anchor=\"middle\" fill=\"#cbd5e1\" font-size=\"14\">影响对比度的模块（PRD 第 7 题）</text>\n<rect x=\"40\" y=\"50\" width=\"620\" height=\"60\" rx=\"6\" fill=\"rgba(34,197,94,0.1)\" stroke=\"#22c55e\"/>\n<text x=\"350\" y=\"72\" text-anchor=\"middle\" fill=\"#22c55e\" font-weight=\"bold\" font-size=\"13\">主要模块（PRD 标准答案）</text>\n<g font-size=\"11\">\n<rect x=\"80\" y=\"82\" width=\"100\" height=\"22\" fill=\"#1e293b\" stroke=\"#22c55e\"/><text x=\"130\" y=\"97\" text-anchor=\"middle\" fill=\"#22c55e\">Gamma</text>\n<rect x=\"200\" y=\"82\" width=\"100\" height=\"22\" fill=\"#1e293b\" stroke=\"#22c55e\"/><text x=\"250\" y=\"97\" text-anchor=\"middle\" fill=\"#22c55e\">LTM</text>\n<rect x=\"320\" y=\"82\" width=\"100\" height=\"22\" fill=\"#1e293b\" stroke=\"#22c55e\"/><text x=\"370\" y=\"97\" text-anchor=\"middle\" fill=\"#22c55e\">GTM</text>\n<rect x=\"440\" y=\"82\" width=\"100\" height=\"22\" fill=\"#1e293b\" stroke=\"#22c55e\"/><text x=\"490\" y=\"97\" text-anchor=\"middle\" fill=\"#22c55e\">TMC</text>\n</g>\n<rect x=\"40\" y=\"125\" width=\"620\" height=\"100\" rx=\"6\" fill=\"rgba(245,158,11,0.08)\" stroke=\"#f59e0b\" stroke-dasharray=\"4 4\"/>\n<text x=\"350\" y=\"147\" text-anchor=\"middle\" fill=\"#f59e0b\" font-weight=\"bold\" font-size=\"13\">间接相关（追问可补充）</text>\n<g font-size=\"11\">\n<rect x=\"60\" y=\"160\" width=\"120\" height=\"22\" fill=\"#1e293b\" stroke=\"#f59e0b\"/><text x=\"120\" y=\"175\" text-anchor=\"middle\" fill=\"#f59e0b\">Dark Boost</text>\n<rect x=\"200\" y=\"160\" width=\"100\" height=\"22\" fill=\"#1e293b\" stroke=\"#f59e0b\"/><text x=\"250\" y=\"175\" text-anchor=\"middle\" fill=\"#f59e0b\">ADRC</text>\n<rect x=\"320\" y=\"160\" width=\"100\" height=\"22\" fill=\"#1e293b\" stroke=\"#f59e0b\"/><text x=\"370\" y=\"175\" text-anchor=\"middle\" fill=\"#f59e0b\">LCE</text>\n<rect x=\"440\" y=\"160\" width=\"100\" height=\"22\" fill=\"#1e293b\" stroke=\"#475569\"/><text x=\"490\" y=\"175\" text-anchor=\"middle\" fill=\"#94a3b8\">Sharpen*</text>\n<rect x=\"560\" y=\"160\" width=\"80\" height=\"22\" fill=\"#1e293b\" stroke=\"#475569\"/><text x=\"600\" y=\"175\" text-anchor=\"middle\" fill=\"#94a3b8\">CCM*</text>\n</g>\n<text x=\"350\" y=\"200\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">* Sharpen 影响边缘对比度（不是整体）；CCM 主要影响色彩饱和度</text>\n<text x=\"350\" y=\"216\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">PRD 标准答案不含这两个，但都和「对比度」有关，追问时可提</text>\n</g>\n</svg>\n<figcaption>图：影响对比度的模块全集 —— 绿框是 PRD 主要答案</figcaption>\n</figure>\n",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天学了 4 件事（含 PRD 第 7 题）\n\n1. **降噪流派**：空间域（双边滤波，主流）/ 变换域（小波、DCT）/ 神经网络（NPU 跑，旗舰用）\n2. **两次降噪**：Bayer 域去散粒噪声 + YUV 域去 Chroma 噪声\n3. **锐化**：USM 算法 = 原图 + (原图 - 模糊版) × strength；调好「不出 halo、不放大噪声」\n4. **PRD 第 7 题**：影响对比度的核心模块 = **Gamma + LTM + GTM + TMC**\n\n### 自我检查\n\n1. 为什么 ISP 要做两次降噪？两次的目标不同点？\n2. 双边滤波相比高斯模糊好在哪？\n3. 锐化的 USM 公式是什么？过强时会出什么 artifact？\n4. 默写 PRD 第 7 题：影响对比度的模块有哪些？\n5. 为什么 Sharpen 不算「主要影响对比度的模块」？\n\n### 笔记建议\n\n- **PRD 第 7 题答案**：「Gamma、LTM、GTM、TMC」 —— 一定要记下来\n- 总结 ISP 后段「降噪 + 锐化」的关系：先降噪后锐化，互相平衡，调教时一起调\n- 你的笔记里现在应该已经有了 **PRD 第 7、9、13、14、16 共 5 道 ISP 题** 的答案 —— 这是 Week 2 最值钱的产出\n\n### 明天预告\n\nDay 14 是 Week 2 的总结日。我们会用一张大图把 22 个模块全部串起来，回答几个易混点，然后你做 Week 2 周考。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    {
+      "source": "维基百科 · Image noise",
+      "url": "https://en.wikipedia.org/wiki/Image_noise"
+    },
+    {
+      "source": "维基百科 · Bilateral filter",
+      "url": "https://en.wikipedia.org/wiki/Bilateral_filter"
+    },
+    {
+      "source": "维基百科 · Unsharp masking",
+      "url": "https://en.wikipedia.org/wiki/Unsharp_masking"
+    }
+  ],
+  "dailyQuizId": "daily-day-13"
+}

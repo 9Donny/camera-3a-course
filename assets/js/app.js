@@ -306,14 +306,18 @@ function isFreshDevice() {
 
 const wasFresh = isFreshDevice();
 
-// 启动时加载 Week 1 种子卡片（已存在的卡片不会被覆盖学习状态）
+// 启动时加载所有可用的 Week 种子卡片（已存在的卡片不会被覆盖学习状态）
 async function loadSeedFlashcards() {
-  try {
-    const res = await fetch("./assets/data/flashcards/week-1.json");
-    if (!res.ok) return;
-    const seeds = await res.json();
-    flashcards.loadInitial(seeds);
-  } catch (e) { /* 文件不存在或格式错时静默 */ }
+  // 后续添加 week-N 直接加进 weeks 数组
+  const weeks = ["week-1", "week-2"];
+  for (const w of weeks) {
+    try {
+      const res = await fetch(`./assets/data/flashcards/${w}.json`);
+      if (!res.ok) continue;
+      const seeds = await res.json();
+      flashcards.loadInitial(seeds);
+    } catch (e) { /* 文件不存在或格式错时静默，继续下一周 */ }
+  }
 }
 await loadSeedFlashcards();
 
