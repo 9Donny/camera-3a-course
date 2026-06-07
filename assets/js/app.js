@@ -294,7 +294,6 @@ if (sidebarOverlay) sidebarOverlay.addEventListener("click", closeSidebar);
 window.addEventListener("hashchange", closeSidebar);
 
 renderDashboard();
-maybeAskNickname();
 
 // 启动时加载 Week 1 种子卡片（已存在的卡片不会被覆盖学习状态）
 async function loadSeedFlashcards() {
@@ -307,42 +306,51 @@ async function loadSeedFlashcards() {
 }
 await loadSeedFlashcards();
 
-// 启动时若已配置且启用同步，先 pull 一次（不阻塞 UI 太久）
+// 启动时若已配置且启用同步，先 pull 一次。
+// 关键：必须 await 完成；并且在 pull 成功之前禁止 installAutoSync，
+// 否则 prompt / 任何 UI 写入都会把本地空状态覆盖到云端。
 async function bootSync() {
   const cfg = sync.getConfig();
-  if (!cfg.enabled || !cfg.email || !cfg.password) return;
+  if (!cfg.enabled || !cfg.email || !cfg.password) return { skipped: true };
   syncState = "syncing";
   renderDashboard();
   try {
     const r = await sync.pull();
     syncState = "ok";
     renderDashboard();
-    // 启动时拉到了远端数据：内存里的对象都是旧的，必须 reload
-    if (r && r.downloadedKeys > 0) {
-      // 防止 reload 风暴：用 sessionStorage 标记本次会话已 reload 过
-      const flag = "camera3a:bootReloaded";
-      if (!sessionStorage.getItem(flag)) {
-        sessionStorage.setItem(flag, "1");
-        // 给用户一个不打扰的提示，让粒子/dashboard 渲染完成后再 reload
-        setTimeout(() => location.reload(), 300);
-      }
-    }
+    return r;
   } catch (e) {
     syncState = "err";
     syncLastError = e.message;
     console.warn("[sync] boot pull failed:", e.message);
+    renderDashboard();
+    return { error: e.message };
   }
-  renderDashboard();
 }
-// 不 await：让 router 立即工作，sync 在后台进行
-bootSync();
 
-// 自动同步：写入后 2 秒 debounce 上传
+const bootResult = await bootSync();
+
+// 拉到了远端数据 → 必须 reload 才能让内存里的 progress/notes/flashcards 更新
+if (bootResult && bootResult.downloadedKeys > 0) {
+  const flag = "camera3a:bootReloaded";
+  if (!sessionStorage.getItem(flag)) {
+    sessionStorage.setItem(flag, "1");
+    location.reload();
+    // 注意：reload 后整个脚本会重跑，下面的代码这一次不会执行
+    // 但因为 sessionStorage 已置 1，下次 bootSync 即使再拉到数据也不会再 reload
+  }
+}
+
+// 现在数据状态确定下来了，才允许：
+// 1. 装自动同步钩子
+// 2. 弹昵称 prompt
 installAutoSync({
   debounceMs: 2000,
   onSuccess: () => { syncState = "ok"; renderDashboard(); },
   onError: (e) => { syncState = "err"; syncLastError = e.message; renderDashboard(); },
 });
+
+maybeAskNickname();
 
 router.start();
 
