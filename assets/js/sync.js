@@ -1,17 +1,37 @@
 // 坚果云同步引擎
 // 数据流：
 //   1. 收集本地所有 camera3a:* 的 localStorage 键 → snapshot
-//   2. PUT 到 /dav-proxy/dav/camera-3a/sync.json（基本认证 + WebDAV）
+//   2. PUT 到 <PROXY_BASE>/dav/camera-3a/sync.json（基本认证 + WebDAV）
 //   3. 拉取远端同一文件 → 比较 lastModifiedAt → 合并/覆盖
 //
 // 冲突策略：键级别 last-write-wins。每个键带 mtime 元数据，谁新用谁的值。
+//
+// 代理来源：
+//   - 本地（localhost / LAN IP）→ 用 server.py 内置代理 /dav-proxy/
+//   - 公网（GitHub Pages 等）→ 用 Cloudflare Worker（在同步配置页填写 URL）
 
 import { storage } from "./storage.js";
 
 const PREFIX = "camera3a:";
 const CFG_KEY = "syncConfig";
 const META_KEY = "syncMeta"; // { lastSyncedAt, lastDevice, keyMtimes: { [key]: ms } }
-const REMOTE_PATH = "/dav-proxy/dav/camera-3a/sync.json";
+
+// 默认代理：本地 server.py 提供
+const DEFAULT_PROXY_BASE = "/dav-proxy";
+
+// 决定代理 URL：优先用配置里的 proxyBase，否则用默认值
+function proxyBase() {
+  const cfg = storage.get(CFG_KEY, {});
+  const base = (cfg.proxyBase || DEFAULT_PROXY_BASE).replace(/\/+$/, "");
+  return base;
+}
+
+function davUrl(path) {
+  // path 形如 "/dav/camera-3a/sync.json"
+  return proxyBase() + path;
+}
+
+const REMOTE_PATH = "/dav/camera-3a/sync.json"; // 不带 proxy 前缀，运行时拼
 
 // 不参与同步的本地键（视图临时态、跳过标记等）
 const EXCLUDE = new Set([
@@ -91,7 +111,7 @@ export const sync = {
     const cfg = this.getConfig();
     if (!cfg.email || !cfg.password) throw new Error("未配置邮箱或密码");
     const auth = "Basic " + btoa(`${cfg.email}:${cfg.password}`);
-    const res = await fetch("/dav-proxy/dav/", {
+    const res = await fetch(davUrl("/dav/"), {
       method: "PROPFIND",
       headers: { Authorization: auth, Depth: "0" },
     });
@@ -103,7 +123,7 @@ export const sync = {
   // 确保远端目录存在
   async _ensureFolder(auth) {
     // MKCOL 返回 405（已存在）或 201（新建）都可以
-    await fetch("/dav-proxy/dav/camera-3a/", {
+    await fetch(davUrl("/dav/camera-3a/"), {
       method: "MKCOL",
       headers: { Authorization: auth },
     }).catch(() => {});
@@ -137,7 +157,7 @@ export const sync = {
     };
 
     const body = JSON.stringify(snapshot);
-    const res = await fetch(REMOTE_PATH, {
+    const res = await fetch(davUrl(REMOTE_PATH), {
       method: "PUT",
       headers: {
         Authorization: auth,
@@ -163,7 +183,7 @@ export const sync = {
     // 顺手保证目录存在（首次 pull 时坚果云会 409）
     await this._ensureFolder(auth);
 
-    const res = await fetch(REMOTE_PATH, {
+    const res = await fetch(davUrl(REMOTE_PATH), {
       method: "GET",
       headers: { Authorization: auth },
     });

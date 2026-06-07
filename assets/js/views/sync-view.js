@@ -47,6 +47,10 @@ export function renderSync(content) {
           <span>设备名</span>
           <input type="text" id="syncDevice" value="${escapeAttr(cfg.device)}" placeholder="例如：Mac / 手机 / 公司电脑" autocomplete="off">
         </label>
+        <label class="sync-field">
+          <span>WebDAV 代理地址（高级 — 公网部署时填，本地留空）</span>
+          <input type="text" id="syncProxy" value="${escapeAttr(cfg.proxyBase || "")}" placeholder="例如：https://camera3a-sync.workers.dev（留空 = 用本地 server.py）" autocomplete="off">
+        </label>
         <label class="sync-field sync-toggle">
           <input type="checkbox" id="syncEnabled" ${cfg.enabled ? "checked" : ""}>
           <span>启用自动同步（每次写入后 2 秒延时上传）</span>
@@ -104,6 +108,7 @@ export function renderSync(content) {
       email: document.getElementById("syncEmail").value.trim(),
       password: document.getElementById("syncPassword").value,
       device: document.getElementById("syncDevice").value.trim(),
+      proxyBase: document.getElementById("syncProxy").value.trim().replace(/\/+$/, ""),
       enabled: document.getElementById("syncEnabled").checked,
     };
   }
@@ -161,6 +166,7 @@ export function renderSync(content) {
       email: cfg.email,
       password: cfg.password,
       device: "",
+      proxyBase: cfg.proxyBase || "",
     });
     const b64 = btoa(unescape(encodeURIComponent(payload)))
       .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");

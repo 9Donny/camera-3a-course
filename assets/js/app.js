@@ -331,6 +331,7 @@ function tryApplySyncConfigFromURL() {
       email: cfg.email,
       password: cfg.password,
       device: cfg.device || "新设备",
+      proxyBase: cfg.proxyBase || "",
     });
     // 清除 URL 参数，防止再次刷新或别人偷看
     history.replaceState(null, "", location.pathname + location.hash);
