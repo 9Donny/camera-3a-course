@@ -295,6 +295,17 @@ window.addEventListener("hashchange", closeSidebar);
 
 renderDashboard();
 
+// 检测是不是「全新设备」：除了刚才被加载的种子配置，没有真实学习数据
+function isFreshDevice() {
+  const ks = ["progress", "notes", "flashcards", "profile", "syncConfig"];
+  for (const k of ks) {
+    if (localStorage.getItem("camera3a:" + k)) return false;
+  }
+  return true;
+}
+
+const wasFresh = isFreshDevice();
+
 // 启动时加载 Week 1 种子卡片（已存在的卡片不会被覆盖学习状态）
 async function loadSeedFlashcards() {
   try {
@@ -305,6 +316,22 @@ async function loadSeedFlashcards() {
   } catch (e) { /* 文件不存在或格式错时静默 */ }
 }
 await loadSeedFlashcards();
+
+// 全新设备 + 没同步配置 → 引导用户从云端恢复（避免随便填昵称导致云端被覆盖）
+if (wasFresh && !sync.getConfig().email) {
+  const restore = confirm(
+    "👋 这台设备好像是第一次使用 Camera 3A 课程。\n\n" +
+    "如果你之前在其他设备上用过、并配置了坚果云同步，强烈建议现在先去配置同步，从云端恢复你的进度和笔记。\n\n" +
+    "点【确定】去同步设置页\n" +
+    "点【取消】当作全新开始（不会从云端拉取）"
+  );
+  if (restore) {
+    location.hash = "#/sync";
+    // 不再继续后面的 bootSync / autoSync 装载
+    // 用户填完配置在同步页点立即同步会自己处理一切
+    throw new Error("[boot] redirecting to sync setup; rest of boot skipped");
+  }
+}
 
 // 启动时若已配置且启用同步，先 pull 一次。
 // 关键：必须 await 完成；并且在 pull 成功之前禁止 installAutoSync，
