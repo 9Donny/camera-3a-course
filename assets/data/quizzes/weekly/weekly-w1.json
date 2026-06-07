@@ -1,0 +1,113 @@
+{
+  "id": "weekly-w1",
+  "module": "M1",
+  "scope": "weekly",
+  "questions": [
+    {
+      "id": "wq1",
+      "type": "choice",
+      "prompt": "曝光三要素中，手机用户实际可调的两个是？",
+      "options": ["光圈和快门", "快门和 ISO", "光圈和 ISO", "光圈、快门、ISO 都可调"],
+      "answer": "快门和 ISO",
+      "explain": "Day 1 + Day 4。手机光圈大多物理固定。"
+    },
+    {
+      "id": "wq2",
+      "type": "choice",
+      "prompt": "Bayer 阵列里哪种颜色的像素数量最多？",
+      "options": ["红色", "绿色", "蓝色", "三种一样多"],
+      "answer": "绿色",
+      "explain": "Day 2。1:2:1 比例。绿色 = 亮度信息主载体，因为人眼对绿光最敏感。"
+    },
+    {
+      "id": "wq3",
+      "type": "choice",
+      "prompt": "现代手机用什么类型的传感器？",
+      "options": ["CCD", "CMOS", "Vidicon 摄像管", "Foveon X3"],
+      "answer": "CMOS",
+      "explain": "Day 3。CMOS 在 2010 年后全面取代 CCD。"
+    },
+    {
+      "id": "wq4",
+      "type": "choice",
+      "prompt": "拍快速旋转的电风扇叶片变弯，原因是？",
+      "options": ["摄像头损坏", "果冻效应（卷帘快门）", "镜头畸变", "运动模糊"],
+      "answer": "果冻效应（卷帘快门）",
+      "explain": "Day 3。CMOS 一行一行读出造成的几何形变。无法消除只能缓解。"
+    },
+    {
+      "id": "wq5",
+      "type": "choice",
+      "prompt": "EV 加 1 表示曝光量变化？",
+      "options": ["增加 50%", "翻倍", "变 4 倍", "加 100"],
+      "answer": "翻倍",
+      "explain": "Day 1。EV 是 log₂ 刻度。"
+    },
+    {
+      "id": "wq6",
+      "type": "fill",
+      "prompt": "曝光方程：AV + TV = ___ + SV = EV。",
+      "answer": ["BV", "bv"],
+      "explain": "PRD 第 8 题。Day 1 重点。"
+    },
+    {
+      "id": "wq7",
+      "type": "fill",
+      "prompt": "240 fps 时单帧最长曝光时间约 ___ 毫秒（保留两位小数）。",
+      "answer": ["4.17", "4.16", "4.2"],
+      "explain": "PRD 第 11 题。1/240 秒 ≈ 4.17 ms。"
+    },
+    {
+      "id": "wq8",
+      "type": "fill",
+      "prompt": "调主闪/预闪能量比 flux，flux 越大照片越___（亮/暗）。",
+      "answer": ["暗"],
+      "explain": "PRD 第 22 题。Day 6 重点，反直觉但要硬记。"
+    },
+    {
+      "id": "wq9",
+      "type": "fill",
+      "prompt": "ISP 流水线里减去黑电平偏置的模块叫 ___（中文术语，3 个字）。",
+      "answer": ["黑电平", "OB校正", "OB", "ob"],
+      "explain": "Day 3。Black Level Correction 或 OB。ISP pipeline 第一步。"
+    },
+    {
+      "id": "wq10",
+      "type": "fill",
+      "prompt": "色彩学最常用的「平均日光」标准光源代号是 ___（字母+数字）。",
+      "answer": ["D65", "d65"],
+      "explain": "Day 6。色温 6504K。AWB 校准默认参考。"
+    },
+    {
+      "id": "wq11",
+      "type": "fill",
+      "prompt": "高通 AE 系统统计亮度时，把图像分成 ___ 个数据块（横×纵）。",
+      "answer": ["64×48", "64x48", "64*48"],
+      "explain": "PRD 第 17 题（下周预告）。Week 3 学 AEC 时正式讲，提前混个脸熟。"
+    },
+    {
+      "id": "wq12",
+      "type": "short",
+      "prompt": "用一句话解释什么是 ISO？为什么提 ISO 会增加噪点？",
+      "referenceAnswer": "ISO 是对模拟信号的电子放大倍数。提 ISO 时已经接收到的信号（含噪声）整体被放大，且放大电路本身也会引入读出噪声 → 亮度和噪声同步增加。物理上提 ISO 不会让传感器接收更多光子。"
+    },
+    {
+      "id": "wq13",
+      "type": "short",
+      "prompt": "高通曝光表怎么调试？主要影响什么？",
+      "referenceAnswer": "PRD 第 12 题。曝光表通过 sensor 曝光时间和模拟增益（ISO）控制图像亮度。在不同 lux_index 下预先决定该用多长曝光、多少 ISO。一般策略：先加曝光时间（曝光优先），到拐点（约 1/30 秒）后切换到加 ISO（增益优先），避免手抖造成的拖影。可调的关键参数是拐点位置和 ISO 上限。主要影响画面的亮度和噪声水平。"
+    },
+    {
+      "id": "wq14",
+      "type": "short",
+      "prompt": "情景题：同事说「这张照片暗光下噪点很多」，从 Week 1 硬件知识出发，可能有哪些原因？至少列出 3 个。",
+      "referenceAnswer": "至少 3 个：(1) 散粒噪声 — 暗光下光子数本来就少，统计意义上的随机性更明显，物理决定无法消除；(2) ISO 拉得太高 — 暗光下系统倾向于高 ISO 短曝光，但电子放大让信号和噪声同步翻倍；(3) 暗电流 — 传感器自身在无光下也会漏电荷，温度高（夏天/手机发烫）时尤其明显；(4) 单像素物理尺寸太小 — 高像素手机像素尺寸 0.7μm 级别，单像素接收光子数不足；(5) 黑电平 OB 校准不准也会让暗部纹理失真。"
+    },
+    {
+      "id": "wq15",
+      "type": "short",
+      "prompt": "为什么 Camera Tuning 工程师必须懂曝光方程 AV+TV=BV+SV=EV？",
+      "referenceAnswer": "因为这是 AE 算法的物理基础。AE 系统每帧的工作就是：测出场景亮度 BV → 选定目标 EV（系统认为合适的曝光档位）→ 在等式约束下分配 AV（手机里固定）+ TV（曝光时间）+ SV（ISO）→ 写到 sensor 寄存器。后面 Week 3 调 AEC 看到的 lux_index、exp_index、曝光表全是这个方程的延伸。不懂这个方程，曝光相关的调试只能按按钮，不知道为什么这样按。"
+    }
+  ]
+}

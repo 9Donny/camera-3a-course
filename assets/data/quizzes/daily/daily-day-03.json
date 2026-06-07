@@ -1,0 +1,43 @@
+{
+  "id": "daily-day-03",
+  "module": "M1",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "现代手机摄像头几乎都用什么类型的传感器？",
+      "options": ["CCD", "CMOS", "Foveon X3", "Vidicon"],
+      "answer": "CMOS",
+      "explain": "CMOS 在功耗、读出速度、工艺成本上有降维优势。CCD 已退到天文/科学成像等小众领域。"
+    },
+    {
+      "id": "q2",
+      "type": "fill",
+      "prompt": "传感器在没光照时也会输出非零的偏置值，这个值叫做 ___（中文术语）。",
+      "answer": ["黑电平", "OB", "ob"],
+      "explain": "Black Level / OB（Optical Black）= 暗电流 + 电路偏置。ISP 第一步要做黑电平校正。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "拍快速旋转的电风扇，叶片看起来「弯了」是什么效应？",
+      "options": ["全局快门效应", "果冻效应", "莫尔条纹", "暗角"],
+      "answer": "果冻效应",
+      "explain": "Rolling Shutter Effect。CMOS 一行一行读出，行间几毫秒错开造成的几何形变。无法消除，只能缓解。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "由于镜头物理特性，画面中心比四角更亮，校正这种现象的 ISP 模块叫 ___（英文缩写）。",
+      "answer": ["LSC", "lsc"],
+      "explain": "Lens Shading Correction。校正方法是在标准光源下拍均匀白板，建立位置→增益对照表。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "手机摄像头几乎都是「卷帘快门」，为什么不用「全局快门」？",
+      "referenceAnswer": "全局快门让所有像素同时曝光读出，没有果冻效应，但每个像素需要额外的存储电容暂存电荷，工艺复杂、成本高、有效进光面积小。手机受成本和模组厚度约束，几乎不上全局快门。它主要用于工业机器视觉和少数专业相机（如索尼 a9）。"
+    }
+  ]
+}

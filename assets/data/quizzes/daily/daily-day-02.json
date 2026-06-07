@@ -1,0 +1,43 @@
+{
+  "id": "daily-day-02",
+  "module": "M1",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "Bayer 阵列里红、绿、蓝像素的比例是？",
+      "options": ["1:1:1", "1:2:1", "2:1:2", "1:1:2"],
+      "answer": "1:2:1",
+      "explain": "2×2 块里 1 红 2 绿 1 蓝。绿色多是因为人眼对绿色最敏感（视锥细胞 60%）。"
+    },
+    {
+      "id": "q2",
+      "type": "fill",
+      "prompt": "把 Bayer 原图（每像素 1 色）还原成完整 RGB 图（每像素 3 色）的算法叫做 ___（中文）。",
+      "answer": ["去马赛克", "Demosaic", "demosaic"],
+      "explain": "Demosaic 是 ISP Pipeline 早期的关键模块。最简单的是双线性插值，进阶有 AHD 等。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "下列哪一项不是 Bayer 阵列的变体？",
+      "options": ["RGGB", "BGGR", "GRBG", "RGBA"],
+      "answer": "RGBA",
+      "explain": "RGBA 是计算机图形学里的颜色通道格式（含 Alpha 透明度），不是 CFA 排列。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "华为 P30 Pro 用过的、把 Bayer 里两个绿换成两个黄的 CFA 变种叫 ___。",
+      "answer": ["RYYB", "ryyb"],
+      "explain": "RYYB 进光量比 RGGB 多约 40%，暗光性能好但容易偏色（草地发黄）。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "为什么 4800 万像素的手机白天和晚上拍出来的实际分辨率经常不一样？",
+      "referenceAnswer": "因为这类传感器是 Quad Bayer（4-cell）排列，同色像素 4 个一组。白天光线足时 4 个像素分别读出，输出真实 4800 万像素；暗光时 4 个像素合并（pixel binning）成 1 个等效 1.4µm 大像素，输出 1200 万像素但暗光画质好。系统会根据光照自动切换模式。"
+    }
+  ]
+}

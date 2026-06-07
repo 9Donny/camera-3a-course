@@ -1,0 +1,43 @@
+{
+  "id": "daily-day-07",
+  "module": "M1",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "Week 1 学的内容里，AE 算法的曝光方程 4 个变量中，工程师不可控的是？",
+      "options": ["AV（光圈）", "TV（快门）", "BV（场景亮度）", "SV（ISO）"],
+      "answer": "BV（场景亮度）",
+      "explain": "BV 由环境给定。AV 受手机硬件限制大多固定；TV 和 SV 是 AE 算法实际操作的两个变量。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "下列哪一项不是 ISP Pipeline 的早期模块？",
+      "options": ["黑电平校正 (OB)", "Lens Shading 校正 (LSC)", "Demosaic", "面部识别"],
+      "answer": "面部识别",
+      "explain": "OB → LSC → Demosaic 是 ISP 流水线前 3 步。面部识别属于上层应用算法，不在 ISP pipeline 内。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "EV 是对数刻度，EV 0 → EV 8 表示亮度变化了 ___ 倍。",
+      "answer": ["256"],
+      "explain": "每加 1 EV 翻倍，加 8 EV = 2^8 = 256 倍。这就是为什么晴天（EV 14）和烛光（EV 4）差出 1024 倍亮度。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "高通 AE 系统中表示场景亮度的内部数值叫 ___（小写带下划线）。",
+      "answer": ["lux_index", "Lux_Index"],
+      "explain": "lux_index 大致等价于 Day 1 学的 BV 概念。Week 3 学 AEC 时它会反复出现。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "情景题：用户报「我的手机晚上拍快速移动的小孩，画面糊还有噪点」。从 Week 1 学的硬件知识出发，你怎么解释这个现象？",
+      "referenceAnswer": "三个层面：(1) 暗光下场景 BV 低，要拍出合适亮度只能加曝光时间或加 ISO。(2) 拍移动物体需要短曝光（如 1/250 秒）冻结画面，这意味着曝光时间不能加，只能拉高 ISO，结果就是噪点重。(3) 如果用户没保持稳定，曝光时间稍长（比如 1/30 秒）+ 主体移动 = 双重模糊。这是物理决定的取舍，调教层面只能优化 ISO 表的拐点位置和降噪策略，但不可能完全消除暗光下「快门-噪点」的矛盾。"
+    }
+  ]
+}
