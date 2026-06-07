@@ -875,3 +875,22 @@ details.extras > summary:hover {
   .brand { display: none; }
   .lb-summary { grid-template-columns: 1fr; }
 }
+
+/* 同步分享链接 */
+.share-link-wrap { margin-top: 14px; }
+.share-tip { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+.share-link {
+  width: 100%;
+  min-height: 80px;
+  background: var(--bg);
+  color: var(--accent-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  resize: vertical;
+  word-break: break-all;
+}
+.share-link:focus { outline: none; border-color: var(--accent); }
+.share-warn { font-size: 12px; color: var(--warning); margin-top: 6px; }

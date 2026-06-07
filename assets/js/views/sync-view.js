@@ -61,6 +61,20 @@ export function renderSync(content) {
     </div>
 
     <div class="card">
+      <h3>📲 分享配置给其他设备</h3>
+      <p class="muted">生成一个一次性链接，在另一台设备打开就会自动配置邮箱密码、自动同步，不用手动填。链接里包含敏感信息，仅用于在你自己的设备间传递。</p>
+      <div class="sync-actions">
+        <button class="btn" id="btnShare">📲 生成分享链接</button>
+        <button class="btn secondary" id="btnCopy" style="display:none">📋 复制链接</button>
+      </div>
+      <div class="share-link-wrap" id="shareWrap" style="display:none">
+        <div class="share-tip">复制下面这个链接，通过微信/AirDrop 发到另一台设备，点击打开就完成配置：</div>
+        <textarea class="share-link" id="shareLink" readonly></textarea>
+        <div class="share-warn">⚠️ 链接含邮箱+应用密码（base64 编码），请通过私密渠道发送，不要发到公开群聊。</div>
+      </div>
+    </div>
+
+    <div class="card">
       <h3>同步状态</h3>
       <div>上次同步：<strong>${fmtTime(meta.lastSyncedAt)}</strong></div>
       <div>上次设备：<strong>${escapeHTML(meta.lastDevice ?? "—")}</strong></div>
@@ -127,6 +141,48 @@ export function renderSync(content) {
       setTimeout(() => renderSync(content), 1200);
     } catch (e) {
       setStatus(`❌ 同步失败：${e.message}`, "err");
+    }
+  });
+
+  // 生成分享链接
+  const btnShare = document.getElementById("btnShare");
+  const btnCopy = document.getElementById("btnCopy");
+  const shareWrap = document.getElementById("shareWrap");
+  const shareLink = document.getElementById("shareLink");
+
+  btnShare.addEventListener("click", () => {
+    const cfg = readForm();
+    if (!cfg.email || !cfg.password) {
+      setStatus("❌ 请先填好邮箱和应用密码再生成链接", "err");
+      return;
+    }
+    sync.setConfig(cfg);
+    const payload = JSON.stringify({
+      email: cfg.email,
+      password: cfg.password,
+      device: "", // 让目标设备自己填
+    });
+    // base64url 编码（URL 安全）
+    const b64 = btoa(unescape(encodeURIComponent(payload)))
+      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    // 用当前页面的 origin + 当前 path
+    const url = `${location.origin}${location.pathname}?syncconfig=${b64}#/sync`;
+    shareLink.value = url;
+    shareWrap.style.display = "block";
+    btnCopy.style.display = "inline-block";
+    shareLink.focus();
+    shareLink.select();
+  });
+
+  btnCopy.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(shareLink.value);
+      setStatus("✅ 已复制到剪贴板，发到另一台设备打开即可", "ok");
+    } catch {
+      // 兜底：选中文本让用户手动复制
+      shareLink.focus();
+      shareLink.select();
+      setStatus("ℹ️ 浏览器不支持自动复制，请在框中手动 Cmd+C / Ctrl+C 复制", "info");
     }
   });
 }

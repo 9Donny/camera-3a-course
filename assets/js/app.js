@@ -317,19 +317,37 @@ async function loadSeedFlashcards() {
 }
 await loadSeedFlashcards();
 
-// 全新设备 + 没同步配置 → 引导用户从云端恢复（避免随便填昵称导致云端被覆盖）
-if (wasFresh && !sync.getConfig().email) {
-  const restore = confirm(
-    "👋 这台设备好像是第一次使用 Camera 3A 课程。\n\n" +
-    "如果你之前在其他设备上用过、并配置了坚果云同步，强烈建议现在先去配置同步，从云端恢复你的进度和笔记。\n\n" +
-    "点【确定】去同步设置页\n" +
-    "点【取消】当作全新开始（不会从云端拉取）"
-  );
-  if (restore) {
+// 检测 URL 参数 ?syncconfig=BASE64：从 Mac 分享过来的配置 → 自动应用
+function tryApplySyncConfigFromURL() {
+  const params = new URLSearchParams(location.search);
+  const enc = params.get("syncconfig");
+  if (!enc) return false;
+  try {
+    const json = decodeURIComponent(escape(atob(enc.replace(/-/g, "+").replace(/_/g, "/"))));
+    const cfg = JSON.parse(json);
+    if (!cfg.email || !cfg.password) return false;
+    sync.setConfig({
+      enabled: true,
+      email: cfg.email,
+      password: cfg.password,
+      device: cfg.device || "新设备",
+    });
+    // 清除 URL 参数，防止再次刷新或别人偷看
+    history.replaceState(null, "", location.pathname + location.hash);
+    console.info("[boot] applied syncconfig from URL");
+    return true;
+  } catch (e) {
+    console.warn("[boot] invalid syncconfig URL param:", e);
+    return false;
+  }
+}
+const appliedFromURL = tryApplySyncConfigFromURL();
+
+// 全新设备 + 没配置 + 没用 URL 分享 → 自动跳到 #/sync 页让用户先配置
+// 不弹 confirm 不打扰；用户在同步页操作完成后会自然进入主界面
+if (wasFresh && !appliedFromURL && !sync.getConfig().email) {
+  if (!location.hash || location.hash === "#/today" || location.hash === "#/") {
     location.hash = "#/sync";
-    // 不再继续后面的 bootSync / autoSync 装载
-    // 用户填完配置在同步页点立即同步会自己处理一切
-    throw new Error("[boot] redirecting to sync setup; rest of boot skipped");
   }
 }
 
