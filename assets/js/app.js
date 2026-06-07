@@ -2,13 +2,70 @@ import { storage } from "./storage.js";
 import { Progress } from "./progress.js";
 import { Router } from "./router.js";
 import { notes } from "./notes.js";
+import { profile, todayLabel, todayISO, encouragement } from "./profile.js";
 
 const sidebar = document.getElementById("sidebar");
 const content = document.getElementById("content");
-const streak = document.getElementById("streak");
+const dashboardEl = document.getElementById("dashboard");
 
 const progress = new Progress(storage.get("progress"));
-function persistProgress() { storage.set("progress", progress.getState()); }
+function persistProgress() {
+  storage.set("progress", progress.getState());
+  renderDashboard(); // 进度变了同步刷新顶栏
+}
+
+profile.ensureStartedAt();
+
+// 第一次访问时让用户填昵称（不填也能跳过，用"学员"）
+function maybeAskNickname() {
+  if (profile.get().nickname) return;
+  setTimeout(() => {
+    const name = prompt("👋 欢迎加入 60 天 Camera 3A 课程！\n\n填一个昵称吧（学习仪表盘会用到，可以随时改）：", "");
+    if (name && name.trim()) {
+      profile.setNickname(name);
+      renderDashboard();
+    }
+  }, 400);
+}
+
+function renderDashboard() {
+  if (!dashboardEl) return;
+  const state = progress.getState();
+  const day = Math.min(state.currentDay, 60);
+  const completedToday = state.lastCompletedAt === todayISO();
+  const checkInLabel = completedToday ? "✅ 今日已打卡" : "⏰ 今日未打卡";
+  const checkInClass = completedToday ? "checked" : "unchecked";
+
+  dashboardEl.innerHTML = `
+    <div class="dash-greet">
+      <div class="dash-name">你好，${escapeHTML(profile.getNickname())} <button class="dash-edit" title="改昵称">✎</button></div>
+      <div class="dash-date">${todayLabel()} · Day ${state.completedDays.length}/60 · 当前 Day ${day}</div>
+    </div>
+    <div class="dash-encouragement">${encouragement(state)}</div>
+    <div class="dash-stats">
+      <span class="dash-streak" title="连续打卡天数">🔥 ${state.streak}</span>
+      <span class="dash-checkin ${checkInClass}">${checkInLabel}</span>
+    </div>
+  `;
+  // 改昵称
+  const editBtn = dashboardEl.querySelector(".dash-edit");
+  if (editBtn) {
+    editBtn.addEventListener("click", () => {
+      const name = prompt("改个昵称：", profile.getNickname());
+      if (name !== null && name.trim()) {
+        profile.setNickname(name);
+        renderDashboard();
+      }
+    });
+  }
+}
+
+function escapeHTML(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+
+// 每分钟刷新一次（跨过午夜时日期 / 打卡状态会变）
+setInterval(renderDashboard, 60_000);
 
 const NAV = [
   { hash: "#/overview",  label: "📚 总览" },
@@ -32,7 +89,7 @@ function renderSidebar(currentHash) {
     weeks.push(`<a class="nav-item ${cls}" ${isUnlocked ? `href="#/today"` : ""}>Week ${w} ${status}</a>`);
   }
   sidebar.innerHTML = `<div class="nav-section">导航</div>${top}<div class="nav-section">学习进度</div>${weeks.join("")}`;
-  streak.textContent = `🔥 ${progress.getState().streak}`;
+  renderDashboard();
 }
 
 function placeholderView(title) {
@@ -87,6 +144,8 @@ const router = new Router()
   })
   .setNotFound(() => { renderSidebar(""); placeholderView("404 路径未找到"); });
 
+renderDashboard();
+maybeAskNickname();
 router.start();
 
 function downloadFile(filename, content, mime = "text/plain") {
