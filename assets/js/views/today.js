@@ -3,9 +3,62 @@ import { validateDay } from "../validators.js";
 import { tts, markdownToSpeech } from "../tts.js";
 import { initHighlightCollect } from "../highlight.js";
 import { initScrollProgress, destroyScrollProgress } from "../scroll-progress.js";
-import { celebrateConfetti } from "../particles.js";
+import { celebrateConfetti, celebrateWelcome } from "../particles.js";
 
 let highlightInitialized = false;
+
+const WELCOME_KEY = "camera3a:welcomeShownDate";
+
+function maybeShowWelcome(nickname, day) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  let shown;
+  try { shown = localStorage.getItem(WELCOME_KEY); } catch (e) { shown = null; }
+  if (shown === todayStr) return;
+  try { localStorage.setItem(WELCOME_KEY, todayStr); } catch (e) {}
+
+  // 飘落星点
+  celebrateWelcome();
+
+  // 横幅淡入淡出
+  const banner = document.createElement("div");
+  banner.className = "welcome-banner";
+  const greet = pickGreeting(day);
+  banner.innerHTML = `
+    <div class="wb-hi">${greet.hi}</div>
+    <div class="wb-line">${greet.line}</div>
+  `;
+  document.body.appendChild(banner);
+  // 强制 reflow 让 transition 生效
+  banner.offsetHeight;
+  banner.classList.add("show");
+  setTimeout(() => {
+    banner.classList.remove("show");
+    setTimeout(() => banner.remove(), 600);
+  }, 2400);
+}
+
+function pickGreeting(day) {
+  const hours = new Date().getHours();
+  let timePart;
+  if (hours < 6) timePart = "凌晨好";
+  else if (hours < 12) timePart = "早上好";
+  else if (hours < 14) timePart = "中午好";
+  else if (hours < 18) timePart = "下午好";
+  else if (hours < 22) timePart = "晚上好";
+  else timePart = "深夜好";
+
+  const lines = [
+    `Day ${day} · 今天也来打卡啦`,
+    `Day ${day} · 又见面了，继续冲`,
+    `Day ${day} · 4 小时，慢慢来`,
+    `Day ${day} · 离面试更近一步`,
+    `Day ${day} · 把昨天的复习先做了`,
+    `Day ${day} · 调教工程师在养成中`,
+  ];
+  // 用 day 作为 seed 让同一天问候稳定
+  const line = lines[day % lines.length];
+  return { hi: timePart, line };
+}
 
 export async function renderToday(content, { progress, router, persistProgress }) {
   const day = progress.getState().currentDay;
@@ -133,6 +186,9 @@ export async function renderToday(content, { progress, router, persistProgress }
   initScrollProgress(data.sections);
   // 切到非 today 页时销毁
   window.addEventListener("hashchange", destroyScrollProgress, { once: true });
+
+  // 每日首次访问的欢迎特效（在所有 UI 就绪之后再触发）
+  setTimeout(() => maybeShowWelcome(null, day), 200);
 }
 
 function wireTTSControls(data) {

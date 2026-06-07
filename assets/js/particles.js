@@ -199,7 +199,34 @@ export function celebrateRise(x, y) {
   spawn(particles, items);
 }
 
-// 3) 金色烟花（用于考核高分 / streak 里程碑）
+// 3) 顶部飘落星点（用于每日首次进入今日学习）
+//   柔和、缓慢，不喧宾夺主
+export function celebrateWelcome() {
+  if (!isEnabled()) return;
+  ensureCanvas();
+  const colors = ["#fbbf24", "#60a5fa", "#a78bfa", "#22c55e", "#f472b6"];
+  const W = window.innerWidth;
+  const items = [];
+  for (let i = 0; i < 50; i++) {
+    items.push({
+      x: Math.random() * W,
+      y: -20 - Math.random() * 200,
+      vx: (Math.random() - 0.5) * 1.5,
+      vy: 1 + Math.random() * 1.5,
+      gravity: 0.02,
+      drag: 0.995,
+      rot: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.08,
+      size: 6 + Math.random() * 6,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      shape: Math.random() > 0.5 ? "star" : "circle",
+      life: 200 + Math.random() * 80,
+    });
+  }
+  spawn(particles, items);
+}
+
+// 4) 金色烟花（用于考核高分 / streak 里程碑）
 //   从中心扇形扩散
 export function celebrateFireworks(cx, cy) {
   if (!isEnabled()) return;
