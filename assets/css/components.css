@@ -311,34 +311,3 @@
 @media (max-width: 700px) {
   .dash-date { display: none; }
 }
-
-/* Today 页顶部 sticky 区（课程信息 + 提示 + TTS 工具栏） */
-.lesson-sticky-top {
-  position: sticky;
-  top: -1px; /* -1 让 IntersectionObserver 风格的 stuck 检测可用，无视觉差异 */
-  z-index: 50;
-  background: var(--bg);
-  margin: -24px -32px 0;  /* 抵消 .content 的 padding，让背景顶满左右 */
-  padding: 16px 32px 12px;
-  border-bottom: 1px solid var(--border);
-  /* 渐变阴影暗示「下方还有内容」 */
-  box-shadow: 0 4px 12px -4px rgba(0,0,0,0.4);
-}
-.lesson-sticky-top .lesson-header {
-  margin-bottom: 8px;
-}
-.lesson-sticky-top .lesson-header h1 {
-  font-size: 22px;
-  margin: 2px 0 0;
-}
-.lesson-sticky-top .hint-tip {
-  margin-top: 6px;
-  padding: 6px 10px;
-  font-size: 12px;
-}
-.lesson-sticky-top .tts-bar {
-  margin-bottom: 0;
-  padding: 8px 10px;
-  font-size: 12px;
-}
-.lesson-sticky-top .tts-bar .btn { padding: 4px 10px; font-size: 12px; }
