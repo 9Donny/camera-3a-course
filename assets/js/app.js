@@ -127,8 +127,22 @@ async function runSync({ source = "auto" } = {}) {
   syncLastError = null;
   renderDashboard();
   try {
-    await sync.syncNow();
+    const r = await sync.syncNow();
     syncState = "ok";
+    renderDashboard();
+    // 拉到了远端数据 → 让用户重新加载，否则内存里的 progress / notes / flashcards 不会自动更新
+    if (r && r.pull && r.pull.downloadedKeys > 0) {
+      const msg = r.pull.firstPull
+        ? `首次同步成功，拉取 ${r.pull.downloadedKeys} 项数据。点击确定重新加载页面。`
+        : `已从云端拉取 ${r.pull.downloadedKeys} 项更新。点击确定重新加载查看。`;
+      // 自动同步时只提示一次，不阻塞用户继续操作
+      if (source === "manual" || r.pull.firstPull) {
+        if (confirm(msg)) location.reload();
+      } else {
+        // 自动同步：仅在 dashboard 提示，不弹窗打扰
+        console.info("[sync] downloaded", r.pull.downloadedKeys, "keys, refresh to see changes");
+      }
+    }
   } catch (e) {
     syncState = "err";
     syncLastError = e.message;
@@ -300,8 +314,19 @@ async function bootSync() {
   syncState = "syncing";
   renderDashboard();
   try {
-    await sync.pull();
+    const r = await sync.pull();
     syncState = "ok";
+    renderDashboard();
+    // 启动时拉到了远端数据：内存里的对象都是旧的，必须 reload
+    if (r && r.downloadedKeys > 0) {
+      // 防止 reload 风暴：用 sessionStorage 标记本次会话已 reload 过
+      const flag = "camera3a:bootReloaded";
+      if (!sessionStorage.getItem(flag)) {
+        sessionStorage.setItem(flag, "1");
+        // 给用户一个不打扰的提示，让粒子/dashboard 渲染完成后再 reload
+        setTimeout(() => location.reload(), 300);
+      }
+    }
   } catch (e) {
     syncState = "err";
     syncLastError = e.message;

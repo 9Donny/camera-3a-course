@@ -117,12 +117,23 @@ export const sync = {
     await this._ensureFolder(auth);
 
     const meta = this.getMeta();
+    // 给所有当前本地的键补全 mtime（如果之前没记录过）
+    // 避免出现远端 mtime=0 的情况，使后续合并算法能正常工作
+    const data = collectAll();
+    const mtimes = { ...(meta.keyMtimes || {}) };
+    const now = nowMs();
+    for (const k of Object.keys(data)) {
+      if (!mtimes[k]) mtimes[k] = now;
+    }
+    meta.keyMtimes = mtimes;
+    this.setMeta(meta);
+
     const snapshot = {
       version: 1,
       device: cfg.device || "unknown",
       uploadedAt: nowMs(),
-      keyMtimes: meta.keyMtimes || {},
-      data: collectAll(),
+      keyMtimes: mtimes,
+      data,
     };
 
     const body = JSON.stringify(snapshot);
@@ -172,10 +183,20 @@ export const sync = {
     const remoteMtimes = remote.keyMtimes || {};
     const localData = collectAll();
 
+    // 首次 pull（本地从未同步过）：把远端当权威，整体覆盖本地
+    // 避免因为本地 mtime 都是 0、远端 mtime 也是 0，合并时谁都不胜导致数据没拉进来
+    const isFirstPull = !localMeta.lastSyncedAt;
+
     let updated = 0;
     const merged = { ...localData };
     for (const [k, v] of Object.entries(remote.data)) {
       if (EXCLUDE.has(k)) continue;
+      if (isFirstPull) {
+        merged[k] = v;
+        localMtimes[k] = remoteMtimes[k] || nowMs();
+        updated += 1;
+        continue;
+      }
       const lm = localMtimes[k] || 0;
       const rm = remoteMtimes[k] || 0;
       // 远端新 OR 本地不存在
@@ -191,7 +212,7 @@ export const sync = {
     localMeta.lastSyncedAt = nowMs();
     this.setMeta(localMeta);
 
-    return { downloadedKeys: updated, remoteDevice: remote.device, remoteUploadedAt: remote.uploadedAt };
+    return { downloadedKeys: updated, fresh: false, firstPull: isFirstPull, remoteDevice: remote.device, remoteUploadedAt: remote.uploadedAt };
   },
 
   // 完整 sync = 先确保目录 → pull 远端合并 → push 自己
