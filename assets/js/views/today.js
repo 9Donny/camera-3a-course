@@ -52,30 +52,32 @@ export async function renderToday(content, { progress, router, persistProgress }
   const currentRate = tts.getRate();
 
   content.innerHTML = `
-    <div class="lesson-header">
-      <div class="muted">Week ${data.week} · 模块 ${data.module} · 预计 ${data.estimatedMinutes} 分钟</div>
-      <h1>Day ${day} · ${escapeHTML(data.title)}</h1>
-      <div class="hint-tip" id="highlightHint">💡 提示：选中任意句子，会弹出「📌 收藏到笔记」按钮，一键存到当天笔记中 · <a href="#" id="dismissHint">知道了</a></div>
-    </div>
-    ${ttsSupported ? `
-      <div class="tts-bar" id="ttsBar">
-        <button class="btn secondary" data-action="play-all">▶ 播放全文</button>
-        <button class="btn secondary" data-action="pause" disabled>⏸ 暂停</button>
-        <button class="btn secondary" data-action="resume" disabled>▶ 继续</button>
-        <button class="btn secondary" data-action="stop" disabled>■ 停止</button>
-        <span class="tts-rate">
-          速度
-          <select data-action="rate">
-            <option value="0.8" ${currentRate === 0.8 ? "selected" : ""}>0.8×</option>
-            <option value="1.0" ${currentRate === 1.0 ? "selected" : ""}>1.0×</option>
-            <option value="1.2" ${currentRate === 1.2 ? "selected" : ""}>1.2×</option>
-            <option value="1.5" ${currentRate === 1.5 ? "selected" : ""}>1.5×</option>
-            <option value="2.0" ${currentRate === 2.0 ? "selected" : ""}>2.0×</option>
-          </select>
-        </span>
-        <span class="tts-status muted" id="ttsStatus">就绪</span>
+    <div class="lesson-sticky-top">
+      <div class="lesson-header">
+        <div class="muted">Week ${data.week} · 模块 ${data.module} · 预计 ${data.estimatedMinutes} 分钟</div>
+        <h1>Day ${day} · ${escapeHTML(data.title)}</h1>
+        <div class="hint-tip" id="highlightHint">💡 提示：选中任意句子，会弹出「📌 收藏到笔记」按钮，一键存到当天笔记中 · <a href="#" id="dismissHint">知道了</a></div>
       </div>
-    ` : `<div class="muted" style="padding:8px 0">⚠️ 当前浏览器不支持语音朗读，请用 Chrome / Edge / Safari 最新版。</div>`}
+      ${ttsSupported ? `
+        <div class="tts-bar" id="ttsBar">
+          <button class="btn secondary" data-action="play-all">▶ 播放全文</button>
+          <button class="btn secondary" data-action="pause" disabled>⏸ 暂停</button>
+          <button class="btn secondary" data-action="resume" disabled>▶ 继续</button>
+          <button class="btn secondary" data-action="stop" disabled>■ 停止</button>
+          <span class="tts-rate">
+            速度
+            <select data-action="rate">
+              <option value="0.8" ${currentRate === 0.8 ? "selected" : ""}>0.8×</option>
+              <option value="1.0" ${currentRate === 1.0 ? "selected" : ""}>1.0×</option>
+              <option value="1.2" ${currentRate === 1.2 ? "selected" : ""}>1.2×</option>
+              <option value="1.5" ${currentRate === 1.5 ? "selected" : ""}>1.5×</option>
+              <option value="2.0" ${currentRate === 2.0 ? "selected" : ""}>2.0×</option>
+            </select>
+          </span>
+          <span class="tts-status muted" id="ttsStatus">就绪</span>
+        </div>
+      ` : `<div class="muted" style="padding:8px 0">⚠️ 当前浏览器不支持语音朗读，请用 Chrome / Edge / Safari 最新版。</div>`}
+    </div>
     ${sections}
     ${refs ? `<section class="lesson-section"><h2>📚 参考资料</h2><ul>${refs}</ul></section>` : ""}
     <div class="lesson-footer">
