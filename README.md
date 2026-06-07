@@ -7,6 +7,9 @@
 
 - ✅ Week 1（Day 1-7）：光学与 Camera 硬件入门 — 全部内容、配图、题库就绪
 - ✅ 艾宾浩斯记忆系统：40 张初始卡片 + SM-2 简化算法 + 强制复习闸门
+- ✅ 坚果云同步：多终端学习数据同步（笔记/进度/卡片/打卡/记录）
+- ✅ 手机响应式：汉堡菜单、紧凑布局、触摸优化
+- ✅ 密码门：进入需要密码（默认 `camera3a`，建议改）
 - 🚧 Week 2-8：陆续补充
 
 ## 如何启动
@@ -14,18 +17,65 @@
 ### 在 Mac 上
 ```bash
 cd /path/to/3A
-python3 -m http.server 8080
+python3 server.py
 ```
-浏览器打开 http://localhost:8080/
+浏览器打开 http://localhost:8080/，输入密码（默认 `camera3a`）。
 
 ### 在 Windows 上
 1. 把整个 `3A` 文件夹复制到 Windows（U 盘 / 网盘 / OneDrive 都行）
 2. 装 Python（[官网下载](https://www.python.org/downloads/)，安装时勾选 "Add Python to PATH"）
-3. 在 PowerShell 里 `cd` 到课程文件夹
-4. 运行 `python -m http.server 8080`
+3. PowerShell 里 `cd` 到课程文件夹
+4. 运行 `python server.py`
 5. 浏览器打开 http://localhost:8080/
 
-> **不能直接双击 `index.html`** —— 浏览器对 ES Module 在 `file://` 协议下有限制，必须用 HTTP server。
+### 手机访问（同 Wi-Fi）
+1. Mac 跑着 `python3 server.py`
+2. 找 Mac 的局域网 IP：`ifconfig | grep "inet 192"`（一般是 `192.168.x.x`）
+3. 手机浏览器打开 `http://192.168.x.x:8080/`
+4. 输入密码进入
+
+> ⚠️ **不能直接双击 `index.html`**，浏览器对 ES Module 在 file:// 下有限制。
+> ⚠️ **必须用 `server.py`**（不是 `python3 -m http.server`），同步功能依赖它的 WebDAV 代理。
+
+## 改密码
+
+默认密码是 `camera3a`，强烈建议改成你自己的：
+
+```bash
+# 1. 算新密码的 hash
+echo -n "你的新密码" | shasum -a 256
+# 复制输出的 64 位 hex 字符串
+
+# 2. 编辑 assets/js/gate.js，找到 PASSWORD_SHA256 这一行
+#    把值替换成上面那个 hash
+
+# 3. 刷新页面，重新输入新密码
+```
+
+不想要密码门？把 `PASSWORD_SHA256` 设为空字符串即可。
+
+## 坚果云同步（多终端接力）
+
+### 第一次配置
+
+1. 登录 [坚果云](https://www.jianguoyun.com/) 网页 → 头像 → **账户信息**
+2. 左边菜单 → **安全选项** → **第三方应用管理** → **添加应用**
+3. 应用名填 `Camera 3A 课程`，复制生成的 **应用密码**（不是登录密码！）
+4. 课程页面侧栏点 **☁️ 同步** → 进入设置页
+5. 填邮箱 + 应用密码 + 设备名（如 "Mac" / "手机"）
+6. 勾选「启用自动同步」→ 保存
+7. 点「测试连接」确认 OK，再点「立即同步」首次同步
+
+### 多终端接力
+
+- 任何设备配好同步后，**写入数据后 2 秒自动上传**到坚果云
+- 切换到另一台设备打开课程 → 启动时**自动拉取**最新数据
+- 顶栏 ☁️ 按钮显示同步状态：☁ 待机 / ⟳ 进行中 / ☁️ 成功 / ⚠️ 失败
+- 远端文件路径：`/我的坚果云/camera-3a/sync.json`，可以在坚果云网页直接查看
+
+### 冲突策略
+
+按 **键级别 last-write-wins**：每个数据键带修改时间戳，谁新用谁。同时在两台设备改同一个笔记可能出现覆盖，建议**一台设备完成 → 同步 → 再切到另一台**。
 
 ## 学习路径
 

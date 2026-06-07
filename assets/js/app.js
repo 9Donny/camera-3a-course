@@ -6,6 +6,11 @@ import { profile, todayLabel, todayISO, encouragement } from "./profile.js";
 import { flashcards } from "./flashcards.js";
 import * as particles from "./particles.js";
 import { trackPage, totalSec, todaySec, formatDuration } from "./tracker.js";
+import { sync, installAutoSync } from "./sync.js";
+
+// 同步状态：'idle' | 'syncing' | 'ok' | 'err'
+let syncState = "idle";
+let syncLastError = null;
 
 const sidebar = document.getElementById("sidebar");
 const content = document.getElementById("content");
@@ -49,6 +54,7 @@ function renderDashboard() {
       <button class="dash-time" title="今日 ${formatDuration(todaySec())} · 累计 ${formatDuration(totalSec())} · 点击查看详情">⏱ ${formatDuration(todaySec())}</button>
       <span class="dash-streak" title="连续打卡天数">🔥 ${state.streak}</span>
       <span class="dash-checkin ${checkInClass}">${checkInLabel}</span>
+      <button class="dash-sync state-${syncState}" title="${syncStateTooltip()}">${syncStateIcon()}</button>
       <button class="dash-fx ${particles.getEnabled() ? 'on' : 'off'}" title="${particles.getEnabled() ? '关闭粒子特效' : '开启粒子特效'}">${particles.getEnabled() ? '✨' : '·'}</button>
     </div>
   `;
@@ -84,6 +90,55 @@ function renderDashboard() {
       window.location.hash = "#/log";
     });
   }
+  // 同步 chip → 跳到同步设置（已配置时直接立即同步）
+  const syncBtn = dashboardEl.querySelector(".dash-sync");
+  if (syncBtn) {
+    syncBtn.addEventListener("click", async () => {
+      const cfg = sync.getConfig();
+      if (!cfg.email || !cfg.password) {
+        window.location.hash = "#/sync";
+        return;
+      }
+      await runSync({ source: "manual" });
+    });
+  }
+}
+
+function syncStateIcon() {
+  if (syncState === "syncing") return "⟳";
+  if (syncState === "ok") return "☁️";
+  if (syncState === "err") return "⚠️";
+  return "☁";
+}
+function syncStateTooltip() {
+  const cfg = sync.getConfig();
+  if (!cfg.email) return "未配置同步，点击设置";
+  if (syncState === "syncing") return "正在同步…";
+  if (syncState === "err") return `上次同步失败：${syncLastError || ""}（点击重试）`;
+  const meta = sync.getMeta();
+  return meta.lastSyncedAt
+    ? `上次同步：${new Date(meta.lastSyncedAt).toLocaleTimeString("zh-CN", {hour12: false})}（点击立即同步）`
+    : "尚未同步过，点击同步";
+}
+
+async function runSync({ source = "auto" } = {}) {
+  if (syncState === "syncing") return;
+  syncState = "syncing";
+  syncLastError = null;
+  renderDashboard();
+  try {
+    await sync.syncNow();
+    syncState = "ok";
+  } catch (e) {
+    syncState = "err";
+    syncLastError = e.message;
+    if (source === "manual") {
+      alert(`同步失败：${e.message}`);
+    } else {
+      console.warn("[sync] auto-sync failed:", e.message);
+    }
+  }
+  renderDashboard();
 }
 
 function escapeHTML(s) {
@@ -102,6 +157,7 @@ const NAV = [
   { hash: "#/report",    label: "📈 日报" },
   { hash: "#/weakness",  label: "🎯 薄弱项" },
   { hash: "#/log",       label: "⏱ 记录" },
+  { hash: "#/sync",      label: "☁️ 同步" },
 ];
 
 function renderSidebar(currentHash) {
@@ -205,7 +261,23 @@ const router = new Router()
     const { renderWeakness } = await import("./views/weakness-view.js");
     renderWeakness(content, {});
   })
+  .on("#/sync", async () => {
+    trackPage("sync");
+    renderSidebar("#/sync");
+    const { renderSync } = await import("./views/sync-view.js");
+    renderSync(content);
+  })
   .setNotFound(() => { renderSidebar(""); placeholderView("404 路径未找到"); });
+
+// 手机汉堡菜单：toggle .sidebar-open on body
+const menuToggle = document.getElementById("menuToggle");
+const sidebarOverlay = document.getElementById("sidebarOverlay");
+function closeSidebar() { document.body.classList.remove("sidebar-open"); }
+function toggleSidebar() { document.body.classList.toggle("sidebar-open"); }
+if (menuToggle) menuToggle.addEventListener("click", toggleSidebar);
+if (sidebarOverlay) sidebarOverlay.addEventListener("click", closeSidebar);
+// 路由切换后自动收起
+window.addEventListener("hashchange", closeSidebar);
 
 renderDashboard();
 maybeAskNickname();
@@ -220,6 +292,32 @@ async function loadSeedFlashcards() {
   } catch (e) { /* 文件不存在或格式错时静默 */ }
 }
 await loadSeedFlashcards();
+
+// 启动时若已配置且启用同步，先 pull 一次（不阻塞 UI 太久）
+async function bootSync() {
+  const cfg = sync.getConfig();
+  if (!cfg.enabled || !cfg.email || !cfg.password) return;
+  syncState = "syncing";
+  renderDashboard();
+  try {
+    await sync.pull();
+    syncState = "ok";
+  } catch (e) {
+    syncState = "err";
+    syncLastError = e.message;
+    console.warn("[sync] boot pull failed:", e.message);
+  }
+  renderDashboard();
+}
+// 不 await：让 router 立即工作，sync 在后台进行
+bootSync();
+
+// 自动同步：写入后 2 秒 debounce 上传
+installAutoSync({
+  debounceMs: 2000,
+  onSuccess: () => { syncState = "ok"; renderDashboard(); },
+  onError: (e) => { syncState = "err"; syncLastError = e.message; renderDashboard(); },
+});
 
 router.start();
 

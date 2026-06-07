@@ -690,3 +690,188 @@ details.extras > summary:hover {
   font-family: var(--font-mono);
 }
 .dash-time:hover { border-color: var(--accent-2); color: var(--accent-2); }
+
+/* ==================== 同步设置页 ==================== */
+.sync-help ol { line-height: 1.9; padding-left: 22px; }
+.sync-help code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 12px; }
+.sync-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.sync-field > span { font-size: 12px; color: var(--text-muted); }
+.sync-field input[type=email],
+.sync-field input[type=password],
+.sync-field input[type=text] {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.sync-field input:focus { outline: none; border-color: var(--accent); }
+.sync-field.sync-toggle { flex-direction: row; align-items: center; gap: 8px; }
+.sync-field.sync-toggle input[type=checkbox] { width: 18px; height: 18px; }
+.sync-field.sync-toggle > span { font-size: 14px; color: var(--text); }
+.sync-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.sync-status {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  display: none;
+}
+.sync-status:not(:empty) { display: block; }
+.sync-status.ok { background: rgba(34, 197, 94, 0.12); color: var(--success); border: 1px solid var(--success); }
+.sync-status.err { background: rgba(239, 68, 68, 0.12); color: var(--danger); border: 1px solid var(--danger); }
+.sync-status.info { background: rgba(59, 130, 246, 0.12); color: var(--accent-2); border: 1px solid var(--accent); }
+.sync-warn ul { line-height: 1.8; padding-left: 22px; }
+.sync-warn code { background: var(--surface-2); padding: 1px 5px; border-radius: 3px; font-family: var(--font-mono); font-size: 12px; }
+
+/* ==================== Dashboard 同步状态 chip ==================== */
+.dash-sync {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.dash-sync.state-syncing { color: var(--accent-2); border-color: var(--accent-2); animation: spin 1s linear infinite; }
+.dash-sync.state-ok { color: var(--success); border-color: var(--success); }
+.dash-sync.state-err { color: var(--danger); border-color: var(--danger); }
+.dash-sync:hover { transform: scale(1.1); }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ==================== 密码门 ==================== */
+.gate-mask {
+  position: fixed; inset: 0; z-index: 100000;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+.gate-card {
+  width: 100%; max-width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px 28px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.gate-card h1 { font-size: 22px; margin: 0 0 8px; color: var(--accent-2); }
+.gate-card p { font-size: 13px; color: var(--text-muted); margin: 0 0 20px; }
+.gate-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  text-align: center;
+  letter-spacing: 4px;
+}
+.gate-input:focus { outline: none; border-color: var(--accent); }
+.gate-btn { margin-top: 12px; width: 100%; padding: 12px; font-size: 15px; }
+.gate-error { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 8px; }
+
+/* ==================== 手机响应式 ==================== */
+
+/* 顶栏汉堡按钮（窄屏才显示） */
+.menu-toggle {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 36px; height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  margin-right: 10px;
+  align-items: center; justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .menu-toggle { display: inline-flex; }
+  .topbar { padding: 0 14px; height: 64px; gap: 8px; }
+  .brand { font-size: 14px; }
+  .dashboard {
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+  }
+  .dash-greet .dash-name { font-size: 13px; }
+  .dash-encouragement { display: none; }
+  .dash-stats { gap: 6px; }
+  .dash-time { padding: 4px 8px; font-size: 11px; }
+  .dash-checkin { font-size: 11px; padding: 3px 8px; }
+
+  /* sidebar 默认隐藏，加 .sidebar-open 才显示 */
+  .layout { height: calc(100vh - 64px); }
+  .sidebar {
+    position: fixed;
+    left: 0; top: 64px;
+    bottom: 0;
+    width: 240px;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 1000;
+    box-shadow: 4px 0 12px rgba(0,0,0,0.5);
+  }
+  .sidebar-open .sidebar { transform: translateX(0); }
+  .sidebar-overlay {
+    position: fixed;
+    inset: 64px 0 0 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    display: none;
+  }
+  .sidebar-open .sidebar-overlay { display: block; }
+
+  .content { padding: 16px 14px; }
+
+  /* 课程内容紧凑 */
+  .lesson-section { margin: 22px 0; }
+  .lesson-section h2 { font-size: 17px; }
+  .lesson-header h1 { font-size: 22px; }
+
+  /* TTS bar 紧凑 */
+  .tts-bar { padding: 6px 8px; gap: 4px; }
+  .tts-bar .btn { padding: 4px 8px; font-size: 11px; }
+  .tts-status { display: none; }
+
+  /* 触摸目标至少 44px */
+  .btn, .nav-item, .day-cell:not(.empty) {
+    min-height: 36px;
+  }
+
+  /* 总览的 day cell 缩小 */
+  .day-cell { width: 30px; height: 30px; font-size: 11px; }
+  .week-label { width: 56px; font-size: 11px; }
+
+  /* 右侧阅读进度面板手机隐藏 */
+  .scroll-progress-widget { display: none; }
+
+  /* 复习卡居中放大 */
+  .review-card { padding: 24px 20px; min-height: 200px; }
+  .review-card-front { font-size: 18px; }
+  .review-actions { flex-direction: column; }
+  .review-actions .btn { width: 100%; min-width: 0; }
+
+  /* 学习记录页 */
+  .lb-summary { grid-template-columns: 1fr 1fr; }
+  .lb-table { font-size: 11px; }
+  .lb-table th, .lb-table td { padding: 8px 6px; }
+
+  /* 同步页表单 */
+  .sync-actions .btn { flex: 1 0 auto; }
+}
+
+@media (max-width: 480px) {
+  .brand { display: none; }
+  .lb-summary { grid-template-columns: 1fr; }
+}
