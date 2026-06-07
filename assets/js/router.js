@@ -22,8 +22,8 @@ export class Router {
   }
 }
 
-function match(pattern, hash) {
-  const pp = pattern.split("/").filter(Boolean);
+export function match(pattern, hash) {
+  const pp = pattern.replace(/^#/, "").split("/").filter(Boolean);
   const hp = hash.replace(/^#/, "").split("/").filter(Boolean);
   if (pp.length !== hp.length) return null;
   const params = {};
