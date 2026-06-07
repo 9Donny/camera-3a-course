@@ -2,6 +2,7 @@ import { renderMarkdown } from "../markdown.js";
 import { validateDay } from "../validators.js";
 import { tts, markdownToSpeech } from "../tts.js";
 import { initHighlightCollect } from "../highlight.js";
+import { initScrollProgress, destroyScrollProgress } from "../scroll-progress.js";
 
 let highlightInitialized = false;
 
@@ -121,6 +122,11 @@ export async function renderToday(content, { progress, router, persistProgress }
       });
     }
   }
+
+  // 右侧悬浮阅读进度 + 章节导航
+  initScrollProgress(data.sections);
+  // 切到非 today 页时销毁
+  window.addEventListener("hashchange", destroyScrollProgress, { once: true });
 }
 
 function wireTTSControls(data) {

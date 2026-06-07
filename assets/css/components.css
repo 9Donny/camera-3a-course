@@ -164,3 +164,111 @@
 .highlight-bubble:hover {
   filter: brightness(1.1);
 }
+
+/* 右侧悬浮阅读进度 */
+.scroll-progress-widget {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  font-family: var(--font-sans);
+}
+.sp-toggle {
+  align-self: flex-end;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.sp-toggle:hover { color: var(--text); border-color: var(--accent); }
+.sp-body {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  width: 200px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.sp-bar {
+  position: absolute;
+  right: 252px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 200px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.sp-fill {
+  width: 100%;
+  background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
+  transition: height 0.15s linear;
+}
+.sp-toc {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sp-toc-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  text-decoration: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.sp-toc-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.sp-toc-item.active {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent-2);
+  border-left: 2px solid var(--accent);
+  padding-left: 6px;
+}
+.sp-toc-num {
+  flex-shrink: 0;
+  width: 18px; height: 18px;
+  background: var(--surface-2);
+  border-radius: 50%;
+  text-align: center;
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 600;
+}
+.sp-toc-item.active .sp-toc-num {
+  background: var(--accent);
+  color: #fff;
+}
+.sp-toc-title {
+  flex: 1;
+  word-break: break-word;
+}
+.sp-percent {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+@media (max-width: 1100px) {
+  /* 屏幕窄时把进度条藏起来，避免遮内容 */
+  .scroll-progress-widget { display: none; }
+}
