@@ -1,6 +1,9 @@
 import { renderMarkdown } from "../markdown.js";
 import { validateDay } from "../validators.js";
 import { tts, markdownToSpeech } from "../tts.js";
+import { initHighlightCollect } from "../highlight.js";
+
+let highlightInitialized = false;
 
 export async function renderToday(content, { progress, router, persistProgress }) {
   const day = progress.getState().currentDay;
@@ -51,6 +54,7 @@ export async function renderToday(content, { progress, router, persistProgress }
     <div class="lesson-header">
       <div class="muted">Week ${data.week} · 模块 ${data.module} · 预计 ${data.estimatedMinutes} 分钟</div>
       <h1>Day ${day} · ${escapeHTML(data.title)}</h1>
+      <div class="hint-tip" id="highlightHint">💡 提示：选中任意句子，会弹出「📌 收藏到笔记」按钮，一键存到当天笔记中 · <a href="#" id="dismissHint">知道了</a></div>
     </div>
     ${ttsSupported ? `
       <div class="tts-bar" id="ttsBar">
@@ -93,6 +97,29 @@ export async function renderToday(content, { progress, router, persistProgress }
 
   if (ttsSupported) {
     wireTTSControls(data);
+  }
+
+  // 划词收藏：全局事件只绑一次（即使切换 Day 也复用）
+  if (!highlightInitialized) {
+    initHighlightCollect({
+      getDayId: () => `day-${String(Math.min(progress.getState().currentDay, 60)).padStart(2, "0")}`,
+    });
+    highlightInitialized = true;
+  }
+
+  // 提示条：localStorage 没标记过就显示
+  const hintEl = document.getElementById("highlightHint");
+  const dismissBtn = document.getElementById("dismissHint");
+  const dismissed = localStorage.getItem("camera3a:hintDismissed:highlight") === "1";
+  if (hintEl) {
+    if (dismissed) hintEl.style.display = "none";
+    if (dismissBtn) {
+      dismissBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        hintEl.style.display = "none";
+        localStorage.setItem("camera3a:hintDismissed:highlight", "1");
+      });
+    }
   }
 }
 

@@ -147,3 +147,20 @@
 .md svg .label { fill: var(--text-muted); font-size: 12px; font-family: var(--font-sans); }
 .md svg .label-strong { fill: var(--text); font-size: 13px; font-weight: 600; font-family: var(--font-sans); }
 .md svg .arrow { stroke: var(--accent); stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+
+/* 课程顶部提示条 */
+.hint-tip {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(59, 130, 246, 0.08);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.hint-tip a { color: var(--accent-2); margin-left: 6px; }
+
+/* 划词收藏的浮动按钮 hover 效果 */
+.highlight-bubble:hover {
+  filter: brightness(1.1);
+}
