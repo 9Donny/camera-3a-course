@@ -5,6 +5,7 @@ import { notes } from "./notes.js";
 import { profile, todayLabel, todayISO, encouragement } from "./profile.js";
 import { flashcards } from "./flashcards.js";
 import * as particles from "./particles.js";
+import { trackPage, totalSec, todaySec, formatDuration } from "./tracker.js";
 
 const sidebar = document.getElementById("sidebar");
 const content = document.getElementById("content");
@@ -45,6 +46,7 @@ function renderDashboard() {
     </div>
     <div class="dash-encouragement">${encouragement(state)}</div>
     <div class="dash-stats">
+      <button class="dash-time" title="今日 ${formatDuration(todaySec())} · 累计 ${formatDuration(totalSec())} · 点击查看详情">⏱ ${formatDuration(todaySec())}</button>
       <span class="dash-streak" title="连续打卡天数">🔥 ${state.streak}</span>
       <span class="dash-checkin ${checkInClass}">${checkInLabel}</span>
       <button class="dash-fx ${particles.getEnabled() ? 'on' : 'off'}" title="${particles.getEnabled() ? '关闭粒子特效' : '开启粒子特效'}">${particles.getEnabled() ? '✨' : '·'}</button>
@@ -75,6 +77,13 @@ function renderDashboard() {
       }
     });
   }
+  // 学习时长 chip → 跳到记录页
+  const timeBtn = dashboardEl.querySelector(".dash-time");
+  if (timeBtn) {
+    timeBtn.addEventListener("click", () => {
+      window.location.hash = "#/log";
+    });
+  }
 }
 
 function escapeHTML(s) {
@@ -92,6 +101,7 @@ const NAV = [
   { hash: "#/quiz",      label: "📊 考核" },
   { hash: "#/report",    label: "📈 日报" },
   { hash: "#/weakness",  label: "🎯 薄弱项" },
+  { hash: "#/log",       label: "⏱ 记录" },
 ];
 
 function renderSidebar(currentHash) {
@@ -123,6 +133,7 @@ function placeholderView(title) {
 
 const router = new Router()
   .on("#/overview", async () => {
+    trackPage("overview");
     renderSidebar("#/overview");
     const { renderOverview } = await import("./views/overview.js");
     renderOverview(content, { progress, router });
@@ -134,47 +145,62 @@ const router = new Router()
       router.go("#/review");
       return;
     }
+    trackPage("today");
     renderSidebar("#/today");
     const { renderToday } = await import("./views/today.js");
     await renderToday(content, { progress, router, persistProgress });
   })
   .on("#/review", async () => {
+    trackPage("review");
     renderSidebar("#/review");
     const { renderReview, destroyReview } = await import("./views/review-view.js");
     window.addEventListener("hashchange", destroyReview, { once: true });
     renderReview(content, { router });
   })
   .on("#/notes", async () => {
+    trackPage("notes");
     renderSidebar("#/notes");
     const { renderNotesList } = await import("./views/notes-view.js");
     renderNotesList(content, { router, progress });
   })
   .on("#/notes/:dayId", async (p) => {
+    trackPage("notes");
     renderSidebar("#/notes");
     const { renderNoteEditor } = await import("./views/notes-view.js");
     renderNoteEditor(content, { dayId: p.dayId });
   })
+  .on("#/log", async () => {
+    trackPage("log");
+    renderSidebar("#/log");
+    const { renderLog } = await import("./views/log-view.js");
+    renderLog(content, { progress });
+  })
   .on("#/quiz", async () => {
+    trackPage("quiz");
     renderSidebar("#/quiz");
     const { renderQuizCenter } = await import("./views/quiz-view.js");
     renderQuizCenter(content, { progress });
   })
   .on("#/quiz/:quizId", async (p) => {
+    trackPage("quiz");
     renderSidebar("#/quiz");
     const { renderQuiz } = await import("./views/quiz-view.js");
     await renderQuiz(content, { quizId: p.quizId, router });
   })
   .on("#/report", async () => {
+    trackPage("report");
     renderSidebar("#/report");
     const { renderReport } = await import("./views/report-view.js");
     renderReport(content, { dayId: null, progress });
   })
   .on("#/report/:dayId", async (p) => {
+    trackPage("report");
     renderSidebar("#/report");
     const { renderReport } = await import("./views/report-view.js");
     renderReport(content, { dayId: p.dayId, progress });
   })
   .on("#/weakness", async () => {
+    trackPage("weakness");
     renderSidebar("#/weakness");
     const { renderWeakness } = await import("./views/weakness-view.js");
     renderWeakness(content, {});
