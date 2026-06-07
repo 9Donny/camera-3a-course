@@ -129,6 +129,9 @@ class CourseHandler(http.server.SimpleHTTPRequestHandler):
             # 上游的 cors 也不要原封不动转，自己加
             if kl.startswith("access-control-"):
                 continue
+            # 剥掉 WWW-Authenticate：否则 401 时浏览器会弹原生 Basic Auth 登录框
+            if kl == "www-authenticate":
+                continue
             self.send_header(k, v)
         for k, v in cors_headers().items():
             self.send_header(k, v)

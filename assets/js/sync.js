@@ -232,23 +232,34 @@ export const sync = {
 export function installAutoSync(opts = {}) {
   const debounceMs = opts.debounceMs ?? 2000;
   let timer = null;
+  let authBlocked = false; // 认证失败后熔断，防止反复 401 弹窗
 
   const origSet = storage.set.bind(storage);
   storage.set = (name, value) => {
     const ok = origSet(name, value);
     sync.markDirty(name);
     // 配置自身的变更不触发自动同步（避免循环）
-    if (sync.getConfig().enabled && !EXCLUDE.has(name) && name !== CFG_KEY && name !== META_KEY) {
+    if (!authBlocked && sync.getConfig().enabled && !EXCLUDE.has(name) && name !== CFG_KEY && name !== META_KEY) {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
-        sync.syncNow().catch(e => {
-          console.warn("auto-sync failed:", e.message);
-          if (opts.onError) opts.onError(e);
-        }).then(r => {
+        sync.syncNow().then(r => {
           if (r && opts.onSuccess) opts.onSuccess(r);
+        }).catch(e => {
+          console.warn("auto-sync failed:", e.message);
+          // 401 = 应用密码失效，停止自动同步避免反复弹原生登录框
+          if (/401|认证|认证失败/.test(e.message || "")) {
+            authBlocked = true;
+            console.warn("[sync] auth failed, auto-sync paused. Update password in #/sync to resume.");
+          }
+          if (opts.onError) opts.onError(e);
         });
       }, debounceMs);
     }
     return ok;
+  };
+
+  // 用户在 #/sync 重新保存配置时调一下，恢复自动同步
+  return {
+    resetAuthBlock: () => { authBlocked = false; },
   };
 }
