@@ -4,6 +4,7 @@ import { Router } from "./router.js";
 import { notes } from "./notes.js";
 import { profile, todayLabel, todayISO, encouragement } from "./profile.js";
 import { flashcards } from "./flashcards.js";
+import * as particles from "./particles.js";
 
 const sidebar = document.getElementById("sidebar");
 const content = document.getElementById("content");
@@ -46,6 +47,7 @@ function renderDashboard() {
     <div class="dash-stats">
       <span class="dash-streak" title="连续打卡天数">🔥 ${state.streak}</span>
       <span class="dash-checkin ${checkInClass}">${checkInLabel}</span>
+      <button class="dash-fx ${particles.getEnabled() ? 'on' : 'off'}" title="${particles.getEnabled() ? '关闭粒子特效' : '开启粒子特效'}">${particles.getEnabled() ? '✨' : '·'}</button>
     </div>
   `;
   // 改昵称
@@ -56,6 +58,20 @@ function renderDashboard() {
       if (name !== null && name.trim()) {
         profile.setNickname(name);
         renderDashboard();
+      }
+    });
+  }
+  // 粒子特效开关
+  const fxBtn = dashboardEl.querySelector(".dash-fx");
+  if (fxBtn) {
+    fxBtn.addEventListener("click", () => {
+      const next = !particles.getEnabled();
+      particles.setEnabled(next);
+      renderDashboard();
+      // 开启时立即放一次烟花作为反馈
+      if (next) {
+        const r = fxBtn.getBoundingClientRect();
+        particles.celebrateFireworks(r.left + r.width / 2, r.bottom + 20);
       }
     });
   }

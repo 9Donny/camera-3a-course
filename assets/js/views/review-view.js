@@ -2,6 +2,7 @@
 
 import { flashcards } from "../flashcards.js";
 import { schedule } from "../srs.js";
+import { celebrateRise, celebrateFireworks } from "../particles.js";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -83,11 +84,20 @@ export function renderReview(content, { router }) {
     content.querySelectorAll('.review-rate').forEach(btn => {
       btn.addEventListener("click", () => {
         const rating = btn.dataset.rate;
+        // 「记得」时在按钮位置放出蓝色光点
+        if (rating === "known") {
+          const r = btn.getBoundingClientRect();
+          celebrateRise(r.left + r.width / 2, r.top + r.height / 2);
+        }
         const next = schedule(card, rating, today);
         flashcards.update(card.id, next);
         idx += 1;
         revealed = false;
         render();
+        // 全部复习完成时来一次烟花
+        if (idx >= total) {
+          setTimeout(() => celebrateFireworks(window.innerWidth / 2, window.innerHeight / 3), 200);
+        }
       });
     });
 
@@ -115,11 +125,17 @@ export function renderReview(content, { router }) {
     if (revealed && (e.key === "1" || e.key === "2" || e.key === "3")) {
       const rating = e.key === "1" ? "forgot" : e.key === "2" ? "fuzzy" : "known";
       const card = queue[idx];
+      if (rating === "known") {
+        celebrateRise(window.innerWidth / 2, window.innerHeight / 2);
+      }
       const next = schedule(card, rating, today);
       flashcards.update(card.id, next);
       idx += 1;
       revealed = false;
       render();
+      if (idx >= total) {
+        setTimeout(() => celebrateFireworks(window.innerWidth / 2, window.innerHeight / 3), 200);
+      }
     }
   };
   document.addEventListener("keydown", keyHandler);

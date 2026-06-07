@@ -3,6 +3,7 @@ import { validateDay } from "../validators.js";
 import { tts, markdownToSpeech } from "../tts.js";
 import { initHighlightCollect } from "../highlight.js";
 import { initScrollProgress, destroyScrollProgress } from "../scroll-progress.js";
+import { celebrateConfetti } from "../particles.js";
 
 let highlightInitialized = false;
 
@@ -92,8 +93,12 @@ export async function renderToday(content, { progress, router, persistProgress }
       progress.completeDay(day, today);
       persistProgress();
       tts.stop();
-      alert(`🎉 Day ${day} 完成！下一天已解锁。`);
-      router.go("#/report/" + dayId);
+      celebrateConfetti();
+      // 让特效先播放再跳页
+      setTimeout(() => {
+        alert(`🎉 Day ${day} 完成！下一天已解锁。`);
+        router.go("#/report/" + dayId);
+      }, 100);
     });
   }
 

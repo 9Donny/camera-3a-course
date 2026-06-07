@@ -1,6 +1,7 @@
 import { storage } from "../storage.js";
 import { scoreQuizResults } from "../quiz.js";
 import { validateQuiz } from "../validators.js";
+import { celebrateFireworks, celebrateConfetti } from "../particles.js";
 
 export async function renderQuizCenter(content, { progress }) {
   const day = progress.getState().currentDay;
@@ -105,6 +106,14 @@ export async function renderQuiz(content, { quizId, router }) {
       ${items}
       <p class="muted" style="margin-top:16px">简答题完成自评后，将自动写入薄弱项统计。</p>
     `;
+
+    // 高分庆祝：满分→烟花，≥80%→彩纸
+    const ratio = result.total > 0 ? result.score / result.total : 0;
+    if (ratio >= 1.0) {
+      setTimeout(() => celebrateFireworks(window.innerWidth / 2, window.innerHeight / 3), 100);
+    } else if (ratio >= 0.8) {
+      setTimeout(() => celebrateConfetti(), 100);
+    }
 
     // self-rate handlers
     document.querySelectorAll(".self-rate").forEach(btn => {

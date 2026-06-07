@@ -524,3 +524,19 @@ details.extras > summary:hover {
   text-align: center;
 }
 .nav-item.active .nav-badge { background: #fff; color: var(--accent); }
+
+/* Dashboard 粒子开关 */
+.dash-fx {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.dash-fx.on { color: var(--warning); border-color: var(--warning); }
+.dash-fx:hover { transform: scale(1.15); }
