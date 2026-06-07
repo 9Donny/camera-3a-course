@@ -378,3 +378,50 @@ details.extras > summary:hover {
 .extras-list a:hover {
   text-decoration: underline;
 }
+
+/* 总览页：每周 section + 学习目标说明 */
+.week-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.week-meta { margin-bottom: 12px; }
+.week-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.week-goal { font-size: 13px; color: var(--accent-2); margin-bottom: 6px; line-height: 1.6; }
+.week-goal .label, .week-summary .label, .dp-goal .label {
+  display: inline-block;
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent-2);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  margin-right: 4px;
+}
+.week-summary { font-size: 13px; color: var(--text-muted); line-height: 1.7; }
+
+/* 已经存在的 .week-cells 复用，cells 在 section 内不再水平 align */
+.week-section .week-cells { padding: 4px 0; }
+
+/* Day 弹出气泡 */
+.day-popover {
+  position: absolute;
+  z-index: 200;
+  width: 320px;
+  max-width: calc(100vw - 40px);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.dp-status { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.dp-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.dp-goal { font-size: 13px; line-height: 1.6; color: var(--text-muted); margin-bottom: 12px; }
+.dp-actions { display: flex; gap: 8px; }
+.dp-actions .btn { padding: 6px 12px; font-size: 13px; }
+
+/* day-cell 加 cursor: pointer 给所有非 locked 格子 */
+.day-cell:not(.empty):not(.locked) { cursor: pointer; }
+.day-cell.locked { cursor: pointer; opacity: 0.6; }

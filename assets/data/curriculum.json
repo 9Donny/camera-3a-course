@@ -1,21 +1,69 @@
 {
   "weeks": [
-    { "id": "w1", "title": "Week 1 · 光学与 Camera 硬件入门", "days": ["day-01", "day-02", "day-03", "day-04", "day-05", "day-06", "day-07"] },
-    { "id": "w2", "title": "Week 2 · ISP Pipeline 全链路", "days": ["day-08", "day-09", "day-10", "day-11", "day-12", "day-13", "day-14"] },
-    { "id": "w3", "title": "Week 3 · AEC 第一阶段：基础", "days": ["day-15", "day-16", "day-17", "day-18", "day-19", "day-20", "day-21"] },
-    { "id": "w4", "title": "Week 4 · AEC 第二阶段：进阶", "days": ["day-22", "day-23", "day-24", "day-25", "day-26", "day-27", "day-28"] },
-    { "id": "w5", "title": "Week 5 · AWB 第一阶段：基础", "days": ["day-29", "day-30", "day-31", "day-32", "day-33", "day-34", "day-35"] },
-    { "id": "w6", "title": "Week 6 · AWB 第二阶段：进阶", "days": ["day-36", "day-37", "day-38", "day-39", "day-40", "day-41", "day-42"] },
-    { "id": "w7", "title": "Week 7 · AF + Flash + HDR 综合", "days": ["day-43", "day-44", "day-45", "day-46", "day-47", "day-48", "day-49"] },
-    { "id": "w8", "title": "Week 8 · 色彩科学 + 工具实操 + 面试冲刺", "days": ["day-50", "day-51", "day-52", "day-53", "day-54", "day-55", "day-56", "day-57", "day-58", "day-59", "day-60"] }
+    {
+      "id": "w1",
+      "title": "Week 1 · 光学与 Camera 硬件入门",
+      "goal": "建立从「光子到 RAW 数据」的完整物理直觉，记住曝光方程，认识手机镜头模组的全部部件",
+      "summary": "本周从光的两个属性（强度+波长）切入，逐步引入像素阱、Bayer 阵列、CMOS 传感器、镜头模组、VCM 马达、卷帘快门、闪光灯等所有硬件概念。Week 1 不进 ISP / 不进 3A，专注打物理底子，让你在后面 7 周看任何调教文档都不再被术语劝退。",
+      "days": ["day-01", "day-02", "day-03", "day-04", "day-05", "day-06", "day-07"]
+    },
+    {
+      "id": "w2",
+      "title": "Week 2 · ISP Pipeline 全链路",
+      "goal": "理解一张 RAW 图怎么变成 JPEG，记住 ISP 各模块的作用和顺序",
+      "summary": "RAW → 黑电平校正 → Lens Shading → Demosaic → 白平衡 → CCM → Gamma → TMC/LTM/GTM → 降噪 → 锐化 → JPEG。本周把高通 Spectra 架构和每个模块的输入/输出/作用串起来，是后面所有 3A 学习的基础地图。",
+      "days": ["day-08", "day-09", "day-10", "day-11", "day-12", "day-13", "day-14"]
+    },
+    {
+      "id": "w3",
+      "title": "Week 3 · AEC 第一阶段：基础",
+      "goal": "掌握 AE 算法的核心数据结构（曝光表 + lux_index）和收敛逻辑",
+      "summary": "高通 AEC 是 60 天最大的模块。本周学最基础的部分：64×48 数据块统计、亮度目标 (Target)、Safe Target 推导、Lux Index、Exp Index、收敛与抗带状。学完能口述 AE 算法的完整流程。",
+      "days": ["day-15", "day-16", "day-17", "day-18", "day-19", "day-20", "day-21"]
+    },
+    {
+      "id": "w4",
+      "title": "Week 4 · AEC 第二阶段：进阶",
+      "goal": "掌握 10 种 Scene Analyzer + HDR + ADRC + 双摄 AEC 等高级机制",
+      "summary": "Brighten / Saturation Prevention / Dark Prevention / Extreme Color / Face / Touch / Saliency / Depth / Frame / LLS 共 10 种场景分析器。再加 ADRC、Dark Boost、3-EXP HDR、MFHDR/SHDR、Tone Mapping、双摄 AEC。学完 AE 整个章节面试题都能答。",
+      "days": ["day-22", "day-23", "day-24", "day-25", "day-26", "day-27", "day-28"]
+    },
+    {
+      "id": "w5",
+      "title": "Week 5 · AWB 第一阶段：基础",
+      "goal": "理解 AWB 怎么估算场景色温（CCT），掌握统计过滤器的 5 种概念",
+      "summary": "AWB 是 60 天里参数最多最复杂的模块。本周学：Bayer 网格统计、传感器 OTP 校准、参考点、光源权重向量、距离权重向量、误导色区 (MLC)。从 0 到能看懂高通 AWB 调试文档。",
+      "days": ["day-29", "day-30", "day-31", "day-32", "day-33", "day-34", "day-35"]
+    },
+    {
+      "id": "w6",
+      "title": "Week 6 · AWB 第二阶段：进阶",
+      "goal": "掌握高级灰度世界、人脸辅助、闪光灯 AWB、双摄同步等高级算法",
+      "summary": "AGW 高级灰度世界场景分析器、FA 人脸辅助、AWB 闪光灯、决策聚合器、动态跳帧、时域收敛、三角增益调整 (TGA)、AWB 双摄同步、Fixed Color Matching、Smart Convergence。",
+      "days": ["day-36", "day-37", "day-38", "day-39", "day-40", "day-41", "day-42"]
+    },
+    {
+      "id": "w7",
+      "title": "Week 7 · AF + Flash + HDR 综合",
+      "goal": "AF 三种模式 + Flash 算法 + HDR/Flicker 一周通透",
+      "summary": "反差 AF (CAF)、Saliency AF、Depth AF、马达驱动测试、AF 预设 XML；闪光灯 Precision Flash；Auto Flicker Detection、滚动/静止带检测；SHDR 短曝光监控。",
+      "days": ["day-43", "day-44", "day-45", "day-46", "day-47", "day-48", "day-49"]
+    },
+    {
+      "id": "w8",
+      "title": "Week 8 · 色彩科学 + 工具实操 + 面试冲刺",
+      "goal": "色彩管线、Chromatix 工具实操、模拟面试 + 简历润色，准备面试",
+      "summary": "LTM/GTM/TMC 关系、Gamma 优先级、多摄一致性、自研 Log/HDR 色彩管线；高通 Chromatix 工具完整流程；模拟面试（PRD 全部 23 道题答辩）；简历润色。Week 8 是冲刺周，11 天比其他周多 4 天。",
+      "days": ["day-50", "day-51", "day-52", "day-53", "day-54", "day-55", "day-56", "day-57", "day-58", "day-59", "day-60"]
+    }
   ],
   "days": [
-    { "id": "day-01", "week": 1, "module": "M1", "title": "认识光与曝光三要素" },
-    { "id": "day-02", "week": 1, "module": "M1", "title": "Bayer 阵列与 CFA：相机如何看到颜色" },
-    { "id": "day-03", "week": 1, "module": "M1", "title": "CMOS 传感器工作原理" },
-    { "id": "day-04", "week": 1, "module": "M1", "title": "镜头、光圈与马达对焦" },
-    { "id": "day-05", "week": 1, "module": "M1", "title": "快门、曝光时间与帧率" },
-    { "id": "day-06", "week": 1, "module": "M1", "title": "闪光灯：LED 与色温" },
-    { "id": "day-07", "week": 1, "module": "M1", "title": "Week 1 总结 + 硬件全景图" }
+    { "id": "day-01", "week": 1, "module": "M1", "title": "认识光与曝光三要素", "goal": "记住曝光三要素 + 默写曝光方程 AV+TV=BV+SV=EV" },
+    { "id": "day-02", "week": 1, "module": "M1", "title": "Bayer 阵列与 CFA：相机如何看到颜色", "goal": "理解相机如何辨认颜色 + RGGB/RYYB/Quad Bayer 各自取舍" },
+    { "id": "day-03", "week": 1, "module": "M1", "title": "CMOS 传感器工作原理", "goal": "理解 4T 像素结构 + 卷帘快门和果冻效应 + OB/LSC 概念" },
+    { "id": "day-04", "week": 1, "module": "M1", "title": "镜头、光圈与马达对焦", "goal": "认识镜头模组所有部件 + VCM 工作原理 + 多摄一致性挑战" },
+    { "id": "day-05", "week": 1, "module": "M1", "title": "快门、曝光时间与帧率", "goal": "掌握帧率↔曝光时间关系 + Antibanding + 曝光优先 vs 增益优先" },
+    { "id": "day-06", "week": 1, "module": "M1", "title": "闪光灯：LED 与色温", "goal": "理解预闪+主闪机制 + flux 反直觉参数 + 标准光源 D65" },
+    { "id": "day-07", "week": 1, "module": "M1", "title": "Week 1 总结 + 硬件全景图", "goal": "用一张大图串起 Week 1 所有概念 + 周考准备" }
   ]
 }
