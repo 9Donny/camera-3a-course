@@ -311,3 +311,70 @@
 @media (max-width: 700px) {
   .dash-date { display: none; }
 }
+
+/* 章节末「延伸学习」抽屉 */
+details.extras {
+  margin-top: 16px;
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 6px;
+  padding: 0;
+}
+details.extras > summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  color: var(--accent-2);
+  font-size: 13px;
+  font-weight: 600;
+  list-style: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+details.extras > summary::-webkit-details-marker { display: none; }
+details.extras > summary::before {
+  content: "▶ ";
+  display: inline-block;
+  margin-right: 4px;
+  transition: transform 0.15s;
+}
+details.extras[open] > summary::before {
+  transform: rotate(90deg);
+}
+details.extras > summary:hover {
+  color: var(--text);
+}
+.extras-body {
+  padding: 4px 16px 14px;
+  border-top: 1px dashed rgba(59, 130, 246, 0.2);
+}
+.extras-block {
+  margin-top: 12px;
+}
+.extras-block-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.extras-faq {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.extras-faq li strong {
+  color: var(--text);
+}
+.extras-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.extras-list a {
+  color: var(--accent-2);
+}
+.extras-list a:hover {
+  text-decoration: underline;
+}

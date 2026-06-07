@@ -36,6 +36,7 @@ export async function renderToday(content, { progress, router, persistProgress }
       </div>
       <div class="md">${renderMarkdown(s.content)}</div>
       ${renderGlossary(s.glossary)}
+      ${renderExtras(s.extras)}
     </section>
   `).join("");
 
@@ -202,6 +203,55 @@ function renderGlossary(g) {
     `<li><strong>${escapeHTML(t.term)}</strong>（${escapeHTML(t.zh)}）— ${escapeHTML(t.explain)}</li>`
   ).join("");
   return `<div class="glossary"><div class="label">本节术语</div><ul>${items}</ul></div>`;
+}
+
+function renderExtras(extras) {
+  if (!extras || typeof extras !== "object") return "";
+  const faqs = Array.isArray(extras.faq) ? extras.faq : [];
+  const videos = Array.isArray(extras.videos) ? extras.videos : [];
+  const reads = Array.isArray(extras.reads) ? extras.reads : [];
+  if (faqs.length === 0 && videos.length === 0 && reads.length === 0) return "";
+
+  const faqHTML = faqs.length ? `
+    <div class="extras-block">
+      <div class="extras-block-title">💡 不懂就查（一句话答案）</div>
+      <ul class="extras-faq">
+        ${faqs.map(f => `<li><strong>${escapeHTML(f.q)}</strong> — ${escapeHTML(f.a)}</li>`).join("")}
+      </ul>
+    </div>` : "";
+
+  const videoHTML = videos.length ? `
+    <div class="extras-block">
+      <div class="extras-block-title">🎥 推荐视频 / 直播课</div>
+      <ul class="extras-list">
+        ${videos.map(v => {
+          const url = v.url || `https://search.bilibili.com/all?keyword=${encodeURIComponent(v.search || v.title)}`;
+          const note = v.note ? `<span class="dim">（${escapeHTML(v.note)}）</span>` : "";
+          return `<li><a href="${escapeHTML(url)}" target="_blank" rel="noopener">${escapeHTML(v.title)}</a> ${note}</li>`;
+        }).join("")}
+      </ul>
+    </div>` : "";
+
+  const readHTML = reads.length ? `
+    <div class="extras-block">
+      <div class="extras-block-title">📖 深入阅读</div>
+      <ul class="extras-list">
+        ${reads.map(r => {
+          const note = r.note ? `<span class="dim">（${escapeHTML(r.note)}）</span>` : "";
+          return `<li><a href="${escapeHTML(r.url)}" target="_blank" rel="noopener">${escapeHTML(r.title)}</a> ${note}</li>`;
+        }).join("")}
+      </ul>
+    </div>` : "";
+
+  return `
+    <details class="extras">
+      <summary>📚 延伸学习（点击展开）</summary>
+      <div class="extras-body">
+        ${faqHTML}
+        ${videoHTML}
+        ${readHTML}
+      </div>
+    </details>`;
 }
 
 function escapeHTML(s) {
