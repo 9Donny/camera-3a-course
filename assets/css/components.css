@@ -96,3 +96,45 @@
 .bar-partial  { background: var(--warning); height: 100%; }
 .bar-urgent   { background: var(--danger);  height: 100%; }
 .bar-untested { background: var(--surface-2); height: 100%; }
+
+/* TTS 工具栏 */
+.tts-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.tts-bar .btn { padding: 6px 12px; font-size: 13px; }
+.tts-rate { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); }
+.tts-rate select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-family: inherit;
+}
+.tts-status { margin-left: auto; }
+
+.section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+}
+.section-tts {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.section-tts:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+/* 表格样式（Markdown 表格 in lesson） */
+.md table { border-collapse: collapse; margin: 12px 0; }
+.md th, .md td { border: 1px solid var(--border); padding: 6px 12px; }
+.md th { background: var(--surface-2); }

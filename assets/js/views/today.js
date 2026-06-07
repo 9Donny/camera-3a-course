@@ -1,5 +1,6 @@
 import { renderMarkdown } from "../markdown.js";
 import { validateDay } from "../validators.js";
+import { tts, markdownToSpeech } from "../tts.js";
 
 export async function renderToday(content, { progress, router, persistProgress }) {
   const day = progress.getState().currentDay;
@@ -23,9 +24,12 @@ export async function renderToday(content, { progress, router, persistProgress }
     return;
   }
 
-  const sections = data.sections.map(s => `
-    <section class="lesson-section">
-      <h2>${escapeHTML(s.title)}</h2>
+  const sections = data.sections.map((s, idx) => `
+    <section class="lesson-section" data-section-idx="${idx}">
+      <div class="section-head">
+        <h2>${escapeHTML(s.title)}</h2>
+        <button class="section-tts" data-action="play-section" data-idx="${idx}" title="朗读本节">🔊</button>
+      </div>
       <div class="md">${renderMarkdown(s.content)}</div>
       ${renderGlossary(s.glossary)}
     </section>
@@ -40,11 +44,33 @@ export async function renderToday(content, { progress, router, persistProgress }
   const isCompleted = progress.isCompleted(day);
   const btnLabel = isCompleted ? "✓ 已完成（重读模式）" : "✅ 完成本日学习";
 
+  const ttsSupported = tts.isSupported();
+  const currentRate = tts.getRate();
+
   content.innerHTML = `
     <div class="lesson-header">
       <div class="muted">Week ${data.week} · 模块 ${data.module} · 预计 ${data.estimatedMinutes} 分钟</div>
       <h1>Day ${day} · ${escapeHTML(data.title)}</h1>
     </div>
+    ${ttsSupported ? `
+      <div class="tts-bar" id="ttsBar">
+        <button class="btn secondary" data-action="play-all">▶ 播放全文</button>
+        <button class="btn secondary" data-action="pause" disabled>⏸ 暂停</button>
+        <button class="btn secondary" data-action="resume" disabled>▶ 继续</button>
+        <button class="btn secondary" data-action="stop" disabled>■ 停止</button>
+        <span class="tts-rate">
+          速度
+          <select data-action="rate">
+            <option value="0.8" ${currentRate === 0.8 ? "selected" : ""}>0.8×</option>
+            <option value="1.0" ${currentRate === 1.0 ? "selected" : ""}>1.0×</option>
+            <option value="1.2" ${currentRate === 1.2 ? "selected" : ""}>1.2×</option>
+            <option value="1.5" ${currentRate === 1.5 ? "selected" : ""}>1.5×</option>
+            <option value="2.0" ${currentRate === 2.0 ? "selected" : ""}>2.0×</option>
+          </select>
+        </span>
+        <span class="tts-status muted" id="ttsStatus">就绪</span>
+      </div>
+    ` : `<div class="muted" style="padding:8px 0">⚠️ 当前浏览器不支持语音朗读，请用 Chrome / Edge / Safari 最新版。</div>`}
     ${sections}
     ${refs ? `<section class="lesson-section"><h2>📚 参考资料</h2><ul>${refs}</ul></section>` : ""}
     <div class="lesson-footer">
@@ -58,11 +84,82 @@ export async function renderToday(content, { progress, router, persistProgress }
       const today = new Date().toISOString().slice(0, 10);
       progress.completeDay(day, today);
       persistProgress();
-      // simple celebration
+      tts.stop();
       alert(`🎉 Day ${day} 完成！下一天已解锁。`);
       router.go("#/report/" + dayId);
     });
   }
+
+  if (ttsSupported) {
+    wireTTSControls(data);
+  }
+}
+
+function wireTTSControls(data) {
+  const bar = document.getElementById("ttsBar");
+  const status = document.getElementById("ttsStatus");
+  if (!bar) return;
+
+  const btnPlay   = bar.querySelector('[data-action="play-all"]');
+  const btnPause  = bar.querySelector('[data-action="pause"]');
+  const btnResume = bar.querySelector('[data-action="resume"]');
+  const btnStop   = bar.querySelector('[data-action="stop"]');
+  const selRate   = bar.querySelector('[data-action="rate"]');
+
+  const updateButtons = (state) => {
+    if (state === "playing") {
+      btnPlay.disabled = false;
+      btnPause.disabled = false;
+      btnResume.disabled = true;
+      btnStop.disabled = false;
+      status.textContent = "🔊 朗读中…";
+    } else if (state === "paused") {
+      btnPlay.disabled = false;
+      btnPause.disabled = true;
+      btnResume.disabled = false;
+      btnStop.disabled = false;
+      status.textContent = "⏸ 已暂停";
+    } else {
+      btnPlay.disabled = false;
+      btnPause.disabled = true;
+      btnResume.disabled = true;
+      btnStop.disabled = true;
+      status.textContent = "就绪";
+    }
+  };
+
+  tts.onStateChange = updateButtons;
+  updateButtons("idle");
+
+  btnPlay.addEventListener("click", () => {
+    const segments = data.sections.map(s => {
+      const head = s.title;
+      const body = markdownToSpeech(s.content);
+      return `${head}。${body}`;
+    });
+    tts.playSequence(segments);
+  });
+
+  btnPause.addEventListener("click", () => tts.pause());
+  btnResume.addEventListener("click", () => tts.resume());
+  btnStop.addEventListener("click", () => tts.stop());
+
+  selRate.addEventListener("change", (e) => {
+    tts.setRate(parseFloat(e.target.value));
+  });
+
+  // 单节朗读按钮
+  document.querySelectorAll('[data-action="play-section"]').forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const s = data.sections[idx];
+      if (!s) return;
+      tts.play(`${s.title}。${markdownToSpeech(s.content)}`);
+    });
+  });
+
+  // 离开页面时停掉
+  window.addEventListener("hashchange", () => tts.stop(), { once: true });
 }
 
 function renderGlossary(g) {
