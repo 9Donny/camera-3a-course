@@ -149,12 +149,15 @@ export const sync = {
     const cfg = this.getConfig();
     if (!cfg.email || !cfg.password) throw new Error("未配置同步");
     const auth = "Basic " + btoa(`${cfg.email}:${cfg.password}`);
+    // 顺手保证目录存在（首次 pull 时坚果云会 409）
+    await this._ensureFolder(auth);
 
     const res = await fetch(REMOTE_PATH, {
       method: "GET",
       headers: { Authorization: auth },
     });
-    if (res.status === 404) {
+    // 404 = 文件不存在；409 = 上级目录不存在
+    if (res.status === 404 || res.status === 409) {
       return { downloadedKeys: 0, fresh: true }; // 远端还没数据
     }
     if (!res.ok) throw new Error(`下载失败 HTTP ${res.status}`);
@@ -191,8 +194,13 @@ export const sync = {
     return { downloadedKeys: updated, remoteDevice: remote.device, remoteUploadedAt: remote.uploadedAt };
   },
 
-  // 完整 sync = pull 远端合并 + push 自己
+  // 完整 sync = 先确保目录 → pull 远端合并 → push 自己
   async syncNow() {
+    const cfg = this.getConfig();
+    if (!cfg.email || !cfg.password) throw new Error("未配置同步");
+    const auth = "Basic " + btoa(`${cfg.email}:${cfg.password}`);
+    // 首次同步时坚果云没有 camera-3a/ 目录，pull 会 409。先建目录。
+    await this._ensureFolder(auth);
     const pullResult = await this.pull();
     const pushResult = await this.push();
     return { pull: pullResult, push: pushResult, at: nowMs() };
