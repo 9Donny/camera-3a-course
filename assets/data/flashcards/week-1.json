@@ -1,0 +1,282 @@
+[
+  {
+    "id": "fc-w1-d1-1",
+    "front": "默写曝光方程",
+    "back": "AV + TV = BV + SV = EV。左边「供给」(光圈+快门) = 右边「接收」(场景亮度+ISO 放大) = 总曝光值。",
+    "tags": ["Day 1", "AE", "PRD-Q8", "公式"],
+    "srcDay": "day-01"
+  },
+  {
+    "id": "fc-w1-d1-2",
+    "front": "AV / TV / BV / SV 各代表什么？",
+    "back": "AV = log₂(F²) 光圈值；TV = -log₂(快门时间) 快门值；BV = log₂(场景亮度) 亮度值；SV = log₂(ISO/3.125) 感光度值。",
+    "tags": ["Day 1", "AE", "公式"],
+    "srcDay": "day-01"
+  },
+  {
+    "id": "fc-w1-d1-3",
+    "front": "EV 加 1 表示曝光量怎么变化？",
+    "back": "翻倍。EV 是 log₂ 刻度，每加 1 EV 亮度翻倍。",
+    "tags": ["Day 1", "AE"],
+    "srcDay": "day-01"
+  },
+  {
+    "id": "fc-w1-d1-4",
+    "front": "晴天室外 / 阴天 / 室内 / 烛光的典型 BV 数值各是多少？",
+    "back": "晴天 BV ≈ 9-10；阴天 5-6；室内白炽灯 3-4；烛光 0-1；月光 -3 ~ -2。",
+    "tags": ["Day 1", "AE", "数值"],
+    "srcDay": "day-01"
+  },
+  {
+    "id": "fc-w1-d1-5",
+    "front": "手机相机用户实际可调的是哪两个曝光要素？",
+    "back": "快门和 ISO。手机光圈大多物理固定（受 5-7mm 模组厚度限制）。",
+    "tags": ["Day 1", "AE"],
+    "srcDay": "day-01"
+  },
+  {
+    "id": "fc-w1-d1-6",
+    "front": "F 数为什么数字越小光圈越大？",
+    "back": "F 数 = 焦距 / 光圈直径，是分母。分母小 → 分数大 → 光圈直径大。F1.6 比 F2.8 进光约 3 倍。",
+    "tags": ["Day 1", "光学"],
+    "srcDay": "day-01"
+  },
+  {
+    "id": "fc-w1-d1-7",
+    "front": "提高 ISO 为什么会增加噪点？",
+    "back": "ISO 是对模拟信号的电子放大倍数。提 ISO 时已接收信号（含噪声）整体被放大，且放大电路本身引入读出噪声。物理上不会让传感器收到更多光子。",
+    "tags": ["Day 1", "AE", "噪点"],
+    "srcDay": "day-01"
+  },
+  {
+    "id": "fc-w1-d1-8",
+    "front": "传感器（Sensor）的三种主要噪声来源？",
+    "back": "(1) 散粒噪声 Shot Noise：光子到达的随机性，物理决定无法消除；(2) 读出噪声 Read Noise：电路放大引入；(3) 暗电流 Dark Current：无光下传感器漏电荷，温度越高越严重。",
+    "tags": ["Day 1", "Day 3", "噪点"],
+    "srcDay": "day-01"
+  },
+  {
+    "id": "fc-w1-d2-1",
+    "front": "Bayer 阵列 2×2 块里红/绿/蓝的比例？",
+    "back": "1:2:1（1 红 2 绿 1 蓝）。绿色像素占一半，因为人眼对绿色最敏感（视锥细胞 60%）。",
+    "tags": ["Day 2", "CFA", "数值"],
+    "srcDay": "day-02"
+  },
+  {
+    "id": "fc-w1-d2-2",
+    "front": "RGGB 阵列「左上→右上→左下→右下」颜色顺序？",
+    "back": "R-G-G-B：左上红，右上绿，左下绿，右下蓝。BGGR/GRBG/GBRG 是其他变体，本质相同只是起始锚点不同。",
+    "tags": ["Day 2", "CFA"],
+    "srcDay": "day-02"
+  },
+  {
+    "id": "fc-w1-d2-3",
+    "front": "什么是 Demosaic？",
+    "back": "把 Bayer 原图（每像素 1 色）插值还原成完整 RGB 图（每像素 3 色）的算法。最简单的是双线性插值，进阶有 AHD（沿边缘方向插值）等。",
+    "tags": ["Day 2", "ISP"],
+    "srcDay": "day-02"
+  },
+  {
+    "id": "fc-w1-d2-4",
+    "front": "RYYB 阵列相比 RGGB 的优势和代价？",
+    "back": "优势：黄色滤镜放红+绿光，进光量提升约 40%，暗光性能好。代价：没有专门记录绿色的像素，绿色靠 Y-R 算出，容易偏色（草地发黄）。华为 P30 Pro 用过。",
+    "tags": ["Day 2", "CFA"],
+    "srcDay": "day-02"
+  },
+  {
+    "id": "fc-w1-d2-5",
+    "front": "Quad Bayer (4-cell) 是什么？解决什么问题？",
+    "back": "同色像素 4 个一组（2×2）的 CFA 变种。白天 4 个像素分别读出 → 全分辨率；暗光 4 合 1 像素合并 → 等效大像素低噪点。4800 万 / 6400 万 / 1 亿像素手机用得上。",
+    "tags": ["Day 2", "CFA"],
+    "srcDay": "day-02"
+  },
+  {
+    "id": "fc-w1-d3-1",
+    "front": "现代手机用 CMOS 还是 CCD？为什么？",
+    "back": "几乎全部 CMOS。CMOS 每像素自带读出电路，省电、读出快、和数字电路同工艺成本低。CCD 只在天文/科学成像等小众领域。",
+    "tags": ["Day 3", "Sensor"],
+    "srcDay": "day-03"
+  },
+  {
+    "id": "fc-w1-d3-2",
+    "front": "4T 像素结构里 4 个晶体管分别叫什么？",
+    "back": "RST 复位 / TX 传输 / SF 源跟随器（电荷转电压）/ SEL 选通。还有一个 PD 光电二极管负责光转电荷。",
+    "tags": ["Day 3", "Sensor"],
+    "srcDay": "day-03"
+  },
+  {
+    "id": "fc-w1-d3-3",
+    "front": "什么是果冻效应？为什么手机不用全局快门消除？",
+    "back": "Rolling Shutter Effect。CMOS 一行一行依次读出，行间几毫秒错开造成高速运动物体几何形变。全局快门需要每像素额外存储电容，工艺贵、有效进光面积小，不适合手机。",
+    "tags": ["Day 3", "Sensor"],
+    "srcDay": "day-03"
+  },
+  {
+    "id": "fc-w1-d3-4",
+    "front": "什么是 OB（黑电平）？为什么 ISP 第一步要做 OB 校正？",
+    "back": "Optical Black 黑电平 = 暗电流 + 电路偏置。传感器即使无光也会输出非零值。不减掉的话整张图都偏亮，所以 ISP 第一步必须校正。",
+    "tags": ["Day 3", "ISP"],
+    "srcDay": "day-03"
+  },
+  {
+    "id": "fc-w1-d3-5",
+    "front": "什么是 LSC？怎么校准？",
+    "back": "Lens Shading Correction 镜头阴影校正。物理上镜头让画面四角进光少。校准方法：在标准光源下拍均匀白板，建立位置→增益对照表，运行时按表给每个像素打 gain。",
+    "tags": ["Day 3", "ISP"],
+    "srcDay": "day-03"
+  },
+  {
+    "id": "fc-w1-d3-6",
+    "front": "BSI 工艺解决什么问题？",
+    "back": "Back-Side Illumination 背照式。把读出电路从像素正面移到背面，让光子直接打在 PD 上不被电路挡住。2010 年左右大幅提升手机进光量。现在所有旗舰都是 BSI 或 Stacked。",
+    "tags": ["Day 3", "Sensor"],
+    "srcDay": "day-03"
+  },
+  {
+    "id": "fc-w1-d4-1",
+    "front": "VCM 是什么？工作原理？",
+    "back": "Voice Coil Motor 音圈马达。原理和扬声器音圈相同：磁场+通电线圈产生力推动镜片。手机对焦行程 ±100µm，精度几 µm。闭环 VCM 内置霍尔传感器实时反馈位置。",
+    "tags": ["Day 4", "AF"],
+    "srcDay": "day-04"
+  },
+  {
+    "id": "fc-w1-d4-2",
+    "front": "为什么手机摄像头大多是固定光圈？",
+    "back": "可调光圈需要金属叶片机构（iris），单反里占 1-2cm 空间。手机模组总厚度只有 5-7mm 塞不下。少数旗舰（三星 S9 / 小米 14 Ultra）有可变光圈是工程炫技。",
+    "tags": ["Day 4", "光学"],
+    "srcDay": "day-04"
+  },
+  {
+    "id": "fc-w1-d4-3",
+    "front": "IR-cut 滤镜的作用？",
+    "back": "硅传感器对红外光（700-1100nm）也敏感但人眼看不到。IR-cut 滤掉 700nm 以上让相机颜色和人眼一致。验证：用手机拍电视遥控器红外 LED 能看到淡紫光。",
+    "tags": ["Day 4", "光学"],
+    "srcDay": "day-04"
+  },
+  {
+    "id": "fc-w1-d4-4",
+    "front": "潜望式镜头解决什么问题？",
+    "back": "用棱镜把光路弯 90° 让长焦镜头横躺在手机内部，焦距可达 100mm+ 而不增加手机厚度。小米 13 Ultra / 华为 P50 Pro+ / iPhone 15 Pro Max 都用过。",
+    "tags": ["Day 4", "光学"],
+    "srcDay": "day-04"
+  },
+  {
+    "id": "fc-w1-d4-5",
+    "front": "为什么多摄一致性是个调教难题？",
+    "back": "主摄/超广角/长焦用不同 sensor + 不同镜头 + 不同 IR-cut。同一白纸三个摄像头读出不同 RGB，AWB 算出不同色温，最终成片色调不一致。需要做双摄/多摄同步，让多个摄像头输出尽量一致。",
+    "tags": ["Day 4", "AWB", "AE"],
+    "srcDay": "day-04"
+  },
+  {
+    "id": "fc-w1-d5-1",
+    "front": "240 fps 单帧最长曝光时间约多少毫秒？",
+    "back": "约 4.17 ms（= 1/240 秒）。这是物理上限，因为单帧时间窗口里 sensor 还要做读出和处理，实际曝光会更短。PRD 第 11 题。",
+    "tags": ["Day 5", "PRD-Q11", "数值"],
+    "srcDay": "day-05"
+  },
+  {
+    "id": "fc-w1-d5-2",
+    "front": "FLL / LLP / Coarse Integration Time 各是什么？",
+    "back": "Frame Length Lines = 一帧总行数（含消隐行）；Line Length Pixels = 一行总像素数；Coarse Integration Time = 实际曝光行数。帧率 = 像素时钟 / (FLL × LLP)。",
+    "tags": ["Day 5", "Sensor"],
+    "srcDay": "day-05"
+  },
+  {
+    "id": "fc-w1-d5-3",
+    "front": "中国市电 50Hz 下，曝光时间必须是多少毫秒的整数倍才能消除带状噪点？",
+    "back": "10 ms。因为 50Hz 交流电闪烁周期 = 1/100 秒 = 10 ms。这就是 Antibanding 算法的本质：约束曝光时间为闪烁周期整数倍。",
+    "tags": ["Day 5", "AE", "数值"],
+    "srcDay": "day-05"
+  },
+  {
+    "id": "fc-w1-d5-4",
+    "front": "高通曝光表怎么调试？主要影响什么？",
+    "back": "通过 sensor 曝光时间和 ISO 两个变量控制亮度。在不同 lux_index 下预先决定值。一般策略：先加曝光（曝光优先），到拐点（约 1/30s）切换加 ISO（增益优先），避免拖影。可调拐点位置和 ISO 上限。主要影响亮度和噪声。PRD 第 12 题。",
+    "tags": ["Day 5", "AE", "PRD-Q12"],
+    "srcDay": "day-05"
+  },
+  {
+    "id": "fc-w1-d5-5",
+    "front": "「曝光优先」vs「增益优先」各自代价？",
+    "back": "曝光优先：噪点少（光子真多了），但容易抖糊。增益优先：清晰不抖（曝光短），但噪点重（电子放大）。曝光表拐点决定切换点，常在 1/30 秒。",
+    "tags": ["Day 5", "AE"],
+    "srcDay": "day-05"
+  },
+  {
+    "id": "fc-w1-d6-1",
+    "front": "调主闪/预闪比 flux，flux 越大照片越亮还是越暗？为什么？",
+    "back": "越暗。Flux = 主闪/预闪能量比。Flux 加大 → 同样主闪下预闪相对变弱 → 系统按预闪反射判定「环境偏暗」 → AE 决策偏保守 → 整体偏暗。PRD 第 22 题，反直觉但要记住。",
+    "tags": ["Day 6", "Flash", "PRD-Q22"],
+    "srcDay": "day-06"
+  },
+  {
+    "id": "fc-w1-d6-2",
+    "front": "拍照按下快门后闪光灯实际闪了几次？为什么？",
+    "back": "2 次。预闪（弱）+ 主闪（强）。预闪用于测光和测色温（AE/AWB 决策依据），主闪才是真正照亮画面的。肉眼通常以为只闪一次。",
+    "tags": ["Day 6", "Flash"],
+    "srcDay": "day-06"
+  },
+  {
+    "id": "fc-w1-d6-3",
+    "front": "标准光源 D65 是什么？为什么常用？",
+    "back": "CIE 定义的平均日光光源，色温 6504K。是色彩学和调教中最常用的参考光源 —— AWB 校准、ColorChecker 评测、显示器校色都默认 D65。",
+    "tags": ["Day 6", "AWB", "色彩"],
+    "srcDay": "day-06"
+  },
+  {
+    "id": "fc-w1-d6-4",
+    "front": "白炽灯 / 印刷标准 / 平均日光 / 北方天空的标准光源代号和色温？",
+    "back": "A = 2856K 白炽灯；D50 = 5000K 印刷；D65 = 6504K 平均日光；D75 = 7500K 北方天空；F2 = 4150K 冷白荧光。",
+    "tags": ["Day 6", "AWB", "色彩", "数值"],
+    "srcDay": "day-06"
+  },
+  {
+    "id": "fc-w1-d6-5",
+    "front": "「色温越高越冷色」反直觉吗？为什么这么命名？",
+    "back": "反直觉但来自物理：黑体加热到高温辐射偏蓝（高色温），低温偏红黄（低色温）。但人感官上反而觉得「高色温=冷」。低色温暖（橙红），高色温冷（蓝白）。",
+    "tags": ["Day 6", "色彩"],
+    "srcDay": "day-06"
+  },
+  {
+    "id": "fc-w1-d6-6",
+    "front": "什么是 CCT？AWB 算法怎么用它？",
+    "back": "Correlated Color Temperature 相关色温。AWB 核心目标之一就是估算当前场景的 CCT，然后反向打增益（CCM/WB Gain）让白纸看起来还是白的。",
+    "tags": ["Day 6", "AWB"],
+    "srcDay": "day-06"
+  },
+  {
+    "id": "fc-w1-d7-1",
+    "front": "高通 AE 把图像分成多少个数据块统计亮度？",
+    "back": "64×48 数据块。中心测光模式。Week 3 学 AEC 时正式讲。PRD 第 17 题。",
+    "tags": ["Day 7", "AE", "PRD-Q17", "数值"],
+    "srcDay": "day-07"
+  },
+  {
+    "id": "fc-w1-d7-2",
+    "front": "曝光方程里 4 个变量在硬件上对应哪个位置？",
+    "back": "AV → 镜头模组（手机基本固定）；TV → CMOS 像素阱（Coarse Integration Time 寄存器）；BV → 镜头之前不可控；SV → ADC 之前的模拟放大器（Analog Gain）。",
+    "tags": ["Day 7", "AE"],
+    "srcDay": "day-07"
+  },
+  {
+    "id": "fc-w1-d7-3",
+    "front": "Analog Gain 和 Digital Gain 区别？AE 优先用哪个？",
+    "back": "Analog Gain 在 ADC 之前对模拟信号放大（对应 ISO「真正提升」），Digital Gain 在 ISP 内对数字信号放大（损失动态范围）。AE 优先用 Analog Gain。",
+    "tags": ["Day 7", "AE"],
+    "srcDay": "day-07"
+  },
+  {
+    "id": "fc-w1-d7-4",
+    "front": "EV 0 → EV 8 实际亮度变化多少倍？",
+    "back": "256 倍（2^8）。这就是为什么晴天 EV 14 和烛光 EV 4 差出 1024 倍亮度，但人眼觉得「差不多 10 倍」—— 人眼对光的感知是对数的。",
+    "tags": ["Day 7", "AE", "数值"],
+    "srcDay": "day-07"
+  },
+  {
+    "id": "fc-w1-d7-5",
+    "front": "什么是 lux_index 和 exp_index？和 BV/EV 什么关系？",
+    "back": "高通 AE 系统的内部数值。lux_index ≈ BV（系统认为的当前场景亮度）；exp_index ≈ EV（系统选定的曝光档位）。AE 算法跑「测 BV → 算 lux_index → 决定 exp_index → 拆 AV/TV/SV → 写 sensor 寄存器」。",
+    "tags": ["Day 7", "AE"],
+    "srcDay": "day-07"
+  }
+]

@@ -425,3 +425,102 @@ details.extras > summary:hover {
 /* day-cell 加 cursor: pointer 给所有非 locked 格子 */
 .day-cell:not(.empty):not(.locked) { cursor: pointer; }
 .day-cell.locked { cursor: pointer; opacity: 0.6; }
+
+/* 复习页 */
+.review-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px 0;
+}
+.review-progress {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 32px;
+}
+.review-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.review-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #60a5fa, #3b82f6);
+  transition: width 0.3s;
+}
+.review-counter {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  min-width: 60px;
+  text-align: right;
+}
+.review-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 40px 32px;
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: border-color 0.2s;
+}
+.review-card.revealed { border-color: var(--accent); }
+.review-card-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.review-card-meta .tag {
+  font-size: 11px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+.review-card-front {
+  font-size: 22px;
+  line-height: 1.6;
+  color: var(--text);
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.review-card-back {
+  border-top: 1px dashed var(--border);
+  padding-top: 16px;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--accent-2);
+}
+.review-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  justify-content: center;
+}
+.review-actions .btn {
+  padding: 12px 24px;
+  font-size: 15px;
+  min-width: 140px;
+}
+.review-flip { width: 100%; }
+.review-skip {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 13px;
+}
+.review-skip a { color: var(--text-dim); }
+.review-skip a:hover { color: var(--accent-2); }
+
+/* 侧栏角标（用于复习卡数量提醒） */
+.nav-badge {
+  display: inline-block;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 10px;
+  margin-left: 4px;
+  vertical-align: middle;
+  min-width: 18px;
+  text-align: center;
+}
+.nav-item.active .nav-badge { background: #fff; color: var(--accent); }

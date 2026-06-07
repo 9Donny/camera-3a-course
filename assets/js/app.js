@@ -3,6 +3,7 @@ import { Progress } from "./progress.js";
 import { Router } from "./router.js";
 import { notes } from "./notes.js";
 import { profile, todayLabel, todayISO, encouragement } from "./profile.js";
+import { flashcards } from "./flashcards.js";
 
 const sidebar = document.getElementById("sidebar");
 const content = document.getElementById("content");
@@ -70,6 +71,7 @@ setInterval(renderDashboard, 60_000);
 const NAV = [
   { hash: "#/overview",  label: "📚 总览" },
   { hash: "#/today",     label: "📅 今日" },
+  { hash: "#/review",    label: "🧠 复习" },
   { hash: "#/notes",     label: "📝 笔记" },
   { hash: "#/quiz",      label: "📊 考核" },
   { hash: "#/report",    label: "📈 日报" },
@@ -77,7 +79,14 @@ const NAV = [
 ];
 
 function renderSidebar(currentHash) {
-  const top = NAV.map(n => `<a class="nav-item ${currentHash.startsWith(n.hash) ? "active" : ""}" href="${n.hash}">${n.label}</a>`).join("");
+  const dueN = flashcards.dueToday(todayISO()).length;
+  const top = NAV.map(n => {
+    let label = n.label;
+    if (n.hash === "#/review" && dueN > 0) {
+      label += ` <span class="nav-badge">${dueN}</span>`;
+    }
+    return `<a class="nav-item ${currentHash.startsWith(n.hash) ? "active" : ""}" href="${n.hash}">${label}</a>`;
+  }).join("");
   const weeks = [];
   for (let w = 1; w <= 8; w++) {
     const startDay = (w - 1) * 7 + 1;
@@ -103,9 +112,21 @@ const router = new Router()
     renderOverview(content, { progress, router });
   })
   .on("#/today", async () => {
+    // 进今日学习前检查复习是否到期
+    const { needsReview } = await import("./views/review-view.js");
+    if (needsReview()) {
+      router.go("#/review");
+      return;
+    }
     renderSidebar("#/today");
     const { renderToday } = await import("./views/today.js");
     await renderToday(content, { progress, router, persistProgress });
+  })
+  .on("#/review", async () => {
+    renderSidebar("#/review");
+    const { renderReview, destroyReview } = await import("./views/review-view.js");
+    window.addEventListener("hashchange", destroyReview, { once: true });
+    renderReview(content, { router });
   })
   .on("#/notes", async () => {
     renderSidebar("#/notes");
@@ -146,6 +167,18 @@ const router = new Router()
 
 renderDashboard();
 maybeAskNickname();
+
+// 启动时加载 Week 1 种子卡片（已存在的卡片不会被覆盖学习状态）
+async function loadSeedFlashcards() {
+  try {
+    const res = await fetch("./assets/data/flashcards/week-1.json");
+    if (!res.ok) return;
+    const seeds = await res.json();
+    flashcards.loadInitial(seeds);
+  } catch (e) { /* 文件不存在或格式错时静默 */ }
+}
+await loadSeedFlashcards();
+
 router.start();
 
 function downloadFile(filename, content, mime = "text/plain") {
