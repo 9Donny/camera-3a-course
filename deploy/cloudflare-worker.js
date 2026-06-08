@@ -67,12 +67,23 @@ export default {
     }
     fwdHeaders.set("Host", "dav.jianguoyun.com");
 
+    // 决定是否需要带 body：
+    //   - GET / HEAD / OPTIONS / DELETE / PROPFIND（depth=0）通常没 body
+    //   - 只有当 Content-Length > 0 或 Transfer-Encoding 时才转发 body
+    //   - 这避免「method 看起来要 body 但 body 是 null」让 Cloudflare upstream 报 520
+    const noBodyMethods = new Set(["GET", "HEAD", "OPTIONS", "DELETE", "MKCOL", "MOVE", "COPY"]);
+    const cl = request.headers.get("content-length");
+    const te = request.headers.get("transfer-encoding");
+    const hasBody = !noBodyMethods.has(request.method) && (
+      (cl && cl !== "0") || !!te
+    );
+
     let upstreamResp;
     try {
       upstreamResp = await fetch(upstreamUrl, {
         method: request.method,
         headers: fwdHeaders,
-        body: ["GET", "HEAD", "OPTIONS"].includes(request.method) ? undefined : request.body,
+        body: hasBody ? request.body : undefined,
         redirect: "manual",
       });
     } catch (e) {
