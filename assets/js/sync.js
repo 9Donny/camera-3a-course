@@ -16,13 +16,30 @@ const PREFIX = "camera3a:";
 const CFG_KEY = "syncConfig";
 const META_KEY = "syncMeta"; // { lastSyncedAt, lastDevice, keyMtimes: { [key]: ms } }
 
-// 默认代理：本地 server.py 提供
-const DEFAULT_PROXY_BASE = "/dav-proxy";
+// 默认代理：
+//   - 本地开发（localhost / 127.0.0.1 / LAN 内网 IP）→ server.py 的内置代理
+//   - 公网部署（GitHub Pages 等）→ Cloudflare Worker 的 custom domain（绕过 GFW）
+const LOCAL_PROXY_BASE = "/dav-proxy";
+const PUBLIC_PROXY_BASE = "https://camera3a.aicourse0.xyz";
+
+function isLocalHost() {
+  const h = location.hostname;
+  if (h === "localhost" || h === "127.0.0.1" || h === "0.0.0.0") return true;
+  // 私有网段：10.x / 172.16-31.x / 192.168.x
+  if (/^10\./.test(h)) return true;
+  if (/^192\.168\./.test(h)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
+  return false;
+}
+
+function defaultProxyBase() {
+  return isLocalHost() ? LOCAL_PROXY_BASE : PUBLIC_PROXY_BASE;
+}
 
 // 决定代理 URL：优先用配置里的 proxyBase，否则用默认值
 function proxyBase() {
   const cfg = storage.get(CFG_KEY, {});
-  const base = (cfg.proxyBase || DEFAULT_PROXY_BASE).replace(/\/+$/, "");
+  const base = (cfg.proxyBase || defaultProxyBase()).replace(/\/+$/, "");
   return base;
 }
 

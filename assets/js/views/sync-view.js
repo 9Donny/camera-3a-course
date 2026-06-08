@@ -48,8 +48,8 @@ export function renderSync(content) {
           <input type="text" id="syncDevice" value="${escapeAttr(cfg.device)}" placeholder="例如：Mac / 手机 / 公司电脑" autocomplete="off">
         </label>
         <label class="sync-field">
-          <span>WebDAV 代理地址（高级 — 公网部署时填，本地留空）</span>
-          <input type="text" id="syncProxy" value="${escapeAttr(cfg.proxyBase || "")}" placeholder="例如：https://camera3a-sync.workers.dev（留空 = 用本地 server.py）" autocomplete="off">
+          <span>WebDAV 代理地址（高级 — 留空走默认；公网默认走 Cloudflare Worker 自定义域名）</span>
+          <input type="text" id="syncProxy" value="${escapeAttr(cfg.proxyBase || "")}" placeholder="留空 = 自动选择（本地用 server.py / 公网用 https://camera3a.aicourse0.xyz）" autocomplete="off">
         </label>
         <label class="sync-field sync-toggle">
           <input type="checkbox" id="syncEnabled" ${cfg.enabled ? "checked" : ""}>
