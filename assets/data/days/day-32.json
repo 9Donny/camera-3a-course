@@ -1,0 +1,89 @@
+{
+  "id": "day-32",
+  "week": 5,
+  "module": "M4",
+  "title": "光源权重向量（Light Weight Vector）",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "从「**最近一个**」到「**所有都算**」",
+      "type": "concept",
+      "content": "### Day 31 复习\n\nDay 31 我们学了「**最近参考点 + 内插**」算法。具体步骤：\n\n1. 算 current 的 (RG, BG)\n2. 找最近的 1 个或 2 个参考点\n3. 内插得到 (interp_rg, interp_bg, interp_cct)\n4. 输出 gain\n\n这个算法的局限我们也讨论了：**容易被画面强色彩误导**。\n\n### 改进思路：让所有参考点都参与决策\n\n现代 AWB 的进阶算法叫「**Light Weight Vector**（LWV，光源权重向量）」：\n\n> 不只用最近的 1-2 个参考点，而是**让所有参考点都对决策有贡献**，按「**距离 + 先验 weight**」综合加权。\n\n```python\ndef awb_with_lwv(current, reference_points):\n    weights = []\n    for ref in reference_points:\n        # 距离权重：越近权重越大\n        d = euclidean_distance(current, ref)\n        dist_weight = 1 / (1 + d * sigma)  # 高斯衰减\n        \n        # 综合权重 = 距离权重 × 先验置信度\n        w = dist_weight * ref.weight\n        weights.append(w)\n    \n    # 归一化\n    total = sum(weights)\n    weights = [w / total for w in weights]\n    \n    # 加权平均得到光源\n    final_rg = sum(w * ref.rg for w, ref in zip(weights, refs))\n    final_bg = sum(w * ref.bg for w, ref in zip(weights, refs))\n    final_cct = sum(w * ref.cct for w, ref in zip(weights, refs))\n    \n    return (1.0/final_rg, 1.0, 1.0/final_bg), final_cct, weights\n```\n\n关键变化：\n- **不挑「最近」**，而是给每个参考点一个 0-1 的权重\n- **权重 = 距离权重 × 先验权重**\n- 最终光源 = 所有参考点的加权平均\n\n### 这就是「Light Weight Vector」\n\n`weights` 这个列表（每个参考点对应一个权重）就是「**光源权重向量**」。\n\n```\nLWV = [0.05, 0.10, 0.05, 0.15, 0.20, 0.30, 0.10, 0.05]\n        A    H   TL84 CWF  D50  D65  D75  H_blue\n        \n含义：当前帧 30% 概率是 D65、20% 是 D50、15% 是 CWF、...\n```\n\nLWV 和元素之和 = 1，可以理解为「**当前帧的光源是各种光源的概率分布**」。\n\n### 为什么 LWV 比「最近参考点」好\n\n**例子：钨丝灯下拍蓝衣（Day 31 失败案例）**\n\n```\ncurrent = (0.80, 0.60)  (钨丝 + 蓝衣综合)\n\n各参考点距离：\n  A 钨丝 (1.62, 0.55):   d=0.83\n  D65 (1.00, 1.00):     d=0.45 ← 最近\n  CWF (1.18, 0.88):     d=0.46\n\n各参考点先验 weight：\n  A: 0.15, D65: 0.25, CWF: 0.10\n```\n\n**最近参考点法**：选 D65（0.45 最近）→ 错（应该是 A）。\n\n**LWV 法**：\n```\nLWV[A]   = 1/(1+0.83×3) × 0.15 = 0.043\nLWV[D65] = 1/(1+0.45×3) × 0.25 = 0.107\nLWV[CWF] = 1/(1+0.46×3) × 0.10 = 0.042\n...\n（其他参考点也算）\n\n归一化后大致：\nA: 18%, D65: 45%, CWF: 18%, others: 19%\n```\n\nA 的概率从「最近参考点法」的 0% 升到 18%。最终光源会**朝 A 偏移**：\n\n```\nfinal_rg = 1.62 × 0.18 + 1.00 × 0.45 + 1.18 × 0.18 + ... ≈ 1.10\nfinal_cct = 2856 × 0.18 + 6500 × 0.45 + 4150 × 0.18 + ... ≈ 4400 K\n```\n\nLWV 法估出 4400K（介于 A 和 D65），不是直接 6500K。**色彩偏黄修正减弱，蓝衣保持蓝色，钨丝灯下肤色更准**。\n\n比简单的「最近参考点」**更柔和、更不容易被误导**。\n\n### LWV 是 AWB 的「**核心数据结构**」\n\n```\n输入 → 64×48 块统计 → current_rg, current_bg\n                          ↓\n                    LWV 算法\n                          ↓\n输出 →  LWV (8-15 维概率向量)\n             ↓\n        加权平均 → final_rg/bg/cct/gain\n```\n\nLWV 的好处：\n1. **可调**：每个参考点的 sigma（距离衰减）可调\n2. **可解释**：看 LWV 知道 AWB 当前认为光源是什么概率分布\n3. **可融合**：多个 sub-algorithm（灰世界 / 参考点 / AI）都可以输出各自的 LWV，最后聚合（Day 34 学）\n\n所以 LWV 是 AWB 现代算法的**核心**。Tuning 工程师调 AWB 主要是调影响 LWV 的参数。",
+      "glossary": [
+        { "term": "LWV", "zh": "Light Weight Vector 光源权重向量", "explain": "AWB 内部数据结构：每个参考点对应一个 0-1 的概率，表示「当前帧光源是这个的可能性」。" },
+        { "term": "距离权重 Distance Weight", "zh": "距离权重", "explain": "current 离参考点越近，这个参考点权重越大。常用高斯衰减 1/(1+d×sigma)。" },
+        { "term": "先验权重 Prior Weight", "zh": "先验权重", "explain": "Day 31 学的参考点 weight，反映「这个光源出现的概率」。和距离权重相乘得到最终 weight。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "LWV 维度通常多大？", "a": "等于参考点数量，常见 8-15 个。维度太多算量大、太少不够细。" },
+          { "q": "为什么是「概率分布」？", "a": "数学上 LWV 加起来 = 1，可以解释为光源的概率分布。这种解释让算法可以用「贝叶斯**思维**」做更复杂决策（先验 + 似然）。" },
+          { "q": "LWV 能否自适应？", "a": "可以。先验 weight 在长时间统计后可以调整（如这个市场的用户拍 A 钨丝场景多 → A 的先验 weight 调高）。但很少这么做，避免不一致。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Light Weight Vector" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "距离衰减函数：σ 怎么选",
+      "type": "concept",
+      "content": "### sigma 的作用\n\nLWV 公式里：\n\n```\ndist_weight = 1 / (1 + d * sigma)\n```\n\n`sigma` 决定「**距离衰减的速度**」：\n\n- **sigma 大**（比如 10）：远的参考点权重快速衰减到 0，结果接近「最近参考点法」\n- **sigma 小**（比如 1）：远的参考点也参与决策，结果更平滑\n- **sigma = 0**：所有参考点权重相同，等于「**只看先验**」\n\n```\nsigma = 10:\n  d=0.1 → weight = 1/(1+1) = 0.50\n  d=0.5 → weight = 1/(1+5) = 0.17\n  d=1.0 → weight = 1/(1+10) = 0.09\n  d=2.0 → weight = 1/(1+20) = 0.05  ← 远的近乎不参与\n\nsigma = 1:\n  d=0.1 → weight = 0.91\n  d=0.5 → weight = 0.67\n  d=1.0 → weight = 0.50\n  d=2.0 → weight = 0.33  ← 远的还有 1/3 权重\n```\n\nsigma 大 → 决策「**尖锐**」（更接近经典最近参考点）；sigma 小 → 决策「**平滑**」（受多个参考点影响）。\n\n### Tuning 工程师调 sigma\n\n```xml\n<lwv_config>\n  <sigma>3.0</sigma>             <!-- 默认中庸 -->\n  <max_distance>1.5</max_distance>  <!-- 距离 > 1.5 的参考点设权重 0 -->\n</lwv_config>\n```\n\n经验：\n\n- **拍照模式**：sigma 中等（3-5），平衡尖锐和平滑\n- **录像模式**：sigma 略小（2-3），让 AWB 更平滑（避免色彩抖）\n- **专业模式**：sigma 大（5-8），让 AWB 更「**确定**」（用户期望准）\n\n### 不同距离度量\n\n上面用的是欧几里得距离 `sqrt(dx² + dy²)`。还有其他选择：\n\n- **曼哈顿距离**：`|dx| + |dy|`（计算更快，效果略糙）\n- **加权欧几里得**：`sqrt(α×dx² + β×dy²)`（强调 RG 或 BG 哪个更重要）\n\n实际工程多用欧几里得，加权版偶尔在特殊光源场景用。\n\n### 距离衰减函数对比\n\n```\n1/(1+d×σ)：调和函数，常用，简单\nexp(-d²×σ)：高斯函数，更平滑\nmax(0, 1-d/D)：线性截断，超过 D 直接 0\n```\n\n选哪个看团队偏好。高通文档里**通常用调和函数**（计算便宜）。\n\n### 一个具体例子：sigma 调整\n\n场景：AWB 调教时发现「**钨丝灯下时偏向 D65**」。\n\n排查：检查 LWV 输出\n\n```\n[LWV] A=0.10  D65=0.40  ...\n```\n\nA（钨丝）权重只有 10%，D65 占 40%。问题是 sigma 太小，让远的 D65 也大量参与。\n\n修正：sigma 1.0 → 5.0\n\n```\n[LWV new] A=0.30  D65=0.20  ...\n```\n\nA 升到 30%、D65 降到 20%。决策正确了。\n\n这就是「**sigma 调教改变 AWB 风格**」的实际效果。\n\n### Tuning 工程师还能调什么\n\n除了 sigma，影响 LWV 的还有：\n\n1. **参考点的 weight**（先验，Day 31 学的）\n2. **参考点的位置**（OTP 校准）\n3. **max_distance 截断**（远的直接 0）\n4. **距离度量函数**（欧几里得 / 曼哈顿 / 加权）\n5. **衰减函数**（调和 / 高斯 / 线性）\n\n这 5 类参数共 30-50 个数。**每改一个，AWB 风格都微调**。",
+      "glossary": [
+        { "term": "Sigma", "zh": "衰减系数", "explain": "LWV 距离权重公式里的参数，控制远参考点的衰减速度。" },
+        { "term": "Distance Metric", "zh": "距离度量", "explain": "RG-BG 平面上算两点距离的方法。常用欧几里得。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "sigma 通常多大？", "a": "1-10 之间。3-5 是默认值。" },
+          { "q": "调 sigma 影响什么场景最大？", "a": "光源「介于两个参考点」的场景。比如 4500K（D50 和 CWF 之间）、3500K（A 和 TL84 之间）。sigma 大时这些场景靠近最近参考点；sigma 小时综合两边。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "LWV Sigma" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "多 sub-algorithm 的 LWV 融合",
+      "type": "concept",
+      "content": "### 多个 AWB 算法并行\n\n现代手机 AWB 不只跑「**参考点 + LWV**」一个算法，而是同时跑**多个 sub-algorithm**：\n\n```\nAWB 总管\n├── Sub-Algo 1: 灰世界（fallback）\n├── Sub-Algo 2: 参考点 + LWV（主力）\n├── Sub-Algo 3: 白点检测\n├── Sub-Algo 4: AGW 高级灰世界（Week 6 学）\n├── Sub-Algo 5: FA 人脸辅助 AWB（Week 6 学）\n├── Sub-Algo 6: AI 神经网络（旗舰才有）\n└── ...\n```\n\n每个 sub-algorithm **独立输出**自己的：\n- LWV（光源权重向量）\n- 置信度（confidence，0-1）\n\n### 决策聚合：取每个 sub-algo 的 LWV 加权融合\n\n```python\ndef aggregate_lwv(sub_algos):\n    final_lwv = [0] * num_refs  # 初始化\n    total_conf = 0\n    \n    for algo in sub_algos:\n        algo_lwv = algo.compute_lwv(stats)\n        algo_conf = algo.confidence\n        \n        # 用置信度加权\n        for i, w in enumerate(algo_lwv):\n            final_lwv[i] += w * algo_conf\n        total_conf += algo_conf\n    \n    # 归一化\n    if total_conf > 0:\n        final_lwv = [w / total_conf for w in final_lwv]\n    \n    return final_lwv\n```\n\n含义：\n- 灰世界 confidence 低时（场景颜色单一），它的 LWV 影响小\n- 参考点法 confidence 高时（场景平衡），它的 LWV 主导\n- AI sub-algo 在它擅长的场景（人脸、复杂室内）置信度高\n\n这种「**多算法投票**」让 AWB **比单一算法更稳**。\n\n### 各 sub-algo 的置信度\n\n**灰世界**：\n- 看画面颜色多样性。多样 → 高置信度（0.8+）\n- 单一色彩主导 → 低置信度（0.2）\n\n**参考点法**：\n- 看 current 离最近参考点的距离\n- 距离小 → 高置信度（接近某个已知光源）\n- 距离大 → 低置信度（远离所有已知光源，可能是异常场景）\n\n**人脸辅助（FA）**：\n- 检测到人脸 → 高置信度（肤色提供光源信息）\n- 没人脸 → 置信度 0（不参与）\n\n**AI**：\n- 模型输出本身有置信度（softmax 概率）\n\n### 决策融合的优势\n\n场景：拍夜景霓虹（颜色单一）\n\n```\n灰世界：confidence 0.20（颜色单一，自报置信度低）\n参考点法：confidence 0.50（极端场景，离参考点都远）\nFA：confidence 0（没人脸）\nAI：confidence 0.80（模型见过夜景训练数据，置信度高）\n\n融合后：AI 主导（80% 权重），其他 sub-algo 微调\n→ AWB 输出夜景下「合理的 LWV」\n```\n\n相比单算法（如纯参考点）会更稳。\n\n### Tuning 工程师调聚合\n\n```xml\n<awb_aggregator>\n  <sub_algorithms>\n    <algo name=\"gray_world\" enabled=\"true\" weight=\"0.2\"/>\n    <algo name=\"refpoint_lwv\" enabled=\"true\" weight=\"0.5\"/>\n    <algo name=\"face_assist\" enabled=\"true\" weight=\"0.2\"/>\n    <algo name=\"ai_awb\" enabled=\"false\" weight=\"0.1\"/>  <!-- 中端机型关 AI -->\n  </sub_algorithms>\n  <use_confidence>true</use_confidence>           <!-- 用各算法的 confidence -->\n  <min_total_confidence>0.3</min_total_confidence> <!-- 总 confidence 太低 → 用上一帧 -->\n</awb_aggregator>\n```\n\n这里的 weight 是「**各算法整体重要性**」（区别于 LWV 内部权重）。\n\n### Day 34 预告：决策聚合详细流程\n\nDay 34 我们会更详细地学决策聚合，包括：\n- 怎么处理 sub-algo 之间的冲突\n- 时序平滑（多帧聚合）\n- 异常处理（所有 sub-algo 都低置信度怎么办）\n\n今天先建立「**多算法 + LWV 融合**」的整体框架。",
+      "glossary": [
+        { "term": "Sub-Algorithm", "zh": "子算法", "explain": "AWB 内部的一个独立 LWV 计算模块，如灰世界、参考点法、人脸辅助等。" },
+        { "term": "Aggregator", "zh": "聚合器", "explain": "把多个 sub-algo 的 LWV 融合成最终 LWV 的模块。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么不只用 AI？", "a": "AI 训练数据有偏（训了什么场景就擅长什么），罕见光源（蓝色 LED 灯、混合光源）容易翻车。传统算法稳定可解释。两者结合最稳。" },
+          { "q": "中端机型不上 AI 怎么办？", "a": "weight 配置里 ai_awb enabled=false。只用传统算法，效果略差但成本低。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AWB Decision Aggregation" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "AWB log 升级版：看 LWV",
+      "type": "example",
+      "content": "### 完整 AWB log（含 LWV）\n\n```\n[AWB] frame=2000\n[AWB] current rg=1.10 bg=0.90\n[AWB] valid_blocks=2950/3072 saturated=80 dark=42\n[AWB] sub_algos:\n  gray_world: lwv=[0.05,0.10,0.05,0.15,0.20,0.30,0.10,0.05] conf=0.65\n  refpoint:   lwv=[0.10,0.05,0.10,0.20,0.25,0.20,0.05,0.05] conf=0.85\n  face:       lwv=[0.15,0.05,0.10,0.15,0.20,0.25,0.05,0.05] conf=0.40\n[AWB] final_lwv=[0.10,0.07,0.08,0.18,0.23,0.24,0.07,0.05]\n[AWB] final cct=5300 r_gain=0.96 b_gain=1.02 settled=1\n```\n\n字段含义：\n- `current` rg/bg：原始观测\n- `valid_blocks`：实际用了 2950 块（过滤了过曝过暗）\n- `sub_algos`：3 个子算法各自的 LWV 和置信度\n- `final_lwv`：聚合后的 LWV（所有子算法贡献加权融合）\n- `final cct`：最终估出的色温\n- `r_gain / b_gain`：最终的 WB Gain\n\n### 看 log 解决问题\n\n**bug：「室内拍偏暖（黄）」**\n\n```\n[AWB] sub_algos:\n  gray_world: lwv[A 钨丝]=0.40 conf=0.80\n  refpoint:   lwv[A 钨丝]=0.10 conf=0.50\n  face:       lwv[A 钨丝]=0.30 conf=0.80\n[AWB] final_lwv[A]=0.30 final cct=4500\n```\n\n灰世界和 face 都说「**A 钨丝概率高**（0.30-0.40）」，但 refpoint 说「**只 0.10**」。\n\n问题：refpoint 算法误判（current 离 A 太远，被 D65 拉走了）。\n\n聚合后 A=0.30，但因为 refpoint 错，cct 估到了 4500K（中性偏暖）而不是真正的 3000K（钨丝）。\n\n修正方向：\n- 提高 refpoint 的 sigma（让远的参考点权重更小，A 不被 D65 抢）\n- 或者降低 refpoint 在聚合中的 weight\n- 或者增加 face 算法的 weight（face 准）\n\n### LWV 视角看「**用户拍照时大致环境**」\n\n用户在公司办公室（CWF 冷白荧光，4150K）拍照：\n\n```\n[AWB] final_lwv:\n  A 钨丝:  0.05\n  H 卤素:  0.05\n  TL84:   0.20\n  CWF:    0.40 ← 主导\n  D50:    0.15\n  D65:    0.10\n  D75:    0.03\n  H_blue: 0.02\n```\n\nLWV 把 CWF 概率推到 40%，TL84 第二（同为荧光族）。**LWV 等于一份「光源诊断报告**」 —— 看了能猜出用户在什么环境。\n\n### Tuning 工程师怎么看 LWV\n\n实际工作流：\n\n```\n1. 用户报偏色 bug\n2. 抓 log 拿 LWV\n3. 对比「**真实光源**」和 LWV 主导项\n4. 不一致 → 找哪个 sub-algo 错了\n5. 调对应 sub-algo 的参数（sigma / weight / threshold）\n6. 重测\n```\n\n**LWV 是 AWB 调教的「显微镜」**。看 LWV 比看 final_cct 信息量大得多。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **LWV（光源权重向量）**：每个参考点对应一个 0-1 概率，表示「当前光源是这个的可能性」。LWV 之和 = 1\n2. **LWV 计算**：每个参考点权重 = 距离权重 × 先验权重，归一化后得到 LWV\n3. **sigma 控制衰减**：sigma 大 → 接近最近参考点（尖锐）；sigma 小 → 多参考点融合（平滑）\n4. **多 sub-algorithm 融合**：灰世界 / 参考点法 / FA / AI 各自输出 LWV + 置信度，聚合器加权融合\n5. **LWV 是 AWB 调教的「显微镜」**：看每个 sub-algo 的 LWV 能定位哪个算法误判\n\n### 自我检查\n\n1. LWV 是什么？维度多大？元素之和是多少？\n2. 距离权重的常用公式？sigma 越大效果越「尖锐」还是「平滑」？\n3. 列出至少 3 个 AWB sub-algorithm，分别擅长什么场景。\n4. AWB 决策聚合时怎么用 sub-algo 的 confidence？\n5. 看 LWV 输出能猜出用户大致什么环境，对吗？\n\n### 笔记建议\n\n- 把 LWV 公式抄到笔记：`weight = (1/(1+d×sigma)) × prior_weight`\n- 整理 sub-algorithm 列表（灰世界 / 参考点 / FA / AI），各自擅长场景\n- 想想你妹妹项目的 AWB 启用了哪几个 sub-algorithm\n\n### 明天预告\n\nDay 33：距离权重向量 + 误导色区（MLC）。Day 31-32 学的是 RG-BG 平面上的处理，但还有一个**重要问题**：64×48 块本身是不均匀的（中心和边缘权重不同 + 强色彩块要排除）。今天我们看「**距离权重**」（位置权重）和 MLC。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Light Weight Vector + Decision Aggregation" }
+  ],
+  "dailyQuizId": "daily-day-32"
+}

@@ -1,0 +1,54 @@
+{
+  "id": "daily-day-31",
+  "title": "Day 31 日测：参考点 + 色温坐标系",
+  "module": "M4",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "AWB 内部用什么坐标系表示光源？",
+      "options": [
+        "RGB 三维空间",
+        "RG-BG 二维平面（X = R/G, Y = B/G）",
+        "XYZ 颜色空间",
+        "Lab 颜色空间"
+      ],
+      "answer": "RG-BG 二维平面（X = R/G, Y = B/G）",
+      "explain": "AWB 用 R/G 和 B/G 两个无量纲比值组成二维平面，每个光源对应一个点。这与亮度解耦，方便算法处理。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "Reference Points（参考点）是什么？",
+      "options": [
+        "Tuning 工程师手动选的几个像素位置",
+        "AWB 配置预存的常见光源在 RG-BG 平面上的位置 + 概率权重",
+        "OTP 里写的死值",
+        "AI 模型的输出"
+      ],
+      "answer": "AWB 配置预存的常见光源在 RG-BG 平面上的位置 + 概率权重",
+      "explain": "常见 8-15 个：A/TL84/CWF/D50/D65/D75/H_blue 等。每个含 RG/BG/CCT/prior_weight。AWB 决策时找「最匹配」参考点。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "所有自然光源在 RG-BG 平面上靠近一条曲线，叫 ___ 轨迹",
+      "answer": ["普朗克", "Planckian", "黑体辐射"],
+      "explain": "Planckian Locus：黑体辐射在不同温度下色调变化形成的曲线。所有自然光源（钨丝灯、日光、阴天、蓝天）都在这条曲线附近。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "current 落在两个参考点之间时，AWB 怎么得到一个连续的 CCT？",
+      "answer": ["内插", "线性内插", "linear interpolation", "插值"],
+      "explain": "找最近 2 个参考点 → 按距离比例线性内插（近的权重大）。这样 AWB 输出连续 CCT（如 5450K），不局限于参考点的整数值。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "为什么用「最近参考点 + 内插」算法比「灰世界」更稳定？",
+      "referenceAnswer": "灰世界算法把「画面 RGB 平均」当作光源色 —— 当画面被强色彩主导（绿草地）时，平均偏离真实光源，AWB 把草地修成灰白。最近参考点算法不直接用 current 当光源，而是在已知的「典型光源」（D65/A/CWF 等）里挑最匹配的，然后用「该参考点」的 RG/BG 计算 gain。这样即使 current 被绿色拉偏，最近参考点（D65）的位置不变 → 给 D65 的 gain → 草地保持绿色。本质：用「先验已知光源」作为基准，比「画面平均」更稳。"
+    }
+  ]
+}

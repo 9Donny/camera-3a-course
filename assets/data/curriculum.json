@@ -85,6 +85,13 @@
     { "id": "day-25", "week": 4, "module": "M3", "title": "Frame Analyzer + LLS（Low Light Suppress）", "goal": "理解滑动窗口稳定 + LLS 暗光抑制 + 10 Analyzer priority 排序" },
     { "id": "day-26", "week": 4, "module": "M3", "title": "ADRC 深入 + 3-EXP HDR + TMC 3.0/4.0（PRD-Q10）", "goal": "答 PRD-Q10 TMC 版本区别 + ADRC 曲线 + 3-EXP HDR 实现" },
     { "id": "day-27", "week": 4, "module": "M3", "title": "MFHDR / SHDR + 视频 HDR + 多摄同步", "goal": "三种 HDR 对比 + 视频 HDR 三大挑战 + 多摄主从架构" },
-    { "id": "day-28", "week": 4, "module": "M3", "title": "Week 4 总结：AEC 完整答辩 + 周考", "goal": "13 道 AE 类 PRD 题完整答案 + AEC 调教 cheat sheet + 周考" }
+    { "id": "day-28", "week": 4, "module": "M3", "title": "Week 4 总结：AEC 完整答辩 + 周考", "goal": "13 道 AE 类 PRD 题完整答案 + AEC 调教 cheat sheet + 周考" },
+    { "id": "day-29", "week": 5, "module": "M4", "title": "AWB 总览 + 灰世界假设", "goal": "理解白平衡是什么 + 色温 + 灰世界算法 + 局限" },
+    { "id": "day-30", "week": 5, "module": "M4", "title": "Bayer 网格统计 + Sensor OTP 校准", "goal": "AWB Stats 字段 + OTP 跨设备一致性 + 启动流程" },
+    { "id": "day-31", "week": 5, "module": "M4", "title": "参考点 + 色温坐标系", "goal": "Reference Points + RG-BG 平面 + 普朗克轨迹 + 内插" },
+    { "id": "day-32", "week": 5, "module": "M4", "title": "光源权重向量（LWV）", "goal": "LWV 数据结构 + 多 sub-algorithm 融合" },
+    { "id": "day-33", "week": 5, "module": "M4", "title": "距离权重向量（DWV）+ 误导色区（MLC）", "goal": "DWV 三因素 + MLC 多边形 + 解决「红墙变蓝紫」" },
+    { "id": "day-34", "week": 5, "module": "M4", "title": "AWB 决策聚合（深入）", "goal": "冲突处理 + confidence 校准 + 时序平滑 + fallback chain" },
+    { "id": "day-35", "week": 5, "module": "M4", "title": "Week 5 总结：AWB 第一阶段全景图 + 周考", "goal": "完整 AWB 流程 + AWB 类面试题 8 道 + 周考" }
   ]
 }

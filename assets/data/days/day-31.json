@@ -1,0 +1,93 @@
+{
+  "id": "day-31",
+  "week": 5,
+  "module": "M4",
+  "title": "参考点（Reference Points）+ 色温坐标系",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "色温坐标系：把光源画到平面上",
+      "type": "concept",
+      "content": "### 灰世界的局限再回顾\n\nDay 29 的灰世界算法：\n\n```python\nR_gain = G_avg / R_avg\nB_gain = G_avg / B_avg\n```\n\n它**等价于**把当前帧的 (RG, BG) 比例当作「真正的光源色温」。但灰世界的核心问题是：\n\n> **「画面平均颜色 = 中性灰」**这个假设在很多场景下是错的（草地全绿、夕阳全红）。\n\n现代 AWB 的改进：\n\n> **不假设画面平均是灰，而是直接判断「**当前测出的 RG/BG 最接近哪个已知光源**」。**\n\n这就是「**参考点（Reference Points）**」方法。\n\n### 色温坐标系\n\n用 RG（X 轴）和 BG（Y 轴）组成一个二维坐标系。每个光源在这平面上**对应一个点**：\n\n```\n  BG\n   ↑\n1.5 +              · H 7500K（蓝天）\n    |             · D75 7500K\n1.2 +          · D65 6500K（标准白）\n    |        · D50 5000K\n1.0 +     · CWF 4000K（白炽暖白）\n    |   · TL84 4100K（荧光）\n0.7 +  · A 2856K（钨丝）\n    | · 烛光 2000K\n    +-----+-----+-----+-----+→ RG\n    0.7   1.0   1.3   1.6   1.9\n```\n\n（这是简化示意；真实参考点表里有 10-20 个光源）\n\n规律：\n- 偏暖光源（钨丝、烛光）：RG 高、BG 低（左下到右）\n- 偏冷光源（蓝天、阴天）：RG 低、BG 高（右上到左）\n- 中性光源（D65）：RG ≈ BG ≈ 1.0\n\n这是物理规律：黑体辐射曲线在 RG-BG 平面上画出**一条曲线**（Planckian Locus，普朗克轨迹）。所有「**自然光源**」都靠近这条曲线。\n\n### Reference Points 是什么\n\n> Reference Points = AWB 配置里**预存**的「常见光源」在 RG-BG 平面上的位置。\n\n每个 Reference Point 含：\n\n```python\nclass ReferencePoint:\n    name: str          # 'D65', 'A', 'CWF', etc.\n    cct: int           # 色温 K\n    rg: float          # 该光源在 RG 轴上的位置\n    bg: float          # 该光源在 BG 轴上的位置\n    weight: float      # 这个参考点的「**先验置信度**」（出现概率）\n```\n\n常见 Reference Points 表：\n\n```xml\n<reference_points>\n  <point name=\"A\"     cct=\"2856\" rg=\"1.62\" bg=\"0.55\" weight=\"0.15\"/>  <!-- 钨丝 -->\n  <point name=\"H\"     cct=\"3000\" rg=\"1.50\" bg=\"0.60\" weight=\"0.05\"/>  <!-- 卤素 -->\n  <point name=\"TL84\"  cct=\"4100\" rg=\"1.20\" bg=\"0.85\" weight=\"0.10\"/>  <!-- 三波长荧光 -->\n  <point name=\"CWF\"   cct=\"4150\" rg=\"1.18\" bg=\"0.88\" weight=\"0.10\"/>  <!-- 冷白荧光 -->\n  <point name=\"D50\"   cct=\"5000\" rg=\"1.05\" bg=\"0.95\" weight=\"0.20\"/>  <!-- 早晚日光 -->\n  <point name=\"D65\"   cct=\"6500\" rg=\"1.00\" bg=\"1.00\" weight=\"0.25\"/>  <!-- 正午日光（最常见）-->\n  <point name=\"D75\"   cct=\"7500\" rg=\"0.95\" bg=\"1.10\" weight=\"0.10\"/>  <!-- 阴天 -->\n  <point name=\"H_blue\" cct=\"10000\" rg=\"0.85\" bg=\"1.30\" weight=\"0.05\"/> <!-- 蓝天 -->\n</reference_points>\n```\n\n各 weight 加起来 = 1.0。代表「**用户拍照时遇到这个光源的概率**」 —— D65 最常见（25%）、A 钨丝其次（15%）。\n\n### Tuning 工程师调参考点表\n\n参考点表是**项目级别配置**：\n\n- 每个 sensor 配一份（要 OTP 校准）\n- 每个市场（中国 vs 北美）可能略有不同（中国电网 50Hz 用更多 TL84 荧光、北美 60Hz 用 CWF）\n- 每个产品定位调整 weight（旗舰可以多覆盖光源、中端少几个）",
+      "glossary": [
+        { "term": "色温坐标系", "zh": "RG-BG Plane", "explain": "AWB 内部用的二维平面，X 轴 RG、Y 轴 BG，每个光源对应一个点。" },
+        { "term": "Reference Point", "zh": "参考点", "explain": "AWB 配置里预存的常见光源在 RG-BG 平面上的位置 + 概率权重。" },
+        { "term": "Planckian Locus", "zh": "普朗克轨迹", "explain": "黑体辐射在 RG-BG 平面上画出的曲线，所有自然光源都靠近它。" },
+        { "term": "CIE Standard Illuminants", "zh": "CIE 标准光源", "explain": "国际照明委员会定义的标准光源系列：A / D50 / D65 / D75 / F1-F12 等。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么 D65 weight 最大？", "a": "用户拍照 25% 以上场景在「正午阳光 / 标准白室内灯」下，色温接近 6500K。这是先验概率。" },
+          { "q": "weight 影响什么？", "a": "Day 32 学的「光源权重向量」会用它做先验加权。weight 大 = 这个参考点更容易被选中。" },
+          { "q": "参考点表能改吗？", "a": "项目调教时可以改，但要小心。改 weight 会让 AWB 风格变化（更偏暖 / 偏冷）。改位置（RG/BG）需要重新校准 OTP。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：CIE 色温 普朗克", "search": "CIE 色温 普朗克轨迹" }
+        ],
+        "reads": [
+          { "title": "维基百科 · Planckian locus", "url": "https://en.wikipedia.org/wiki/Planckian_locus" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "AWB 决策：找最近参考点",
+      "type": "concept",
+      "content": "### 算法核心\n\n现代 AWB 算法的最简版本：\n\n```python\ndef awb_basic(stats_64x48, reference_points):\n    # 1. 算当前画面的 RG/BG\n    R = mean(b.R for b in stats_64x48 if b.is_valid)\n    G = mean(b.G for b in stats_64x48 if b.is_valid)\n    B = mean(b.B for b in stats_64x48 if b.is_valid)\n    current_rg = R / G\n    current_bg = B / G\n    \n    # 2. 在参考点表里找「最近」的那个\n    best = None\n    best_dist = float('inf')\n    for ref in reference_points:\n        dist = sqrt((current_rg - ref.rg)**2 + (current_bg - ref.bg)**2)\n        if dist < best_dist:\n            best_dist = dist\n            best = ref\n    \n    # 3. 用这个参考点的 RG/BG 作为「真正的光源」\n    # WB Gain = 让光源色还原成中性\n    R_gain = best.rg / current_rg  # 等于 1 / best.rg 当 current = best 时\n    B_gain = best.bg / current_bg\n    \n    return (R_gain, 1.0, B_gain), best.cct, best.name\n```\n\n核心思想：\n\n> **当前 (RG, BG) 不直接当光源，而是用「**最匹配的参考点**」当光源。**\n\n这避免了灰世界算法的「**画面颜色主导误判**」 —— 即使绿草地把当前 RG 拉低了，参考点表里**没有「绿草地光源」**，所以最近的还是 D65（中性日光），AWB 输出正确。\n\n### 一个具体例子\n\n场景：用户在 D65 日光下拍绿草地。\n\n```\nstats:\n  R_avg = 80, G_avg = 200, B_avg = 100  (绿色像素主导)\ncurrent_rg = 80/200 = 0.40\ncurrent_bg = 100/200 = 0.50\n\n灰世界算法：\n  R_gain = G/R = 2.5  ← 大幅加红（错的！把绿草拉成黄）\n  B_gain = G/B = 2.0\n  → 草地拍出来变白\n\n参考点算法：\n  current 在 RG-BG 平面上的点 (0.40, 0.50)\n  各参考点距离：\n    A 钨丝 (1.62, 0.55): dist = sqrt(1.22² + 0.05²) = 1.22\n    D65 (1.00, 1.00):   dist = sqrt(0.60² + 0.50²) = 0.78\n    D75 (0.95, 1.10):   dist = sqrt(0.55² + 0.60²) = 0.81\n    H_blue (0.85, 1.30): dist = sqrt(0.45² + 0.80²) = 0.92\n  \n  最近 = D65（dist 0.78）\n  → 用 D65 的 (1.00, 1.00) 作为光源色\n  → R_gain = 1.00 / current_rg = 1.00 / 0.40 = 2.50  ?!?  \n  \n  Wait —— 这里也错了！\n```\n\n等等，简单的「**最近参考点**」也会因为绿色把 current 拉得很远。最近的还是 D65，但 R_gain = 2.5 也是错的。\n\n实际算法不这么简单。\n\n### 实际算法：找最近参考点 + 把它当作光源\n\n关键修正：**计算 gain 时不看 current，而看找到的参考点本身**。\n\n```python\nR_gain = 1.0 / best.rg     # ← 用参考点的 RG，不用 current_rg\nB_gain = 1.0 / best.bg\n```\n\n意思：\n- 找到「**最匹配光源是 D65**」\n- D65 在 sensor 上的 RG = 1.0（OTP 标定的）\n- 所以 R_gain = 1/1.0 = 1.0（不用调）\n- B_gain = 1/1.0 = 1.0\n- 草地拍出来**保持绿色**！\n\n这就是参考点法相对灰世界的优势：**找光源 ≠ 把当前画面平均当光源**，而是**在已知光源里挑最匹配的**。\n\n### 但还是有问题\n\n上面例子里**最近参考点是 D65**，结论正确。但**有些场景找最近会找错**：\n\n场景：用户在钨丝灯（A，2856K）下拍**蓝色衣服**。\n\n```\nstats: R=80, G=100, B=60 (钨丝 + 蓝衣 综合)\ncurrent_rg = 0.80, current_bg = 0.60\n\n各参考点距离：\n  A (1.62, 0.55):   dist = 0.83\n  D65 (1.00, 1.00): dist = 0.45 ← 最近\n  CWF (1.18, 0.88): dist = 0.46\n```\n\n**最近选了 D65**！但**真实光源是 A 钨丝**。AWB 误判 → 用 D65 gain → 实际光源偏暖没修 → 衣服拍出来还是偏黄。\n\n这就是「**蓝衣干扰下的钨丝灯误判**」。Day 33 的「**误导色区（MLC）**」就是处理这种问题。\n\n### Tuning 工程师怎么改进\n\n不能只看「**距离最近**」，需要：\n\n1. **加 weight 权重**：D65 weight 0.25 vs A weight 0.15，距离相同时优先 D65（先验）\n2. **加距离权重曲线**（Day 33）：远的参考点也参与决策但权重小\n3. **加 ROI 协同**：人脸 ROI 提供「**白点提示**」（人脸肤色稳定可以反推光源）\n4. **加历史信息**：上一帧光源是 A，这一帧不要突然跳到 D65\n5. **加场景识别**：检测到「**室内**」场景偏向暖光参考点\n\nWeek 5-6 一系列改进都是为这个核心问题。",
+      "glossary": [
+        { "term": "Nearest Reference Point", "zh": "最近参考点", "explain": "AWB 简化决策方法：算当前帧 RG/BG，找参考点表里最近的那个当光源。" },
+        { "term": "Misleading Color", "zh": "误导色", "explain": "画面里强色彩物体（如蓝衣、红墙）会把 RG/BG 拉偏，让 AWB 误判。Day 33 详讲。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么不用 ML 模型直接预测光源？", "a": "可以，旗舰手机 AI AWB 就是这么干的。但传统 AWB 用「**参考点 + 权重**」更可解释、调起来直观。AI 是补强，不是替代。" },
+          { "q": "参考点法和灰世界法可以共存吗？", "a": "可以。低置信度时回退灰世界（fallback_to_grayworld=1）。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Reference Points" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "色温内插：找不到完全匹配的怎么办",
+      "type": "concept",
+      "content": "### 现实：场景的 RG/BG 在两个参考点之间\n\n实际场景大部分时间**不会精确落在某个参考点上**，而是**在两个参考点之间**。\n\n比如清晨阳光：\n- 介于 A（钨丝 2856K）和 D50（早晚 5000K）之间\n- 比方实际色温 4200K，介于这两个参考点之间\n\nAWB 应该输出 4200K 的 gain，**不是直接用最近的 D50 (5000K) 的 gain**。\n\n### 解决：在参考点之间「**内插**」\n\n```python\ndef awb_with_interpolation(current_rg, current_bg, refs):\n    # 找最近的 2 个参考点（不是 1 个）\n    distances = [(r, dist(current, r)) for r in refs]\n    distances.sort(key=lambda x: x[1])\n    near1, dist1 = distances[0]\n    near2, dist2 = distances[1]\n    \n    # 在两点之间内插\n    total = dist1 + dist2\n    weight1 = dist2 / total  # 越近权重越大\n    weight2 = dist1 / total\n    \n    interp_rg = near1.rg * weight1 + near2.rg * weight2\n    interp_bg = near1.bg * weight1 + near2.bg * weight2\n    interp_cct = near1.cct * weight1 + near2.cct * weight2\n    \n    R_gain = 1.0 / interp_rg\n    B_gain = 1.0 / interp_bg\n    return (R_gain, 1.0, B_gain), interp_cct\n```\n\n比如 current 离 D50 距离 0.3，离 D65 距离 0.7：\n\n```\nweight_D50 = 0.7 / (0.3+0.7) = 0.70\nweight_D65 = 0.3 / (0.3+0.7) = 0.30\n\ninterp_cct = 5000 × 0.70 + 6500 × 0.30 = 5450 K\ninterp_rg = 1.05 × 0.70 + 1.00 × 0.30 = 1.035\ninterp_bg = 0.95 × 0.70 + 1.00 × 0.30 = 0.965\n```\n\nAWB 输出色温 5450K，介于 D50 和 D65 之间。\n\n这就是为什么 AWB 输出 CCT 是**任意整数**（5450K）而不是几个固定值。\n\n### Tuning 工程师调内插\n\n```xml\n<awb_interpolation>\n  <use_top_n>2</use_top_n>             <!-- 用最近 2 个还是 3 个参考点 -->\n  <distance_metric>euclidean</distance_metric>  <!-- 欧几里得距离 -->\n  <max_distance>1.0</max_distance>     <!-- 距离 > 1.0 的参考点不参与 -->\n</awb_interpolation>\n```\n\n常见做法：用 top-2 内插（简单直接），少数高级 AWB 用 top-3 平滑。\n\n### CCM 也要内插\n\nDay 29 提过 CCM 按 CCT 分段。AWB 输出 5450K 时，CCM 表里没有这个色温，**也用相邻两个 CCM 内插**：\n\n```python\ndef get_ccm(cct):\n    near1, near2 = find_two_nearest_ccts_in_table(cct)\n    weight = (cct - near1.cct) / (near2.cct - near1.cct)\n    return interpolate_3x3_matrix(near1.ccm, near2.ccm, weight)\n```\n\n所以 5450K → 在 D50 CCM 和 D65 CCM 之间内插得到一个连续变化的 3×3 矩阵。\n\n这让 ISP 输出的色彩**完全平滑**，没有「**色温档位跳变**」。\n\n### 复盘：AWB 决策的完整链路（参考点版）\n\n```\n1. 接收 64×48 块统计\n2. 过滤过曝/过暗块 → valid_blocks\n3. 算 R_avg, G_avg, B_avg → current_rg, current_bg\n4. 在 RG-BG 平面上找最近 2 个参考点\n5. 内插得到 (interp_rg, interp_bg, interp_cct)\n6. 算 (R_gain = 1/interp_rg, G_gain = 1, B_gain = 1/interp_bg)\n7. damping 平滑：(R_gain, B_gain) 帧间一阶滤波\n8. 输出：写 ISP WB 模块 + 给 CCM 模块 (CCT 用于查 CCM 表)\n```\n\n这就是「**简单参考点版 AWB**」的完整流程。但还有问题（蓝衣 + 钨丝灯误判）。Day 32-33 学的「**光源权重向量 + 距离权重 + 误导色区**」就是为了解决。",
+      "glossary": [
+        { "term": "Linear Interpolation", "zh": "线性内插", "explain": "在两个已知点之间按距离比例计算中间值的方法。AWB 用它在参考点之间得到连续色温。" },
+        { "term": "CCM Interpolation", "zh": "CCM 内插", "explain": "CCM 表按 CCT 分段，AWB 输出连续 CCT 时 CCM 也要在两档之间内插得到连续矩阵。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "线性内插对色温准吗？", "a": "近似准。色温空间不完全线性，但在小范围内（500K 以内）误差可忽略。所以参考点表要密一些（每 1000K 一个），减少内插误差。" },
+          { "q": "为什么不直接用 current_rg 当光源？", "a": "因为 current 容易被画面色彩干扰（绿草地、蓝衣）。参考点是「先验已知光源」，用它做坐标系基准更稳。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AWB Interpolation" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "AWB 调试 cheat：参考点视角",
+      "type": "example",
+      "content": "### 实战：用参考点视角分析 bug\n\n**bug 1：「我手机拍蓝天偏紫」**\n\n```\n[AWB log] cct=8500 rg=0.85 bg=1.30 refpoint=H_blue (10000K)\n```\n\n推断：\n- 蓝天本身就是高色温光源（10000K+）\n- AWB 选了 H_blue 参考点（10000K），rg=0.85, bg=1.30\n- 用 H_blue 的 gain 修正 → R_gain = 1/0.85 = 1.18（加红）→ 蓝天变成偏紫\n\n问题：参考点表把 H_blue 当作「光源」，但用户拍的「**蓝天景物**」其实**就是蓝色物体**，不是光源偏蓝。AWB 不该激进修正。\n\n修正方向：\n- H_blue 这个参考点 weight 调小\n- 或者增加「天空检测」让 AWB 不修\n\n**bug 2：「室内拍肤色偏黄」**\n\n```\n[AWB log] cct=4500 rg=1.10 bg=0.90 refpoint=D50 (5000K)\n```\n\n推断：\n- 用户实际在钨丝灯下（A 2856K）\n- 但参考点选了 D50（5000K）\n- D50 的 gain 修正不够（钨丝灯需要 R_gain=0.6, D50 gain=0.95）\n- 结果室内画面**还是偏黄**\n\n修正方向：\n- 看是不是参考点表里 A 这个参考点 weight 太低（被 D50 抢了）\n- 或者 OTP 校准 A 光源的 RG 值不对（导致 A 在 RG-BG 平面上和 D50 太近）\n- 或者「**误导色**」干扰（画面有大面积红色家具？）\n\n**bug 3：「白纸拍出来偏蓝」**\n\n```\n[AWB log] cct=4500 rg=1.10 bg=0.90 r_gain=0.91 b_gain=1.11\n```\n\n推断：\n- 实际场景是 A 钨丝（rg 应该高，比如 1.5）\n- AWB 误判成 D50（cct=4500）\n- B_gain=1.11 加蓝过头\n- 白纸**拍出来偏蓝**\n\n这是「**矫枉过正**」 —— 当真实光源偏暖但 AWB 选了中性参考点，B_gain 加得太多。\n\n**bug 4：「室内→户外画面闪一下」**\n\n```\n[AWB frame=1100] cct=3200 (室内 A)\n[AWB frame=1101] cct=6500 (秒切到 D65)  ← 直接跳到一半！\n[AWB frame=1102] cct=6500\n```\n\n推断：\n- 光源切换检测触发，AWB 用 fast_converge（α=0.6）\n- 但太快了 → 画面色彩**抖一下**\n\n修正方向：\n- fast_converge_alpha 0.6 → 0.4（慢一点，更平滑但响应略慢）\n- 加「**光源切换确认时长**」（连续 5 帧确认才切，不要单帧切换）\n\n### Tuning 工程师的 AWB 调教 cheat（参考点篇）\n\n按用户反馈对应调什么参数：\n\n| 用户反馈 | 调什么 |\n|---|---|\n| 整体偏暖 | 暖光参考点 weight 减少（A、H、TL84）|\n| 整体偏冷 | 冷光参考点 weight 减少（D75、H_blue）|\n| 蓝天偏紫 | H_blue weight 减少 + 天空检测开 |\n| 钨丝灯下偏黄 | A 参考点 weight 增加，或 OTP 重新校准 |\n| 切场景闪 | fast_converge_alpha 减小 + 光源切换确认时长加 |\n| 室内→户外慢 | light_change_threshold 减小（更敏感）|\n\n这是 AWB 调教的**第一层**。Day 33-34 还会学第二层（误导色 + 决策聚合）。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **色温坐标系**：RG-BG 二维平面，每个光源对应一个点。所有自然光源沿普朗克轨迹分布\n2. **Reference Points**：AWB 配置预存的常见光源位置 + 概率 weight。常见 8-15 个（A / TL84 / CWF / D50 / D65 / D75 / H_blue 等）\n3. **最近参考点法**：算 current 的 RG/BG → 找最近参考点 → 用参考点的 (rg, bg) 计算 gain（不用 current）\n4. **线性内插**：current 通常落在两个参考点之间，按距离比例内插得到连续 CCT 和 gain\n5. **CCM 也内插**：CCM 表按 CCT 分段，连续 CCT 在相邻两个 CCM 之间内插\n6. **简单 AWB 的局限**：「最近参考点」会被画面强色彩误导（蓝衣 + 钨丝 → 误判 D65）\n\n### 自我检查\n\n1. RG-BG 平面是什么？为什么要用它？\n2. 默写 D65 / A / H_blue 三个参考点的大致 RG/BG 值。\n3. 「最近参考点」算法相比「灰世界」算法的优势是什么？\n4. AWB 输出 5450K 是怎么得到的（不是参考点表里的整数）？\n5. CCM 模块怎么应对 AWB 的连续 CCT 输出？\n\n### 笔记建议\n\n- 把 8 个常见参考点（A/H/TL84/CWF/D50/D65/D75/H_blue）的 RG/BG/CCT/weight 抄到笔记\n- 画一张 RG-BG 平面的草图标出几个参考点\n- 想想为什么 weight 之和必须 = 1.0\n\n### 明天预告\n\nDay 32：光源权重向量（Light Weight Vector）。Day 31 学的是「**最近参考点**」，但其实更现代的做法是「**所有参考点都参与决策，按权重加权**」。这就是 LWV。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Reference Points + CCT Interpolation" },
+    { "source": "维基百科 · Planckian locus", "url": "https://en.wikipedia.org/wiki/Planckian_locus" }
+  ],
+  "dailyQuizId": "daily-day-31"
+}

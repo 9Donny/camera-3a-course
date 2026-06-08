@@ -1,0 +1,171 @@
+{
+  "id": "weekly-w5",
+  "title": "Week 5 周考：AWB 第一阶段综合",
+  "module": "M4",
+  "scope": "weekly",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "AWB 是干什么的？",
+      "options": [
+        "调亮度",
+        "估计光源色温 + 配 RGB 增益让白还原",
+        "对焦",
+        "降噪"
+      ],
+      "answer": "估计光源色温 + 配 RGB 增益让白还原",
+      "explain": "AWB = Auto White Balance。模拟人眼色彩恒常性，让白纸在任何光源下都还原成白。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "AWB 内部用的色温坐标系是什么？",
+      "options": [
+        "RGB 三维空间",
+        "RG-BG 二维平面（X = R/G, Y = B/G）",
+        "XYZ 颜色空间",
+        "Lab"
+      ],
+      "answer": "RG-BG 二维平面（X = R/G, Y = B/G）",
+      "explain": "AWB 用 R/G 和 B/G 比值的二维平面表示光源色温，与亮度解耦。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "OTP 在 AWB 中的作用？",
+      "options": [
+        "存光学参数",
+        "sensor 出厂校准时烧录的光源响应数据，让 AWB 跨设备一致",
+        "存软件版本",
+        "无关"
+      ],
+      "answer": "sensor 出厂校准时烧录的光源响应数据，让 AWB 跨设备一致",
+      "explain": "OTP 包含 D65 / D50 / A / H 等标准光源下的实际 RG/BG 值，AWB 启动时读取调整内部参考点。"
+    },
+    {
+      "id": "q4",
+      "type": "choice",
+      "prompt": "灰世界算法在「拍纯绿草地」场景下会发生什么？",
+      "options": [
+        "正确还原",
+        "草地变白（被 AWB 误修）",
+        "草地变蓝",
+        "无影响"
+      ],
+      "answer": "草地变白（被 AWB 误修）",
+      "explain": "灰世界假设画面平均 = 中性灰。绿草地里 G 高，灰世界以为「光源偏绿」 → 加大 R/B → 草地变成灰白。"
+    },
+    {
+      "id": "q5",
+      "type": "choice",
+      "prompt": "Reference Points 是什么？",
+      "options": [
+        "色卡上的标准点",
+        "AWB 配置预存的常见光源在 RG-BG 平面上的位置 + 概率权重",
+        "OTP 字段",
+        "AI 训练点"
+      ],
+      "answer": "AWB 配置预存的常见光源在 RG-BG 平面上的位置 + 概率权重",
+      "explain": "8-15 个 Reference Points（A/CWF/D50/D65/D75 等），每个含 (rg, bg, cct, prior_weight)。"
+    },
+    {
+      "id": "q6",
+      "type": "choice",
+      "prompt": "LWV 和 DWV 的维度区别？",
+      "options": [
+        "完全相同",
+        "LWV 是 8-15 维（参考点权重），DWV 是 3072 维（每个 64×48 块的权重）",
+        "LWV 大于 DWV",
+        "随机"
+      ],
+      "answer": "LWV 是 8-15 维（参考点权重），DWV 是 3072 维（每个 64×48 块的权重）",
+      "explain": "两者层次不同：DWV 决定算 current 时怎么加权块；LWV 决定光源是哪个参考点的概率。"
+    },
+    {
+      "id": "q7",
+      "type": "choice",
+      "prompt": "MLC（误导色区）的作用？",
+      "options": [
+        "让 AWB 更准",
+        "识别 RG-BG 平面上「不是光源」的颜色，对应块权重 = 0",
+        "存储色卡",
+        "训练 AI"
+      ],
+      "answer": "识别 RG-BG 平面上「不是光源」的颜色，对应块权重 = 0",
+      "explain": "用多边形定义有效色温区域。多边形外的颜色（如纯红墙、纯绿草）= 不可能是光源 → dwv=0，避免误导。"
+    },
+    {
+      "id": "q8",
+      "type": "choice",
+      "prompt": "LWV 距离权重公式 1/(1+d×σ) 中，σ 越大效果是？",
+      "options": [
+        "决策越平滑",
+        "决策越尖锐（接近最近参考点）",
+        "无影响",
+        "决策慢"
+      ],
+      "answer": "决策越尖锐（接近最近参考点）",
+      "explain": "σ 大 → 远参考点权重快速衰减 → 接近「只看最近一个」。"
+    },
+    {
+      "id": "q9",
+      "type": "choice",
+      "prompt": "AWB 决策聚合时高冲突（sub-algo 严重不一致）怎么办？",
+      "options": [
+        "强行平均",
+        "选 confidence 最高的 sub-algo 主导",
+        "全部跳过",
+        "用上一帧"
+      ],
+      "answer": "选 confidence 最高的 sub-algo 主导",
+      "explain": "真实光源是 A 或 D65 之一，强行平均反而错。冲突检测后选最高 conf 的更稳。"
+    },
+    {
+      "id": "q10",
+      "type": "choice",
+      "prompt": "光源切换检测触发时 AWB 怎么响应？",
+      "options": [
+        "保持原状",
+        "清空时序历史 + 提高 damping α + 减小聚合窗口",
+        "切换 sub-algo",
+        "停止"
+      ],
+      "answer": "清空时序历史 + 提高 damping α + 减小聚合窗口",
+      "explain": "fast_converge 模式让 AWB 5-10 帧内快速收敛到新光源，避免「走出门画面色彩慢慢变」。"
+    },
+    {
+      "id": "q11",
+      "type": "fill",
+      "prompt": "色温 D65 大约 ___ K",
+      "answer": ["6500", "6500K"],
+      "explain": "D65 是 CIE 标准光源，色温 6500K，接近正午太阳，色彩科学的中性参考。"
+    },
+    {
+      "id": "q12",
+      "type": "fill",
+      "prompt": "所有自然光源在 RG-BG 平面靠近 ___ 轨迹",
+      "answer": ["普朗克", "Planckian", "黑体辐射"],
+      "explain": "Planckian Locus 是黑体辐射在 RG-BG 平面上的连续曲线，代表所有可能的「自然光源」。"
+    },
+    {
+      "id": "q13",
+      "type": "fill",
+      "prompt": "AWB 调教 5 层：DWV / LWV / 聚合 / 收敛 / ___",
+      "answer": ["CCM 联动", "CCM", "异常处理", "CCM联动"],
+      "explain": "完整调教层次。CCM 按 cct 选不同 3×3 矩阵。"
+    },
+    {
+      "id": "q14",
+      "type": "short",
+      "prompt": "默写 AWB 完整算法流程（8 步）。",
+      "referenceAnswer": "1) 接收 64×48 Bayer 域统计（每块 R/G/B + 过曝过暗标志）；2) 算 DWV：过曝过暗块=0 + 位置权重 + 颜色合理性（普朗克距离）+ MLC 多边形排除；3) DWV 加权计算 current_rg / current_bg；4) 多 sub-algorithm 各自输出 LWV + confidence（参考点法 / 灰世界 / FA / AI）；5) 决策聚合：confidence 加权 + 冲突检测（高冲突时选最高 conf）；6) 时序平滑：滑动窗口（10 帧）+ 光源切换检测；7) 异常处理：fallback chain（高 conf → final_lwv，中 conf → mix，低 conf → 上一帧，无 prev → 默认 D65）；8) 加权平均得 final_cct/rg/bg → damping → R_gain/B_gain → 写 ISP（WB module + CCM module）。"
+    },
+    {
+      "id": "q15",
+      "type": "short",
+      "prompt": "用户报「拍蓝天偏紫」，用 AWB 视角分析原因 + 修法。",
+      "referenceAnswer": "原因：蓝天本身就是高色温光源（接近 H_blue 10000K+），current_rg 低（0.85）、bg 高（1.30）。AWB 看到这个 current，匹配到 H_blue 参考点（10000K），用它的 gain 修正 → R_gain=1/0.85=1.18 大幅加红 → 蓝天变成偏紫色（蓝+红=紫）。修法：1) 检查参考点表里 H_blue 的 weight 是否过高（应该 ≤ 0.05，蓝天场景占比小）；2) 启用「天空检测」让 AWB 知道画面是「蓝天景物」不是「光源偏蓝」 → 减弱修正；3) MLC 多边形可以裁剪，让极冷端（rg<0.85）落在多边形外，AWB 不修；4) Saliency 检测主体（如远景人物或建筑）→ FA-like 加权那块作为「光源信号」，蓝天权重降低。这是「**天空场景**」的经典 AWB 难题。"
+    }
+  ]
+}

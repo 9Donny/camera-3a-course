@@ -1,0 +1,88 @@
+{
+  "id": "day-34",
+  "week": 5,
+  "module": "M4",
+  "title": "AWB 决策聚合（Decision Aggregator）深入",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "聚合的目标：从多个 LWV 到一个最终决策",
+      "type": "concept",
+      "content": "### 复习\n\nDay 32 我们提过 AWB 有多个 sub-algorithm 各自输出 LWV + confidence，需要聚合得到 final_lwv。今天展开。\n\n### 聚合的核心函数\n\n```python\ndef aggregate(sub_algos):\n    final_lwv = None\n    final_conf = 0\n    \n    for algo in sub_algos:\n        lwv = algo.compute_lwv()\n        conf = algo.compute_confidence()\n        \n        if final_lwv is None:\n            final_lwv = [w * conf for w in lwv]\n            final_conf = conf\n        else:\n            for i in range(len(lwv)):\n                final_lwv[i] += lwv[i] * conf\n            final_conf += conf\n    \n    # 归一化\n    if final_conf > 0:\n        final_lwv = [w / final_conf for w in final_lwv]\n    \n    return final_lwv, final_conf\n```\n\n看起来简单，但**实际工程**有 4 个挑战：\n\n1. **冲突处理**：sub-algos 之间可能严重不一致（一个说 D65，一个说 A）\n2. **置信度校准**：每个 sub-algo 自报的 confidence 是否可信？\n3. **时序平滑**：单帧聚合 vs 多帧聚合\n4. **异常处理**：所有 sub-algo 都低置信度怎么办\n\n### 挑战 1：冲突处理\n\n场景：\n\n```\n[AWB] sub_algos:\n  gray_world: lwv 主导是 D65 (50%), conf 0.80\n  refpoint:   lwv 主导是 A 钨丝 (60%), conf 0.85\n```\n\n两个算法**严重不一致** —— 一个说 D65、一个说 A，差 3000K！\n\n简单加权聚合的结果：D65 35%、A 35%、其他 30%。**「**中庸**」结果对应不存在的色温**（介于 D65 和 A，约 4500K）。\n\n这种「**平均掉**」可能错得离谱（真实光源**就是 A 或 D65 之一**，不是中间）。\n\n**改进策略：冲突检测 + 选最高置信度**\n\n```python\ndef aggregate_with_conflict(sub_algos):\n    # 算两两 sub-algo 的 LWV 距离\n    if max_lwv_distance > conflict_threshold:\n        # 严重冲突，不平均\n        # 选 confidence 最高的 sub-algo 主导\n        winner = max(sub_algos, key=lambda a: a.confidence)\n        return winner.lwv\n    else:\n        # 一致，正常加权\n        return weighted_average_lwv(sub_algos)\n```\n\n这避免了「**和稀泥**」误差。但代价是：选错时全错（没有备份）。\n\n实际工程**用混合**：低冲突时平均、高冲突时投票。\n\n### 挑战 2：置信度校准\n\n各 sub-algo 自报的 confidence 是否**真的反映质量**？\n\n灰世界算法 `confidence = color_diversity_metric`（颜色多样性）。\n参考点法 `confidence = 1 - min_distance_to_refpoint`。\nFA 算法 `confidence = face_detection_score × face_size`。\n\n这些指标**本身可能误导**：\n- 灰世界看到「**多色但被绿色主导**」可能给高 confidence（颜色多）但其实算错\n- 参考点法看到「**接近 D65 但实际是 D75**」给高 confidence 但仍错\n\n**校准方法**：用大量真实场景训练「**confidence 校准模型**」，让自报的 confidence 接近真实准确率。\n\n```python\ncalibrated_conf = calibration_model(self_reported_conf, scene_features)\n```\n\n旗舰手机用 ML 校准 confidence。中端机型用经验调整：\n\n```xml\n<confidence_calibration>\n  <gray_world_max>0.80</gray_world_max>  <!-- 灰世界 conf 最多 0.8（不让它过度自信）-->\n  <refpoint_max>0.95</refpoint_max>      <!-- 参考点法可信，最高 0.95 -->\n  <face_max>0.90</face_max>\n</confidence_calibration>\n```\n\n这就是「**让某些 sub-algo 不要太自信**」的工程手段。",
+      "glossary": [
+        { "term": "Decision Aggregator", "zh": "决策聚合器", "explain": "AWB 把多 sub-algo LWV 融合成最终 LWV 的模块。" },
+        { "term": "Confidence Calibration", "zh": "置信度校准", "explain": "调整 sub-algo 自报 confidence 让它更接近真实准确率，避免过度自信。" },
+        { "term": "Conflict Detection", "zh": "冲突检测", "explain": "聚合前检查 sub-algo 间是否严重不一致，决定用平均还是投票。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么不只用一个 sub-algo？", "a": "每个算法各自有擅长场景。灰世界擅长「**多色场景**」，参考点法擅长「**已知光源**」，FA 擅长「**人脸场景**」。多个组合覆盖更广。" },
+          { "q": "AI sub-algo 应该最准吗？", "a": "在训练数据覆盖的场景里准，没见过的场景可能很差。所以仍然需要传统算法兜底。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Decision Aggregation" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "时序平滑：多帧聚合",
+      "type": "concept",
+      "content": "### 单帧 vs 多帧聚合\n\n上面的聚合是「**单帧聚合**」 —— 每帧独立做。\n\n但 AWB 决策**应该考虑时序**：\n- 上一帧光源是 D65，这一帧不要突然跳到 A 钨丝\n- 用户没移动手机，光源不该剧变\n\n**多帧聚合**：\n\n```python\nclass AWB:\n    def __init__(self):\n        self.lwv_history = []  # 过去 N 帧的 final_lwv\n        self.window_size = 10\n    \n    def aggregate_temporal(self, current_lwv):\n        # 把当前帧加入历史\n        self.lwv_history.append(current_lwv)\n        if len(self.lwv_history) > self.window_size:\n            self.lwv_history.pop(0)\n        \n        # 加权时间平均（近期权重大）\n        weights = [i+1 for i in range(len(self.lwv_history))]\n        smoothed_lwv = [0] * len(current_lwv)\n        total_w = sum(weights)\n        for lwv, w in zip(self.lwv_history, weights):\n            for i in range(len(lwv)):\n                smoothed_lwv[i] += lwv[i] * w / total_w\n        \n        return smoothed_lwv\n```\n\n效果：单帧异常被过去 10 帧「**稀释**」掉。\n\n### 但场景变化时要快\n\n上面的多帧平滑会**让光源切换变慢**：\n\n```\n用户从室内（A）走到户外（D65）\n第 0 帧：current 是 A，历史也是 A → smoothed 是 A\n第 1 帧：current 是 D65，历史 9 帧是 A + 1 帧 D65 → smoothed 接近 A\n第 5 帧：历史一半是 A 一半是 D65 → smoothed 介于\n第 10 帧：历史全是 D65 → smoothed 是 D65\n```\n\n10 帧（330ms）才完全切换，**用户感觉「**走出门画面慢慢变蓝**」** —— 不友好。\n\n→ 检测到「**光源突变**」时**清空历史**或**减小 window_size**：\n\n```python\ndef detect_light_change(current_lwv, history):\n    if len(history) == 0:\n        return False\n    distance = lwv_distance(current_lwv, mean(history))\n    return distance > big_threshold\n\nif detect_light_change():\n    self.lwv_history = []  # 清空历史\n    self.window_size_temp = 3  # 临时减小窗口\n```\n\n这样快速切换 + 平稳时稳定。\n\n### 配置\n\n```xml\n<awb_temporal_smoothing>\n  <window_size>10</window_size>\n  <weight_decay>0.9</weight_decay>           <!-- 老帧衰减 -->\n  <light_change_threshold>0.3</light_change_threshold>\n  <fast_converge_window>3</fast_converge_window>  <!-- 切换时临时窗口 -->\n</awb_temporal_smoothing>\n```\n\n### 时序平滑的副作用\n\n时序平滑让 AWB 「**慢一点**」 —— 这是优点（视觉稳）也是缺点（响应慢）。Tuning 时要平衡：\n\n- **录像**：window 大（20 帧），更稳，避免画面色彩抖\n- **拍照预览**：window 中（10 帧）\n- **专业模式**：window 小（5 帧），追求响应速度\n\n### 跟 AE 时序平滑的关系\n\nDay 25 学过 AE 也有 Frame Average（多帧平滑）。AWB 的多帧聚合是**类似机制**但作用对象不同：\n- AE：平滑亮度统计\n- AWB：平滑 LWV\n\n两者**协同**：AE 帧间稳定 → 64×48 块统计稳定 → AWB 输入稳定 → AWB 决策稳定。\n\n这是 3A 互相支持的一个例子。",
+      "glossary": [
+        { "term": "Temporal Smoothing", "zh": "时序平滑", "explain": "聚合多帧 LWV 让 AWB 决策更稳定。" },
+        { "term": "Light Change Detection", "zh": "光源切换检测", "explain": "判断是否场景突变，决定是否清空历史 + 加快收敛。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "时序平滑和 damping 是同一回事吗？", "a": "类似但不同。damping 在「LWV → gain」这一步做平滑（每帧调一点）；时序平滑在「LWV 本身」这一步（多帧加权平均）。两者层次不同。" },
+          { "q": "多帧聚合会增加内存吗？", "a": "需要存 N 帧的 LWV。每帧 LWV 约 60-100 字节（10-15 个 float），N=10 时约 1KB。可忽略。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AWB Temporal Smoothing" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "异常处理：所有 sub-algo 都不可靠时",
+      "type": "concept",
+      "content": "### 罕见但必须处理的场景\n\n```\n场景 A：极暗（lux 30）\n  灰世界：颜色单一（噪声主导），conf 0.20\n  参考点法：current 远离所有参考点（信号弱），conf 0.30\n  FA：没人脸，conf 0\n  AI：训练数据少（暗光），conf 0.40\n  \n场景 B：极端色彩（拍霓虹特写）\n  灰世界：颜色单一，conf 0.10\n  参考点法：current 在 MLC 里，conf 0.05\n  FA：没人脸\n  AI：可能高，但不一定准\n\n场景 C：sensor 异常（部分像素全过曝）\n  各算法的输入数据本身就不可靠\n```\n\n这些**所有 sub-algo 置信度都低**的情况，怎么办？\n\n### 异常处理策略\n\n**策略 1：用上一帧（最常见）**\n\n```python\nif total_confidence < threshold:\n    return previous_frame_lwv\n```\n\n意思：「**没有可靠数据 → 不要乱改 → 保持原状**」。\n\n这个策略让 AWB 在异常场景**稳如老狗**，但代价是「**真有变化时也不响应**」。\n\n**策略 2：fallback 到「**最保守光源**」**\n\n```python\nif total_confidence < threshold:\n    return DEFAULT_LWV  # 假设 D65 主导\n```\n\n用 D65（最常见光源）兜底。代价：异常场景下色彩可能错。\n\n**策略 3：用 fallback chain（更优）**\n\n```python\ndef robust_aggregate(sub_algos, prev_lwv, default_lwv):\n    # 1. 尝试正常聚合\n    final_lwv, conf = aggregate(sub_algos)\n    if conf > high_threshold:\n        return final_lwv\n    \n    # 2. 中等置信度 → 与上一帧混合\n    if conf > low_threshold:\n        return mix(final_lwv, prev_lwv, conf)\n    \n    # 3. 低置信度 → 用上一帧\n    if prev_lwv is not None:\n        return prev_lwv\n    \n    # 4. 没有上一帧（启动）→ 默认值\n    return default_lwv\n```\n\n这种「**链式 fallback**」让 AWB 在各种场景下都有合理输出。\n\n### Tuning 工程师的异常处理参数\n\n```xml\n<awb_robust>\n  <high_conf_threshold>0.7</high_conf_threshold>\n  <low_conf_threshold>0.3</low_conf_threshold>\n  <use_previous_when_low>true</use_previous_when_low>\n  <previous_max_age_frames>30</previous_max_age_frames>  <!-- 上一帧太老就别用 -->\n  <default_lwv>...</default_lwv>                          <!-- 项目级默认（一般 D65 主导）-->\n</awb_robust>\n```\n\n### 时序异常处理\n\n更精细：检测「**单帧 LWV 突变**」当作异常\n\n```python\ndef detect_anomaly(current_lwv, history):\n    if len(history) < 3:\n        return False\n    avg = mean(history)\n    delta = lwv_distance(current_lwv, avg)\n    return delta > anomaly_threshold\n\nif detect_anomaly():\n    # 当前帧异常，跳过用上一帧\n    return prev_lwv\n```\n\n这区分了「**真实场景变化**」（连续多帧 LWV 都变）和「**单帧异常**」（只这一帧奇怪）。\n\n### 一个常见 bug：\n\n用户报「**正常场景偶尔色彩闪一下**」\n\n排查：\n```\n[AWB log frame=1500] cct=5500 (D55，正常)\n[AWB log frame=1501] cct=3200 (突跳到 A)  ← 单帧异常\n[AWB log frame=1502] cct=5500 (恢复正常)\n```\n\n推断：单帧某个 sub-algo 误判，没被异常检测识别 → 用户看到画面色彩闪一下。\n\n修正：增强异常检测（降低 anomaly_threshold），让单帧异常被识别并跳过。\n\n### Day 34 完整 AWB 大图\n\n```\n┌── 64×48 块统计（AE/AWB 共享）──┐\n└────────────┬───────────────────┘\n             ↓\n┌── DWV 计算（Day 33）───────┐\n│ 位置 + 颜色 + MLC 排除     │\n└────────────┬───────────────┘\n             ↓\n┌── DWV 加权 → current ──┐\n└────────────┬─────────────┘\n             ↓\n┌── Multi sub-algos LWV（Day 32）──┐\n│ 灰世界 / 参考点 / FA / AI         │\n│ 各自输出 LWV + confidence         │\n└────────────┬───────────────────────┘\n             ↓\n┌── 决策聚合（Day 34）──────┐\n│ 1. confidence 校准         │\n│ 2. 冲突检测 + 选优         │\n│ 3. 时序平滑（多帧）        │\n│ 4. 异常处理（fallback）    │\n└────────────┬───────────────┘\n             ↓\n┌── final_lwv → final 光源 ──┐\n│ rg, bg, cct                  │\n└────────────┬─────────────────┘\n             ↓\n┌── damping → WB Gain ──┐\n│ R_gain, G_gain, B_gain  │\n└────────────┬─────────────┘\n             ↓\n┌── 写到 ISP ────────────┐\n│ WB module + CCM module  │\n└─────────────────────────┘\n```\n\n这就是 **Week 5 学完的完整 AWB 第一阶段**。",
+      "glossary": [
+        { "term": "Fallback", "zh": "回退策略", "explain": "正常算法失败时使用的备用策略。AWB 常用 fallback chain。" },
+        { "term": "Anomaly Detection", "zh": "异常检测", "explain": "检测单帧 LWV 是否偏离历史，判断是否跳过这一帧。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "异常检测会误检吗？", "a": "会。真实光源切换会被误检为异常 → 切换响应慢。所以阈值要平衡，结合「光源切换检测」（连续多帧异常 → 接受为新场景）。" },
+          { "q": "previous_max_age_frames 多大合理？", "a": "10-30 帧（333ms-1s）。超过这个时间用户可能已经移动手机到新场景，老 LWV 不可信。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AWB Robustness" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "AWB 调教 cheat sheet（聚合层）",
+      "type": "example",
+      "content": "### Day 31-34 调教 cheat 综合\n\n按用户反馈定位调什么：\n\n| 用户反馈 | 调什么 | 涉及哪一层 |\n|---|---|---|\n| 整体偏暖 | 暖光参考点 weight 减少 | LWV 参考点 |\n| 草地变白 | DWV color_sigma 减小 | DWV |\n| 红墙变紫 | MLC 多边形扩大（包含红色区）或 DWV 排除 | DWV / MLC |\n| 钨丝灯下偏黄 | A 参考点 weight 增大；或 OTP 校准 | LWV / OTP |\n| 切场景闪 | fast_converge_alpha 减小；时序平滑 window 增大 | 收敛 / 时序 |\n| 室内→户外慢 | light_change_threshold 减小 | 光源切换检测 |\n| 偶尔单帧色彩跳 | anomaly_threshold 减小 | 异常检测 |\n| 视频画面色彩抖 | 时序 window 增大；damping_alpha 减小 | 多层 |\n| 多个 sub-algo 冲突 | conflict_threshold 减小（更敏感）| 聚合冲突 |\n| 极暗下乱跳 | min_total_confidence 增大（用上一帧）| 异常处理 |\n\n### 真实工程例子：「**录视频时画面忽蓝忽黄**」\n\n排查链路：\n\n```\n第一步：复现 + 抓 log\n  发现 cct 在 4000K-6000K 之间反复跳\n\n第二步：看 sub_algos\n  [frame 100] gray_world: D65 主导, conf 0.5\n              refpoint:   A 钨丝主导, conf 0.6  ← 不一致！\n  [frame 101] gray_world: D50 主导, conf 0.4\n              refpoint:   D65 主导, conf 0.7  ← 又不一致\n\n第三步：定位\n  - 两个 sub-algo 之间冲突频繁\n  - 最终 LWV 在两者之间反复横跳\n  - cct 不稳 → 画面色彩抖\n\n第四步：修\n  方案 a：让聚合更稳：\n    - conflict_threshold 减小，让冲突更容易被识别 → 选高 conf 的赢\n  方案 b：增强时序：\n    - 时序 window 10 → 20\n    - damping_alpha 0.20 → 0.10\n  方案 c：禁用某个 sub-algo：\n    - 如果 gray_world 在这种场景频繁误判，把它的 weight 降到 0.05\n    - 或者 enabled=false\n\n第五步：测\n  视频录一段，看 cct 平稳了 → 修好\n```\n\n这个真实流程比单调一个参数复杂。**AWB 调教经验主要在「**这种调教 → 那种修正**」的对应关系**。\n\n### Tuning 工程师的「黑科技」\n\n资深 AWB 工程师有几招：\n\n**1. 用 RAW 拍标准光源箱**\n\n确保参考点配置准确。具体光源 → sensor 输出 RGB → 算 RG/BG → 写到参考点表。\n\n**2. 大量真实场景跑「**回归测试**」**\n\n准备 100+ 张标准场景 RAW（户外阳光、室内钨丝、夜景霓虹、人像、风景），每次调参后**全部跑一遍**，统计偏色像素比例。\n\n**3. 对比模式（A/B testing）**\n\n同一台手机跑两个 AWB 配置（旧 vs 新），同一场景拍照对比，看是否有改善。\n\n**4. 客户端反馈循环**\n\n监控用户的「**手动白平衡修正**」（用户在相册里选了 +5K 暖色调），统计哪些场景被频繁修 → 那些场景 AWB 调得不准。\n\n这些都是**工业级 Tuning 工作**。Week 8 模拟面试时会涉及。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **决策聚合 4 个挑战**：冲突 / confidence 校准 / 时序 / 异常\n2. **冲突处理**：低冲突时平均、高冲突时选最高置信度（避免「和稀泥」）\n3. **confidence 校准**：让 sub-algo 自报的 confidence 接近真实准确率\n4. **时序平滑**：滑动窗口（10 帧）+ 光源切换检测（突变时清空历史）\n5. **异常处理**：fallback chain（高置信度 → 中等 mix → 低置信度用 prev → 无 prev 用默认）\n6. **AWB 调教 cheat 综合表**：按 bug 反向定位参数（DWV / LWV / 聚合 / 收敛 / 异常）\n\n### 自我检查\n\n1. 决策聚合的 4 个挑战是什么？分别怎么处理？\n2. confidence 校准是干什么的？为什么需要它？\n3. 时序平滑会让 AWB 变慢，怎么平衡？\n4. fallback chain 的优先级顺序？\n5. 「拍视频画面色彩抖」可以从哪几个层次调？\n\n### 笔记建议\n\n- 把 fallback chain 的 4 步抄到笔记\n- 整理 Day 31-34 完整 AWB 调教 cheat sheet（按 bug 反查参数）\n- 想想你妹妹项目里 AWB 异常处理用了哪些 fallback\n\n### 明天预告\n\nDay 35：Week 5 总结 + 周考。把 AWB 第一阶段（Day 29-34）完整串完，包括 OTP / DWV / LWV / 聚合 / 时序 / 异常的全链路；做 15 题周考。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "AWB Decision Aggregation + Robustness" }
+  ],
+  "dailyQuizId": "daily-day-34"
+}

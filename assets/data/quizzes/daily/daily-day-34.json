@@ -1,0 +1,54 @@
+{
+  "id": "daily-day-34",
+  "title": "Day 34 日测：决策聚合 + 时序 + 异常",
+  "module": "M4",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "AWB 决策聚合时遇到 sub-algo 严重冲突（一个说 D65，一个说 A 钨丝），最佳策略？",
+      "options": [
+        "强行平均（结果接近 4500K）",
+        "选 confidence 最高的 sub-algo 主导，避免「和稀泥」",
+        "全部跳过",
+        "用上一帧"
+      ],
+      "answer": "选 confidence 最高的 sub-algo 主导，避免「和稀泥」",
+      "explain": "真实光源是 A 或 D65 之一，不是中间。强行平均得到 4500K 反而错。冲突检测后选 confidence 最高的更稳。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "光源切换检测（detect_light_change）触发时 AWB 怎么响应？",
+      "options": [
+        "保持原状",
+        "清空时序历史 + 提高 damping α（fast_converge）+ 减小聚合窗口",
+        "完全停止 AWB",
+        "切到灰世界算法"
+      ],
+      "answer": "清空时序历史 + 提高 damping α（fast_converge）+ 减小聚合窗口",
+      "explain": "光源突变时多帧时序平滑会拖慢响应。fast_converge 模式让 AWB 5-10 帧内快速切换，避免「走出门画面色彩慢慢变」。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "AWB 异常处理用「___ chain」：高 conf → 用 final_lwv；中 conf → mix；低 conf → 用上一帧；无上一帧 → 默认",
+      "answer": ["fallback", "回退", "fallback chain"],
+      "explain": "Fallback chain 是工程上常用的健壮性策略：层层降级，每一级都有对应方案。让 AWB 在异常场景下仍有合理输出。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "AWB 时序平滑常见 window_size 是 ___ 帧",
+      "answer": ["10", "10 帧"],
+      "explain": "10 帧（约 333ms）是常见值。录像可以增大到 20 让画面更稳；专业模式减小到 5 让响应快。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "用户报「录视频时画面忽蓝忽黄」，你怎么用 LWV 视角排查？",
+      "referenceAnswer": "1) 抓 log 看 cct 是否在 4000-6000K 之间反复跳；2) 看 sub_algos 各自的 LWV：常见两个 sub-algo（如 gray_world 和 refpoint）输出冲突；3) 检查 conflict_threshold：是否冲突没被识别 → 平均得到中间值反复横跳；4) 修方案 a：减小 conflict_threshold 让冲突更敏感 → 选高 conf 的赢；b：加强时序平滑 window 10→20 + damping_alpha 0.20→0.10；c：禁用频繁误判的 sub-algo（如在视频模式下关 gray_world）；5) 重新录视频看 cct 是否平稳。本质：LWV 视角让你看到「**哪个 sub-algo 在打架**」，比单看 final_cct 信息量大得多。"
+    }
+  ]
+}

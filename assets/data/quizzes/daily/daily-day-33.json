@@ -1,0 +1,54 @@
+{
+  "id": "daily-day-33",
+  "title": "Day 33 日测：DWV + 误导色区（MLC）",
+  "module": "M4",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "DWV（距离权重向量）的维度是多少？",
+      "options": [
+        "8-15 维（参考点数）",
+        "3072 维（64×48 块数）",
+        "100 维",
+        "可配置"
+      ],
+      "answer": "3072 维（64×48 块数）",
+      "explain": "DWV 是对每个 64×48 块的权重，决定算 current_rg/bg 时怎么加权。和 LWV（参考点权重）维度不同。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "MLC（Misleading Light Color，误导色区）解决什么问题？",
+      "options": [
+        "防止 AWB 过度自信",
+        "识别 RG-BG 平面上「不可能是光源」的颜色，对应块权重设为 0，避免误导",
+        "做加权融合",
+        "调 sigma"
+      ],
+      "answer": "识别 RG-BG 平面上「不可能是光源」的颜色，对应块权重设为 0，避免误导",
+      "explain": "纯红墙、纯蓝衣、绿草地等「极端颜色」远离普朗克轨迹，不可能是自然光源。MLC 把这些块排除，避免 AWB 把它们当作「光源信号」。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "MLC 区域常用什么形状定义？",
+      "answer": ["多边形", "polygon", "valid zone polygon", "有效色温区域多边形"],
+      "explain": "Tuning 工程师在 RG-BG 平面上画一个多边形（顶点是常见光源），多边形外的就是 MLC 区。判断「点在多边形内」用射线法。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "DWV 综合考虑 3 个因素：位置权重、___ 合理性权重、亮度合理性权重",
+      "answer": ["颜色", "color"],
+      "explain": "位置权重（中心高边缘低）+ 颜色合理性（接近普朗克轨迹高、远离低）+ 亮度合理性（中等亮度高、过曝过暗为 0）= 最终 DWV。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "「拍纯红墙变蓝紫」的根本原因是什么？MLC 怎么解决？",
+      "referenceAnswer": "原因：纯红墙的所有 64×48 块 R 远 > G 远 > B（如 R=200/G=80/B=50），current_rg ≈ 2.5（远超 D65 的 1.0）。AWB 误以为光源极暖（CCT < 2500K），输出 R_gain=0.4 大幅压红 + B_gain=2.0 大幅加蓝 → 红墙变成蓝紫色。MLC 解决：纯红墙的 RG/BG 在 RG-BG 平面位置远离普朗克轨迹（落在 MLC 多边形外）→ 这些块的 dwv 设为 0 → AWB 没有有效数据可用 → fallback 到上一帧或默认 D65 → 红墙保持红色。本质：MLC 让 AWB 知道「**这种颜色不可能是光源**」，拒绝被误导。"
+    }
+  ]
+}

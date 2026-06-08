@@ -1,0 +1,59 @@
+{
+  "id": "daily-day-35",
+  "title": "Day 35 日测：Week 5 串讲（综合）",
+  "module": "M4",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "AWB 完整流程的 8 步顺序是？",
+      "options": [
+        "DWV → current → LWV → 聚合 → 时序 → 异常 → gain → ISP",
+        "OTP → 64×48 → DWV → ISP",
+        "灰世界 → 参考点 → AI",
+        "随机"
+      ],
+      "answer": "DWV → current → LWV → 聚合 → 时序 → 异常 → gain → ISP",
+      "explain": "Day 35 完整流程图：每个 64×48 块算 DWV → 加权得 current → 多 sub-algo 算 LWV → 聚合 → 时序平滑 → 异常处理 → 加权平均 → damping → 写 ISP。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "AWB 调教参数大致多少个？比 AE 多还是少？",
+      "options": [
+        "20 个 / 比 AE 多",
+        "100-150 个 / 比 AE 少",
+        "1000 个 / 比 AE 多",
+        "差不多"
+      ],
+      "answer": "100-150 个 / 比 AE 少",
+      "explain": "AE 200-400 个，AWB 100-150 个。AWB 参数少但更间接（通过 LWV/DWV 影响色彩），调起来需要更多色彩科学直觉。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "AWB 决策的 5 层调教参数：DWV / LWV / 聚合 / 收敛 / ___",
+      "answer": ["CCM 联动", "CCM", "异常", "异常处理", "CCM 联动 / 异常", "CCM联动"],
+      "explain": "完整调教层次：DWV（块权重）→ LWV（参考点）→ 聚合（多 sub-algo）→ 收敛（damping/settle）→ CCM 联动（不同 cct 用不同 3×3 矩阵）。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "默写 4 个常见 Reference Points（含中文名/CCT）：A ___K（钨丝）、CWF ~4150K（冷白）、D65 ___K（标准白）、H_blue ~10000K（蓝天）",
+      "answer": [
+        "2856 / 6500",
+        "2856K / 6500K",
+        "2856,6500",
+        "2856,6500K"
+      ],
+      "explain": "A 2856K 钨丝 / D65 6500K 标准白。两者都是 OTP 校准的关键光源。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "用 AWB 视角分析「黄昏户外拍人像 + 草地」场景的完整决策。",
+      "referenceAnswer": "1) 64×48 统计：天空（橙红）+ 人脸（暖肤色）+ 草地（绿色），平均 RG/BG 偏低（绿色拉走）。2) DWV：草地块（颜色偏绿，远离普朗克）color_weight 大幅减小；天空（暖光端）和肤色（接近 D55）权重保留。3) MLC：草地极绿区可能落在多边形外 → dwv=0。4) 算 current 时主要靠天空和人脸 → current 偏暖。5) Sub-algos：参考点法估 D55-D65 之间，conf 0.7；FA（人脸辅助）估暖光（肤色信号），conf 0.6。6) Extreme Color Analyzer 检测到 R 远>B → 通知 AWB 少修 R。7) 聚合后 cct ≈ 4500-5500K（保持温暖）。8) R_gain=0.95（小幅压红）+ B_gain=1.05。9) 结果：黄昏暖色调保留 + 人脸肤色准确 + 草地是绿色（不被错修）。"
+    }
+  ]
+}

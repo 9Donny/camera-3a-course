@@ -1,0 +1,68 @@
+{
+  "id": "day-35",
+  "week": 5,
+  "module": "M4",
+  "title": "Week 5 总结：AWB 第一阶段全景图 + 周考",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Week 5 完整地图",
+      "type": "concept",
+      "content": "### 一周回顾\n\n| Day | 主题 | 核心数据结构 |\n|---|---|---|\n| Day 29 | AWB 总览 + 灰世界 | 三通道增益（R, G, B）+ CCT |\n| Day 30 | Bayer 网格统计 + Sensor OTP | 64×48 块（含过曝/过暗标志）+ OTP 字段 |\n| Day 31 | 参考点 + 色温坐标系 | RG-BG 平面 + Reference Points 表 |\n| Day 32 | 光源权重向量（LWV）| LWV：8-15 维概率分布 |\n| Day 33 | 距离权重向量（DWV）+ MLC | DWV：3072 维块权重 + 多边形 |\n| Day 34 | 决策聚合 + 时序 + 异常 | sub-algos 聚合后 final_lwv |\n\n### 完整 AWB 算法流程图\n\n```\n┌── sensor 输出 RAW（Bayer 域）────────────┐\n└──────────────┬───────────────────────────┘\n               ↓ ISP 早期处理（OB / LSC / Demosaic 之前）\n┌── Bayer 域统计模块 ─────────────────────┐\n│ 64×48 块，每块输出 (R, G, B, 过曝标志)    │\n│ 与 AE 共用（AE 用 Y）                     │\n└──────────────┬───────────────────────────┘\n               ↓\n┌── DWV 计算 ─────────────────────────────┐\n│ 1. 过曝过暗块权重 = 0                    │\n│ 2. 位置权重（中心高边缘低）               │\n│ 3. 颜色合理性权重（普朗克距离）           │\n│ 4. MLC 多边形排除                        │\n└──────────────┬───────────────────────────┘\n               ↓\n┌── DWV 加权计算 current ──────┐\n│ current_rg, current_bg         │\n└──────────────┬───────────────┘\n               ↓\n┌── 多个 Sub-Algorithms 各自算 LWV ──┐\n│ Sub 1: 灰世界                       │\n│ Sub 2: 参考点 + 内插                │\n│ Sub 3: FA 人脸辅助（Week 6）       │\n│ Sub 4: AGW 高级灰世界（Week 6）   │\n│ Sub 5: AI 神经网络（旗舰）          │\n│ → 各自输出 LWV + confidence         │\n└──────────────┬─────────────────────┘\n               ↓\n┌── 决策聚合器 Aggregator ──────────┐\n│ 1. confidence 校准                  │\n│ 2. 冲突检测（高冲突 → 选最高 conf） │\n│ 3. 加权平均（低冲突）                │\n│ → final_lwv                          │\n└──────────────┬─────────────────────┘\n               ↓\n┌── 时序平滑（多帧聚合）───────┐\n│ 滑动窗口（10 帧）平均           │\n│ 光源切换时清空历史              │\n└──────────────┬─────────────────┘\n               ↓\n┌── 异常处理（fallback chain）──┐\n│ 高 conf → 用 final_lwv         │\n│ 中 conf → 与上一帧 mix         │\n│ 低 conf → 用上一帧             │\n│ 无上一帧 → 默认 D65            │\n└──────────────┬─────────────────┘\n               ↓\n┌── 加权平均得到光源 ─────┐\n│ final_rg, final_bg, cct  │\n└──────────────┬─────────────┘\n               ↓\n┌── damping 平滑（α=0.2）─┐\n└──────────────┬───────────┘\n               ↓\n┌── 计算 WB Gain ─────────┐\n│ R_gain, G_gain=1, B_gain │\n└──────────────┬───────────┘\n               ↓\n┌── 写到 ISP ───────────────────┐\n│ WB module: gain 应用            │\n│ CCM module: 按 cct 选 + 内插    │\n│ 其他模块: lux + cct 联动配置     │\n└────────────────────────────────┘\n```\n\n### 数据结构总结\n\n| 结构 | 维度 | 含义 |\n|---|---|---|\n| 64×48 块 | 3072 | 每块 (R, G, B, 过曝/过暗标志) |\n| OTP | 几十字段 | sensor 出厂校准的 D65/D50/A/H 各色温 RG/BG |\n| Reference Points | 8-15 | 每个 (name, cct, rg, bg, prior_weight) |\n| DWV | 3072 | 每个 64×48 块的权重 |\n| LWV | 8-15 | 每个参考点的概率（之和=1）|\n| final_lwv | 8-15 | 聚合所有 sub-algo 后的 LWV |\n| RG-BG 平面 | 2D 坐标 | 内部色温坐标系 |\n\n### 调教参数总数\n\nAWB 第一阶段（Week 5 学完）大约 **100-150** 个参数：\n\n```\nOTP 字段：~20\nDWV 配置：~15\nReference Points：~15 × 5 = 75\nLWV sigma + 衰减：~5\n聚合配置：~10\n时序 + 异常：~10\nCCM 联动：~10（CCM 表本身在 Week 2 学过）\n```\n\n比 AE 少（200-400），但每个参数影响**间接**（通过 LWV / DWV 间接影响色彩），调起来需要更多对**色彩科学**的直觉。\n\n### Week 6 预告\n\nWeek 6 学 AWB **进阶**：\n- AGW（高级灰世界）：在不同色温区分别用灰世界\n- FA（人脸辅助）：人脸肤色提供光源信号\n- AWB Flash：闪光灯下的特殊处理\n- TGA（三角增益调整）：精细修正\n- 双摄同步：主从架构（类似 AE）\n- Smart Convergence：智能收敛策略\n- FCM（Fixed Color Matching）：固定色彩匹配\n\nWeek 6 是 Week 5 的延伸 —— Week 5 是「**算法骨架**」，Week 6 是「**场景特化**」。",
+      "glossary": [],
+      "extras": {
+        "faq": [
+          { "q": "学完 Week 5 我能看懂 AWB 文档吗？", "a": "高通 7.0 PDF 的 AWB 章节（约 80 页）你现在能看懂 70%。Week 6 学完看 90%。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "回顾 Day 29-34 所有 references" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "AWB 类问题 cheat sheet",
+      "type": "concept",
+      "content": "### 这一节是面试准备\n\nPRD 23 题里**没有专门的 AWB 题**（PRD 题主要是 AE 和色彩相关），但实际面试**80% 概率会问 AWB**。常见 AWB 面试题：\n\n### Q：AWB 的基本工作流程是什么？\n\n> 1. 接收 64×48 Bayer 域统计数据（R / G / B per block）\n> 2. 算 DWV：过滤过曝过暗 + 位置加权 + 颜色合理性 + MLC 排除\n> 3. DWV 加权计算 current_rg / current_bg\n> 4. 多 sub-algorithm 各自输出 LWV + confidence（参考点法 + 灰世界 + FA + AI）\n> 5. 决策聚合：confidence 加权融合 + 冲突检测 + 时序平滑\n> 6. 异常处理：低 confidence 时 fallback 到上一帧\n> 7. 加权平均得到 final_rg / final_bg / final_cct\n> 8. damping 平滑 + 写 ISP（WB gain + CCM 选）\n\n### Q：什么是色温（CCT）？常见光源对应多少？\n\n> CCT = Correlated Color Temperature（相关色温），单位 Kelvin。\n> \n> 常见对应：\n> - 烛光 / 钨丝 ~2700-2900K（暖橙）\n> - 卤素灯 ~3000K\n> - 早晚日光 D50 ~5000K\n> - 正午日光 D65 ~6500K（标准白）\n> - 阴天 ~7500K\n> - 蓝天 ~10000K+（冷蓝）\n> \n> CCT 越低光越暖（红黄）、越高越冷（蓝紫）。\n\n### Q：为什么 AWB 用 RG 和 BG 比例而不是直接 RGB 数值？\n\n> RG / BG 是无量纲的比值（R/G、B/G），不受亮度影响 —— 同一光源下白纸在亮处或暗处 RG/BG 一样。\n> \n> 这让 AWB 算法可以在「**色温坐标系**」上工作，与亮度解耦。\n> \n> 此外 G 是参考通道（Bayer 中 G 像素数量是 R/B 的两倍，信噪比最好），用 G 做分母最稳。\n\n### Q：什么是参考点（Reference Point）？为什么需要它们？\n\n> Reference Point = AWB 配置预存的「常见光源」在 RG-BG 平面上的位置 + 概率权重。\n> \n> 常见 8-15 个：A（钨丝 2856K）、TL84（4100K）、CWF（4150K）、D50（5000K）、D65（6500K）、D75（7500K）、H_blue（10000K）等。\n> \n> 必要性：\n> 1. 让 AWB 决策「**有先验**」（不是盲猜）\n> 2. 通过查表替代「**计算光源**」（计算便宜）\n> 3. 加 prior_weight 让常见光源（D65）更容易被选中\n\n### Q：什么是 MLC（误导色区）？怎么解决「**纯红墙变蓝紫**」？\n\n> MLC = Misleading Light Color，RG-BG 平面上「**不可能是光源**」的区域。落在 MLC 的 64×48 块**权重设为 0**，不参与 AWB 决策。\n> \n> 用「**有效色温区域多边形**」定义 —— 多边形顶点是常见光源（A/D65/H_blue 等）连成的「**普朗克轨迹周围带**」。\n> \n> 「红墙变蓝紫」原因：纯红墙的 RG ≈ 2.5（远超 D65 的 1.0），AWB 误以为光源极暖 → 大幅压 R 加 B → 红墙变成蓝紫色。\n> \n> MLC 解决：纯红墙的 RG/BG 在 MLC 区，所有块 dwv=0 → AWB 不参与（用上一帧或默认）→ 红墙保持红色。\n\n### Q：AWB 决策聚合时怎么处理冲突？\n\n> 检测多个 sub-algo 的 LWV 距离。\n> \n> - **低冲突**（一致性高）：按 confidence 加权平均\n> - **高冲突**（严重不一致）：选 confidence 最高的 sub-algo 主导\n> \n> 避免「**和稀泥平均**」 —— 真实光源是某一个，不是中间。\n\n### Q：怎么处理光源切换（用户从室内走到户外）？\n\n> AWB 内置「**光源切换检测**」：\n> \n> 1. 算当前帧 LWV 和过去 N 帧平均 LWV 的距离\n> 2. 距离 > threshold → 触发 fast_converge\n> 3. fast_converge 模式：清空时序历史 + α 提到 0.6（正常 0.2）+ 减小聚合的时序窗口\n> \n> 这让光源切换时 5-10 帧（~300ms）快速收敛，不切换时稳定。\n\n### Q：拍绿草地为什么会变白？怎么修？\n\n> 原因：灰世界算法假设「画面平均 = 中性灰」，但绿草地里 G 远高于 R/B → 算法认为「光源偏绿」 → 大幅压绿、加红 → 草地变白。\n> \n> 修法：\n> 1. 调小 DWV color_sigma（让绿色块权重快速衰减）\n> 2. 启用 MLC（绿草色在 MLC 区 → dwv=0）\n> 3. 用参考点法替代灰世界（不平均，看最近参考点）\n> 4. 启用 AGW 高级灰世界（Week 6 学）—— 在不同色温区分别用灰世界\n\n### Q：AWB 多摄一致性怎么保证？\n\n> 主从架构（Master/Slave）：\n> 1. 主摄独立运行 AWB 算法\n> 2. 副摄（长焦/超广角）跟随主摄的 final_cct\n> 3. 用主摄 cct 查 CCM 表，但用副摄自己的 sensor OTP\n> 4. 切换镜头时 cct 不变 → 用户感觉「**色彩平滑切换**」\n> \n> 复杂场景（不同视场角看到不同光源）需要更精细处理 —— Week 6 学。",
+      "glossary": [],
+      "extras": {
+        "faq": [
+          { "q": "面试官真的会问这么细吗？", "a": "看面试官。资深 Camera Tuning 工程师面试官会问到 LWV / DWV / MLC 这种细节。基础面试只问到色温 + 参考点级别。" },
+          { "q": "怎么背？", "a": "背结构（流程的 8 步）+ 几个关键数据结构（DWV / LWV / Reference Point）。具体公式不重要。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "本节是 cheat sheet。打印出来。" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "实战练习：AWB 视角分析 3 个场景",
+      "type": "example",
+      "content": "### 练习 1：办公室拍人像\n\n场景：用户在公司办公室（CWF 冷白荧光，4150K）拍同事人像。\n\n```\n1. 64×48 统计：\n   人脸（占 30%）：R 偏高、G 中、B 中\n   背景（白墙 70%）：R 中、G 中、B 中\n   平均：current_rg ≈ 1.10, current_bg ≈ 0.90\n\n2. DWV：\n   - 中心权重高（人脸在中间）\n   - 没过曝过暗\n   - 颜色合理（在 valid zone 内）\n   - 总 DWV 接近全 1\n\n3. Sub-algos LWV：\n   - 灰世界：current = (1.10, 0.90)，估光源接近 CWF, conf 0.7\n   - 参考点法：最近 CWF (1.18, 0.88), conf 0.9\n   - FA：检测到人脸，提供肤色信息，估 CWF, conf 0.6\n   - AI：（如果启用）估 CWF, conf 0.85\n\n4. 聚合：\n   - 各 sub-algo 一致（都说 CWF）\n   - 低冲突 → 加权平均\n   - final_lwv: CWF 占 50%, TL84 20%, D50 15%, ...\n\n5. final cct = 4180 K\n   R_gain = 1.0/1.18 = 0.85（略压红）\n   B_gain = 1.0/0.88 = 1.14（略加蓝）\n\n6. CCM：选 CWF / TL84 之间的内插矩阵\n\n7. 结果：人脸肤色准确（不偏黄），白墙是中性白，画面舒服\n```\n\n### 练习 2：黄昏户外拍风景\n\n场景：太阳即将落山，黄昏天空偏橙红，地面是绿色草地。\n\n```\n1. 64×48 统计：\n   上半天空（黄昏，40% 区域）：R 高、G 中、B 低\n   下半草地（60% 区域）：R 低、G 高、B 低\n   平均：current_rg ≈ 0.70, current_bg ≈ 0.55\n\n2. DWV：\n   - 草地块（颜色偏绿）：MLC 检测 → 部分块 dwv 减半\n   - 天空块（颜色偏红）：靠近普朗克轨迹的暖光端 → 保留\n   - 总 DWV 偏向天空\n\n3. Sub-algos LWV：\n   - 灰世界：current 偏红低绿 → 估光源偏冷？conf 0.4（颜色单一）\n   - 参考点法：current 接近 D50/D55 → conf 0.7\n   - 但天空就是橙红色，参考点法可能误判\n\n4. Extreme Color Analyzer 介入（AE 那边的）：\n   - 检测到画面色彩不平衡（R 远 > B）\n   - 通知 AWB「**少修 R 通道**」\n\n5. 聚合：\n   - 配 Extreme Color 信号 → 减弱 R 修正\n   - final cct ≈ 4500K（保持温暖）\n   - R_gain = 0.95（小幅压红，不过激）\n   - B_gain = 1.05\n\n6. 结果：黄昏色调保留，草地是绿色（不被错修成红绿）\n```\n\n这是 AWB + AE Extreme Color 协同的典型场景（Day 23 + Day 33 联动）。\n\n### 练习 3：从户外（D65）走进室内（A 钨丝）\n\n```\n第 0 帧（户外）：\n  current_rg=1.05, current_bg=0.95\n  final_lwv: D65 主导 (50%)\n  final_cct=6300K\n  R_gain=0.95, B_gain=1.05\n\n第 1 帧（刚跨门）：\n  current_rg=1.40, current_bg=0.65 ← 突然偏暖\n  → 光源切换检测：当前 LWV 与历史 LWV 距离大\n  → 触发 fast_converge：清空历史，α=0.6\n\n第 5 帧：\n  current_rg=1.55, current_bg=0.58\n  damping 让 R_gain 从 0.95 → 0.75（接近 A 0.62）\n  画面色温从 6300K → 3400K\n\n第 10 帧：\n  收敛：\n  current_rg=1.60, current_bg=0.55\n  final_lwv: A 钨丝 主导 (60%)\n  final_cct=2950K\n  R_gain=0.62, B_gain=1.82\n  → 钨丝灯下白纸恢复白色\n\n第 11 帧之后：\n  fast_converge 退出，α=0.2\n  正常稳定运行\n```\n\n整个切换约 10 帧（~333ms），用户感觉「**走进门画面色调跟着平滑变暖**」。\n\n### 练习的意义\n\n这三个场景串完了：\n- 正常室内（DWV 全用 + Sub-algo 一致）\n- 极端色彩协同（Extreme Color 信号传递）\n- 光源切换（fast_converge）\n\n你能用 AWB 视角分析任何场景 —— 这是 Week 5 学完的真正能力。",
+      "glossary": []
+    },
+    {
+      "id": "s4",
+      "title": "Week 6 预告 + 学习节奏建议",
+      "type": "concept",
+      "content": "### Week 6 学的「**进阶**」\n\n| Day | 主题 | 解决什么场景 |\n|---|---|---|\n| Day 36 | AGW（Advanced Gray World）| 复杂场景下灰世界的精细化 |\n| Day 37 | FA（Face Assist）| 人脸辅助 AWB |\n| Day 38 | AWB Flash | 闪光灯下的特殊处理 |\n| Day 39 | 双摄 AWB 同步 | 多摄一致性 |\n| Day 40 | TGA（Triangle Gain Adjustment）| 三角增益精细修正 |\n| Day 41 | Smart Convergence + FCM | 智能收敛 + 固定色彩匹配 |\n| Day 42 | Week 6 总结 + 周考 | AWB 全部 |\n\n### 你现在的位置\n\n```\n████████████████████████████████████████░░░░░░  70% (Week 5/8)\n```\n\n你已经过了 60 天的 70%。AE + AWB 第一阶段都完成了。\n\n### Week 6-7-8 还要做什么\n\n```\nWeek 6: AWB 第二阶段（你现在 + 1 周）\nWeek 7: AF + Flash + HDR + Flicker\nWeek 8: 色彩科学 + Chromatix 实操 + 模拟面试 + 简历\n```\n\nWeek 7 主题相对独立（AF 跟 AE/AWB 平行），Week 8 是冲刺。\n\n### 学习建议\n\n做完 Week 5 是个**好时机**：\n\n1. **今天做完周考 + 复习**\n2. **整理一份 AE + AWB 综合 cheat sheet**（对比两个算法的相似 / 不同）\n3. **重点：理解 LWV / DWV 这两个数据结构**（这是 Week 5 的核心，面试常问）\n4. **不要急着进 Week 6**，先把 Week 5 啃透\n\n### Week 5 周考准备\n\n打开「考核 → 周测试 → Week 5」。15 题混合：\n- 5 题 AWB 总览（Day 29 / Day 35）\n- 5 题 LWV / DWV / MLC（Day 31-33）\n- 3 题决策聚合（Day 32 / Day 34）\n- 2 题实战（场景分析）\n\n80% 通过率 → AWB 第一阶段过关。\n\n### 最后的鼓励\n\n做到 Week 5 已经**比 80% 自学者走得远**。继续保持！",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本周小结",
+      "type": "recap",
+      "content": "### Week 5 收获\n\n- ✅ 完整理解 AWB 算法 8 步流程（DWV → current → LWV → 聚合 → 时序 → 异常 → gain → ISP）\n- ✅ 掌握 LWV / DWV / MLC 三个核心数据结构\n- ✅ 理解 Reference Points + 色温坐标系（普朗克轨迹）\n- ✅ 看懂 AWB log（rg/bg/cct/refpoint/lwv/confidence）\n- ✅ 能用 AWB 视角分析「绿草地变白」「红墙变紫」「光源切换慢」等经典 bug\n- ✅ 知道 AWB 调教的 5 层（DWV / LWV / 聚合 / 收敛 / 异常）\n- ✅ Tuning 参数大约 100-150 个，比 AE 少但更间接\n\n### Week 5 自我检查\n\n1. **画一张 AWB 完整流程图**（不准看 Day 35 s1）。\n2. **默写 LWV / DWV / MLC 的定义和维度**。\n3. **解释普朗克轨迹**：为什么所有自然光源都靠近它？\n4. **场景分析**：用户拍演唱会霓虹（极端色彩 + 暗光），AWB 怎么决策？\n5. **完成本周周考**（15 题）。\n\n### Week 5 周考\n\n打开「考核 → 周测试 → Week 5」做 15 题。\n\n80% 正确说明 AWB 第一阶段过关。低于 80% 回去重看错题对应的 Day。\n\n### 笔记最终建议\n\n本周笔记最起码包含：\n\n1. AWB 完整流程图（一张）\n2. LWV / DWV / MLC 三个数据结构定义\n3. Reference Points 表（D65 / A / CWF / TL84 / D50 / D75 / H_blue 的 RG/BG/CCT/weight）\n4. RG-BG 平面图（含普朗克轨迹和有效色温区域）\n5. AWB 调教 cheat sheet（按 bug 反查参数）\n6. 8 道 AWB 类面试题完整答案\n\n### 下周见\n\n下周一开始 Week 6 AWB 进阶。会学 AGW / FA / AWB Flash / 双摄同步等场景特化算法。比 Week 5 容易（已有地基），但仍需要学。\n\nWeek 5 是 AWB 「**理论**」，Week 6 是 AWB 「**实战**」。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "本周 Day 29-34 所有 references" },
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "AWB 整章节（第 100-180 页）" }
+  ],
+  "dailyQuizId": "daily-day-35"
+}

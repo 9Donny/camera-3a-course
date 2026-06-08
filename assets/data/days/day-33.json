@@ -1,0 +1,87 @@
+{
+  "id": "day-33",
+  "week": 5,
+  "module": "M4",
+  "title": "距离权重向量 + 误导色区（MLC）",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "「距离权重向量」是什么",
+      "type": "concept",
+      "content": "### 名字的混淆\n\nDay 32 学的「光源权重向量（LWV）」是「**对参考点的权重**」（每个参考点一个数）。\n\n今天学的「**距离权重向量（DWV）**」是另一个概念：\n\n> **DWV：对 64×48 网格中每个块的权重**（每个块一个数）。\n\n两者维度不一样：\n- LWV：8-15 维（参考点数量）\n- DWV：3072 维（64×48 = 3072 块）\n\n两者都参与 AWB 决策但层次不同：\n- DWV 决定「**哪些块更可信**」（在算 current_rg/bg 时怎么加权 64×48 块）\n- LWV 决定「**最终光源是哪个**」\n\n### DWV 的工作流程\n\n```python\ndef compute_current_with_dwv(stats_64x48, dwv):\n    # 用 DWV 加权计算 R / G / B 平均\n    R_weighted = sum(b.R * w for b, w in zip(stats_64x48, dwv))\n    G_weighted = sum(b.G * w for b, w in zip(stats_64x48, dwv))\n    B_weighted = sum(b.B * w for b, w in zip(stats_64x48, dwv))\n    total_w = sum(dwv)\n    \n    R = R_weighted / total_w\n    G = G_weighted / total_w\n    B = B_weighted / total_w\n    \n    return (R/G, B/G)  # current_rg, current_bg\n```\n\n这之后再走 LWV 算法（Day 32）找光源。\n\n所以 AWB 完整链路是：\n\n```\nstats 64×48 → DWV 加权 → current_rg/bg → LWV → final_cct + gain\n```\n\n### DWV 由什么决定\n\n```python\ndef compute_dwv(stats_64x48):\n    dwv = [0] * 3072\n    for i, b in enumerate(stats_64x48):\n        # 1. 位置权重（中心 vs 边缘）\n        pos_weight = center_weight_table[i]\n        \n        # 2. 颜色合理性权重（颜色是否「**像光源**」）\n        color_weight = is_neutral_color(b.R, b.G, b.B)\n        \n        # 3. 亮度合理性权重（过曝 / 过暗 → 权重 0）\n        if b.is_saturated or b.is_dark:\n            weight = 0\n        else:\n            weight = pos_weight * color_weight\n        \n        dwv[i] = weight\n    return dwv\n```\n\n三个因素：\n\n**a. 位置权重**：中心更可信（用户主体多在中心）\n\n**b. 颜色合理性权重**：这块的颜色看起来像「光源」吗？\n- 接近灰色（R≈G≈B）→ 高权重（很可能是中性物体被光源照射）\n- 严重偏色（如 R=200/G=80/B=50 纯红）→ 低权重（很可能是红物体本身的颜色，不能反映光源）\n\n**c. 亮度合理性权重**：过曝过暗块直接 0\n\n### 第二点是 AWB 难点\n\n上面第二点「**怎么判断颜色合理**」就是今天的核心 —— **「误导色区（Misleading Light Color，MLC）」**。\n\n场景：用户在 D65 下拍**纯红墙**。\n\n```\n所有块都是: R=200, G=80, B=50\n  current_rg = 200/80 = 2.5 (远超 D65 的 1.0)\n  current_bg = 50/80 = 0.625\n  → AWB 看到「current_rg=2.5」会认为光源 RG 巨大（极暖光，CCT < 2500K）\n  → 大幅压 R 通道、加 B → 红墙变成蓝紫色 ❌\n```\n\n问题：「**纯红墙**」这种颜色**不可能是光源**（太极端，不在普朗克轨迹附近）。\n\n→ 应该把这种块的权重降到 0，**不让它参与 AWB 决策**。\n\n这就是 MLC 的作用：**识别「极端颜色」并排除**。",
+      "glossary": [
+        { "term": "DWV", "zh": "Distance Weight Vector 距离权重向量", "explain": "对 64×48 网格每个块的权重。决定哪些块参与计算 current_rg/bg。" },
+        { "term": "Color Reasonableness", "zh": "颜色合理性", "explain": "判断一个块的颜色是否「像光源」的指标。极端色彩 = 不像光源 = 权重低。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "DWV 和 AE 的中心测光权重表一样吗？", "a": "类似但不同。AE 的权重表只看位置；AWB 的 DWV 看位置 + 颜色 + 亮度。" },
+          { "q": "DWV 每帧都重算吗？", "a": "是的。每帧根据当前 64×48 块的颜色分布算一次 DWV。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Distance Weight Vector + MLC" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "MLC（误导色区）：识别「**不像光源的颜色**」",
+      "type": "concept",
+      "content": "### MLC 是什么\n\n> **MLC = Misleading Light Color**（误导色区）：识别 RG-BG 平面上「**不可能是光源**」的区域，落在这些区域的 64×48 块权重降为 0。\n\nDay 31 我们说过：所有自然光源在 RG-BG 平面上靠近一条曲线（**普朗克轨迹**）。所以「**离普朗克轨迹太远的颜色**」 = 不是光源 = 误导色。\n\n```\n  BG\n   ↑\n   |          (区域 X：MLC，纯蓝物体)\n   |             ░░░░░░░\n   |              ░░░░░░\n   |       ··D75 ░░░\n   |    ··D65    ░░\n   |  ·D50         （普朗克曲线附近 = 合理光源）\n   |·CWF \n   ·A\n   |░░░░\n   |░░░░░ (区域 Y：MLC，纯红物体)\n   |░░░░░░░\n   +-------------------→ RG\n```\n\n阴影区 X（高 BG）和阴影区 Y（高 RG 低 BG）就是 **MLC 区**。\n\n### 怎么定义 MLC 区\n\n方法 1：**基于普朗克轨迹的距离**\n\n```python\ndef is_mlc(rg, bg, threshold=0.3):\n    # 算到普朗克轨迹的最短距离\n    d = distance_to_planckian_locus(rg, bg)\n    return d > threshold\n```\n\n方法 2：**多边形定义**\n\nTuning 工程师在 RG-BG 平面上**画一个多边形**（合理光源区域），多边形外的都是 MLC：\n\n```xml\n<awb_valid_zone>\n  <polygon>\n    <vertex rg=\"0.7\" bg=\"1.5\"/>  <!-- 高色温端 -->\n    <vertex rg=\"0.9\" bg=\"1.4\"/>\n    <vertex rg=\"1.0\" bg=\"1.0\"/>  <!-- D65 -->\n    <vertex rg=\"1.5\" bg=\"0.6\"/>  <!-- A 钨丝 -->\n    <vertex rg=\"1.7\" bg=\"0.5\"/>\n    <vertex rg=\"1.5\" bg=\"0.4\"/>\n    <vertex rg=\"1.2\" bg=\"0.6\"/>\n    <vertex rg=\"0.9\" bg=\"1.0\"/>\n    <!-- 闭合到第一个顶点 -->\n  </polygon>\n</awb_valid_zone>\n```\n\n这种「**有效色温区域多边形**」是 Tuning 项目核心配置之一。它**精确定义**了 AWB 认可哪些颜色是「合理光源」。\n\n### 应用 MLC 到 DWV\n\n```python\ndef compute_dwv_with_mlc(stats_64x48, valid_zone_polygon):\n    dwv = [0] * 3072\n    for i, b in enumerate(stats_64x48):\n        if b.is_saturated or b.is_dark:\n            dwv[i] = 0\n            continue\n        \n        # 算这个块的 RG/BG\n        block_rg = b.R / b.G\n        block_bg = b.B / b.G\n        \n        # 检查是否在有效区\n        if not point_in_polygon(block_rg, block_bg, valid_zone_polygon):\n            dwv[i] = 0  # MLC，排除\n            continue\n        \n        # 在有效区内 → 算位置 + 颜色权重\n        dwv[i] = pos_weight[i] * color_neutrality(b)\n    \n    return dwv\n```\n\n### 红墙场景（再看）\n\n```\n用户在 D65 下拍纯红墙：\n  3072 个块都是 R=200, G=80, B=50\n  block_rg = 2.5, block_bg = 0.625\n\n这个点在 RG-BG 平面 (2.5, 0.625) → 在有效区多边形外 → MLC！\n\n→ 所有 3072 块 dwv = 0\n→ 没有有效块算 current_rg/bg\n→ AWB **回退到上一帧** 或 **fallback 到默认**\n→ 红墙保持红色 ✅\n```\n\n这就是 MLC 解决「**纯色物体误导 AWB**」的核心机制。\n\n### 不只是纯色物体\n\nMLC 还能识别：\n\n- **植物绿** （太绿，不在普朗克轨迹）\n- **荧光彩色** （某些霓虹颜色）\n- **强光灯效** （彩色 LED 演唱会）\n\n所有「**鲜艳但不是自然光源**」的颜色都属于 MLC。\n\n### Tuning 工程师调 MLC 多边形\n\n这是 AWB 调教里**最考验经验**的部分：\n\n- 多边形太大 → 误导色被当成光源 → 「**草地变白**」\n- 多边形太小 → 真实光源也被排除 → 「**钨丝灯下不修**」\n\n实际项目里：\n\n```\n1. 用标准光源箱 + 24 色卡测出每种「**已知光源**」的 RG/BG\n2. 这些点连成多边形，外扩 10-15% 余量\n3. 真实场景测试：极端色彩物体（红墙 / 绿草 / 蓝衣）应该都在多边形外\n4. 自然光源（钨丝 / 日光 / 阴天）都在多边形内\n```\n\n这个**多边形是 AWB 的「领土」**。每个 sensor 出厂时都要画一遍（OTP 校准的一部分）。",
+      "glossary": [
+        { "term": "MLC", "zh": "Misleading Light Color 误导色区", "explain": "RG-BG 平面上「不可能是光源」的颜色区域。落在这里的块不参与 AWB 决策。" },
+        { "term": "Valid Zone Polygon", "zh": "有效色温区域多边形", "explain": "Tuning 配置定义的 RG-BG 平面上「合理光源」的区域，多边形顶点是常见光源位置。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "如何判断一个点在多边形内？", "a": "经典算法：射线法（从该点向右画水平射线，与多边形边的交点数为奇数 → 在内）。计算便宜。" },
+          { "q": "多边形会变化吗？", "a": "项目级别配置，确定后基本不变。但有些产品会按场景动态调整（如检测到夜景模式时多边形略微扩大）。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Misleading Light Color" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "颜色合理性权重：渐变而不是 0/1",
+      "type": "concept",
+      "content": "### MLC 太「**硬**」\n\n上面 MLC 是一个**硬切**：在多边形内 → 权重正常；在外 → 权重 0。\n\n但实际场景里**不应该这么硬**：\n\n场景：用户拍**有点偏色的物体**（淡红的人脸、淡黄的木桌）。\n- 淡红人脸：`block_rg = 1.30, block_bg = 0.85`，**接近**多边形边界但**在内**\n- 这种块**应该参与 AWB**但**权重要小**（毕竟有点偏色，可能干扰）\n\n→ 用「**渐变权重**」而不是 0/1。\n\n### 颜色合理性权重函数\n\n```python\ndef color_reasonableness_weight(block_rg, block_bg, valid_zone):\n    # 算到 valid_zone 中心（D65 附近）的距离\n    d_to_center = euclidean_dist((block_rg, block_bg), valid_zone.center)\n    \n    # 距离越大权重越小（高斯衰减）\n    weight = exp(-d_to_center**2 / (2 * sigma**2))\n    \n    # 但不要降到 0（保留一点贡献）\n    return max(0.05, weight)\n```\n\n效果：\n- 完全中性的灰块（接近 D65 中心）：权重 1.0\n- 淡黄木桌（轻微偏色）：权重 0.6\n- 鲜艳红衣（大幅偏色但仍在多边形内）：权重 0.2\n- 纯红墙（多边形外，MLC）：权重 0.05 或 0\n\n这种**软权重**比硬切更柔和，少出 bug。\n\n### 普朗克距离权重（更精细）\n\n更高级的做法：用「**到普朗克轨迹的距离**」做权重，而不是「到 D65 的距离」。\n\n```python\ndef planckian_distance_weight(block_rg, block_bg):\n    # 找普朗克轨迹上离这个点最近的点（对应某个 CCT）\n    d = distance_to_planckian_locus(block_rg, block_bg)\n    weight = exp(-d**2 / (2 * sigma**2))\n    return weight\n```\n\n这样 A 钨丝（远离 D65 但在普朗克上）权重高、纯红墙（远离普朗克）权重低。\n\n这种「**普朗克距离权重**」让 AWB 对「**自然光源序列**」（暖到冷）都很支持，但**排除非自然颜色**。\n\n### 综合 DWV\n\n最终的 DWV 把多个因素合一：\n\n```python\ndef final_dwv(stats_64x48):\n    dwv = []\n    for i, b in enumerate(stats_64x48):\n        # 0. 死区（直接 0）\n        if b.is_saturated or b.is_dark:\n            dwv.append(0)\n            continue\n        \n        # 1. 位置权重（中心更高）\n        w_pos = center_table[i]  # 0.5 - 1.0\n        \n        # 2. 颜色合理性权重（接近普朗克）\n        block_rg = b.R / b.G\n        block_bg = b.B / b.G\n        w_color = planckian_distance_weight(block_rg, block_bg)\n        \n        # 3. 亮度合理性权重（中等亮度最可靠）\n        w_lum = lum_quality(b.G)  # 太亮太暗都打折\n        \n        dwv.append(w_pos * w_color * w_lum)\n    \n    return dwv\n```\n\n这就是「**完整 DWV**」。每帧重算一次，3072 个权重值。\n\n### 调教参数\n\n```xml\n<awb_dwv>\n  <position_weight_table>...</position_weight_table>  <!-- 64×48 中心高边缘低 -->\n  <color_sigma>0.3</color_sigma>                       <!-- 颜色衰减系数 -->\n  <use_planckian>true</use_planckian>                  <!-- 普朗克距离 vs 中心距离 -->\n  <luminance_curve>...</luminance_curve>               <!-- 亮度质量曲线 -->\n  <min_weight>0.05</min_weight>                        <!-- 权重下限（不要 0）-->\n  <mlc_polygon>...</mlc_polygon>                       <!-- MLC 多边形 -->\n</awb_dwv>\n```\n\n### 一个例子：调 DWV 修「**草地变白**」\n\n用户报：「拍绿草地变灰白」\n\n排查：\n```\n[AWB log] dwv 大量块 weight 在 0.1-0.3（草绿色块）\n→ 总权重还是相当大（3072 块都偏绿，加起来贡献多）\n→ current_rg 算出 0.6（偏低，被绿色拉走）\n→ AWB 输出 R_gain = 1.6（加红） → 草地变白\n```\n\n修正：调小 `color_sigma`（让偏离普朗克轨迹的块权重衰减更快）：\n\n```\nsigma 0.5 → 0.2\n→ 草绿色块的 color_weight 从 0.2 → 0.05\n→ 总贡献小很多\n→ current_rg 接近 1.0（D65）\n→ R_gain 接近 1.0（不修）\n→ 草地保持绿色 ✅\n```\n\n这就是「**调 DWV 解决经典 AWB bug**」的实际操作。",
+      "glossary": [
+        { "term": "Color Reasonableness Weight", "zh": "颜色合理性权重", "explain": "DWV 的一部分。块颜色越「像光源」（接近普朗克轨迹）权重越高。" },
+        { "term": "Planckian Distance", "zh": "普朗克距离", "explain": "RG-BG 平面上某点到普朗克轨迹的最短距离。距离小 = 接近自然光源 = 权重高。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "DWV 计算量大吗？", "a": "3072 个块 × 几个乘法 ≈ 10000 次运算。每帧约 0.1 ms（CPU 上），完全够用。" },
+          { "q": "为什么要 min_weight = 0.05 而不是 0？", "a": "防止极端场景（所有块都是误导色）→ 总权重 = 0 → AWB 没有数据可用。保留 0.05 让这种场景仍能 fallback。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "DWV Color Reasonableness" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "DWV + LWV 完整流程",
+      "type": "concept",
+      "content": "### 完整 AWB 算法（Day 29-33 串完）\n\n```\n┌── 接收 64×48 块统计 ─────────────────┐\n└──────────┬─────────────────────────┘\n           ↓\n┌── 计算 DWV（每个块的权重）─────────┐\n│  - 位置权重（中心高）               │\n│  - 亮度质量（过曝过暗 = 0）         │\n│  - 颜色合理性（普朗克距离）         │\n│  - MLC 排除（多边形外 = 0）         │\n└──────────┬─────────────────────────┘\n           ↓\n┌── DWV 加权计算 current ──────────┐\n│  current_rg, current_bg           │\n└──────────┬─────────────────────┘\n           ↓\n┌── LWV 算法（多 sub-algorithm）─────┐\n│  Sub-algo 1: 灰世界                │\n│  Sub-algo 2: 参考点法              │\n│  Sub-algo 3: 人脸辅助（Week 6）   │\n│  Sub-algo 4: AI（旗舰）            │\n│   ↓ 各自输出 LWV + confidence      │\n└──────────┬─────────────────────────┘\n           ↓\n┌── 决策聚合器 Aggregator ──────────┐\n│  按 confidence 加权融合 LWV         │\n│  → final_lwv                        │\n└──────────┬─────────────────────────┘\n           ↓\n┌── 加权平均得到光源参数 ────────┐\n│  final_rg, final_bg, final_cct    │\n└──────────┬───────────────────────┘\n           ↓\n┌── 计算 WB Gain ──────────────────┐\n│  R_gain = 1 / final_rg           │\n│  G_gain = 1                      │\n│  B_gain = 1 / final_bg           │\n└──────────┬───────────────────────┘\n           ↓\n┌── damping + settle 平滑 ──────┐\n│  帧间一阶滤波 + 收敛判断       │\n└──────────┬───────────────────┘\n           ↓\n┌── 写到 ISP ─────────────────┐\n│  WB module: gain 应用          │\n│  CCM module: 按 cct 选 CCM     │\n└──────────┬─────────────────────┘\n           ↓\n     下一帧 sensor 用新参数\n```\n\n这就是**完整的现代 AWB 算法**。涉及 5 层：DWV、LWV、聚合、平滑、应用。\n\n### 调教参数全景\n\n按调教层次：\n\n```\n第 0 层（sensor 出厂）：\n  - OTP（每个 sensor 的颜色响应）\n\n第 1 层（DWV 配置）：\n  - 位置权重表（64×48 中心高边缘低）\n  - color_sigma（颜色衰减）\n  - MLC 多边形（有效色温区域）\n  - 亮度质量曲线\n\n第 2 层（参考点 + LWV）：\n  - 参考点表（8-15 个，含 RG/BG/CCT/weight）\n  - LWV sigma（参考点距离衰减）\n\n第 3 层（聚合）：\n  - 各 sub-algorithm 的 weight\n  - 各 sub-algorithm 的 confidence 阈值\n\n第 4 层（收敛）：\n  - damping_alpha\n  - settle_tolerance\n  - light_change_threshold + fast_converge_alpha\n\n第 5 层（CCM 联动）：\n  - 各 CCT 对应的 3×3 矩阵\n```\n\n大约 100-200 个参数。比 AE 少（200-400），但**每个参数的影响更隐式**（通过 LWV / DWV 间接影响色彩），调起来需要更多经验。\n\n### Tuning 工程师的「**AWB 调教思维**」\n\n看到 AWB bug 时**反向找参数**：\n\n```\n色彩偏差现象\n     ↓\n是哪个色温段的问题？（暖光 / 中性 / 冷光）\n     ↓\nLWV 哪个参考点权重不对？\n     ↓\n是 DWV 把无效块算进去了？还是参考点位置错了？\n     ↓\n找到具体参数 → 调一调 → 重测\n```\n\n这种「**层层下钻**」是 AWB 调教的标准流程。**LWV / DWV 是诊断的关键**。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **DWV（距离权重向量）**：对 64×48 网格每块的权重，决定算 current_rg/bg 时怎么加权\n2. **MLC（误导色区）**：RG-BG 平面上「不可能是光源」的区域，用多边形定义。落在 MLC 的块权重 = 0\n3. **颜色合理性权重**：软权重（不是 0/1）。块颜色越接近普朗克轨迹权重越高\n4. **普朗克距离**：判断颜色「**像不像光源**」的指标\n5. **完整 AWB 算法**：DWV → current → LWV (多 sub-algo) → 聚合 → gain → damping → ISP\n6. **调教参数 100-200 个**：分 5 层（DWV / LWV / 聚合 / 收敛 / CCM 联动）\n\n### 自我检查\n\n1. DWV 和 LWV 的区别？维度分别是多少？\n2. MLC 是什么？它解决什么问题？怎么定义？\n3. 颜色合理性权重为什么用渐变（软）而不是 0/1（硬）？\n4. 「拍纯红墙变蓝紫」的根本原因是什么？MLC 怎么解决？\n5. 调小 color_sigma 会让 AWB 对偏色场景更敏感还是更不敏感？\n\n### 笔记建议\n\n- 把 AWB 完整流程图（Day 33 s4）抄一份\n- 整理 5 层调教参数列表\n- 思考「绿草地变白」「红墙变紫」「蓝天变粉」三个 bug 怎么用 DWV/MLC 视角排查\n\n### 明天预告\n\nDay 34：决策聚合（Decision Aggregator）。把 Day 32 提到的「多 sub-algorithm 融合」深入展开 —— 怎么处理冲突、怎么时序平滑、怎么应对所有 sub-algo 都低置信度的情况。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "DWV + MLC + Misleading Color" }
+  ],
+  "dailyQuizId": "daily-day-33"
+}

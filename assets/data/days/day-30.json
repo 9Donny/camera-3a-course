@@ -1,0 +1,93 @@
+{
+  "id": "day-30",
+  "week": 5,
+  "module": "M4",
+  "title": "Bayer 网格统计 + Sensor OTP 校准",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "AWB 用的 64×48 块到底输出什么",
+      "type": "concept",
+      "content": "### 复习：AE 用的 (Y, R, G, B)\n\nDay 15 我们学过 AE 用的 64×48 块统计每块输出 (Y, R, G, B)：\n- AE 主要用 Y（亮度）\n- AWB 用 R/G/B（色彩）\n\n但 **AWB 实际上用得更多**。Bayer 域统计模块在 Tuning 文档里也叫 **AWB Stats**（虽然 AE 也用），原因是它**为 AWB 优化设计**。\n\n### 每个 64×48 块输出的字段（AWB 视角）\n\n| 字段 | 含义 |\n|---|---|\n| `R_avg` | 该块 R 通道平均值（0-1023 / 10-bit）|\n| `G_avg` | G 通道平均（实际是 Gr + Gb 平均，因为 Bayer 有两种 G）|\n| `B_avg` | B 通道平均 |\n| `R_count` | R 像素总数（Bayer 单位 4 像素中 R 占 1）|\n| `B_count` | B 像素总数 |\n| `G_count` | G 像素总数（Bayer 中 G 占 2）|\n| `is_saturated` | 是否过曝（如果是，AWB 不该用）|\n| `is_dark` | 是否过暗（噪点大，AWB 也不该用）|\n\n这 8 个字段每块都有。3072 块 × 8 字段 = 24576 个数。**AWB 的输入数据**。\n\n### 关键概念：Gr / Gb 区分\n\nDay 2 学过 Bayer 阵列：\n\n```\nR  Gr R  Gr\nGb B  Gb B\nR  Gr R  Gr\nGb B  Gb B\n```\n\nG 像素分两种：和 R 同行的叫 **Gr**（red 行的 G），和 B 同行的叫 **Gb**。\n\n**理论上 Gr = Gb**（都是同一种绿色滤光片），但实际上**有差异**（Gr/Gb imbalance）—— sensor 里相邻像素之间会有串扰，让 Gr 和 Gb 数值略有不同。\n\nAWB 输出 G_avg = (Gr_avg + Gb_avg) / 2 来消除这个不平衡。但有些精细 AWB 会**单独看 Gr 和 Gb**：\n\n- 如果 Gr 比 Gb 高 → 暗示场景偏红（红光串扰到绿）\n- 反之偏蓝\n\n这种细节给「**精细色温估计**」用。\n\n### 过曝 / 过暗块过滤\n\n上面表格里的 `is_saturated` 和 `is_dark` 是**关键质量信号**：\n\n**过曝块**：R / G / B 任一通道接近 255（10-bit 是 1023）\n- 过曝意味着真实亮度被截断 → R/G/B 比例失真\n- AWB 必须**剔除**这种块，否则估的色温偏\n\n**过暗块**：所有通道都接近 0\n- 噪点大，统计不可靠\n- AWB 也**剔除**\n\n所以 AWB 实际可用的块经常**少于 3072**，根据场景动态过滤。亮度极端场景（如夜景 + 强光霓虹）可能只剩几百个有效块。\n\n### 加权统计的重要性\n\nDay 22 学过 AE 的中心测光权重表。AWB **也有权重表**，但不一样：\n\n```\nAE 权重：中心高、边缘低（因为主体在中心）\nAWB 权重：颜色「中性度」高的块权重大、极端色彩块权重小\n```\n\n这就是 Day 33 要学的「**距离权重向量**」 + 「**误导色区（MLC）**」。AWB 的权重不只看位置，更看**颜色特征**。\n\n### Tuning 工程师调 AWB stats 的参数\n\n```xml\n<awb_stats>\n  <enabled>true</enabled>\n  <saturation_threshold_high>950</saturation_threshold_high>  <!-- >950 视为过曝 -->\n  <saturation_threshold_low>50</saturation_threshold_low>     <!-- <50 视为过暗 -->\n  <gr_gb_avg>true</gr_gb_avg>                                  <!-- 是否合并 Gr/Gb -->\n  <region_filter>...</region_filter>                           <!-- 哪些块用、哪些不用 -->\n</awb_stats>\n```\n\n这些参数决定「**AWB 看到的世界**」的质量。",
+      "glossary": [
+        { "term": "AWB Stats", "zh": "AWB 统计模块", "explain": "Bayer 域统计模块，为 AWB 优化（输出 R/G/B + 过曝过暗标志），同时供 AE 用 Y。" },
+        { "term": "Gr / Gb", "zh": "G 红行 / G 蓝行", "explain": "Bayer 阵列中两种 G 像素的位置：和 R 同行的 Gr、和 B 同行的 Gb。" },
+        { "term": "Gr/Gb Imbalance", "zh": "Gr/Gb 不平衡", "explain": "理论上等的 Gr 和 Gb 因为像素串扰实际有差异，是 AWB 精细估计的细节信号。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么不用所有 3072 块？", "a": "过曝块的 R/G/B 比例失真（比如 R=255/G=200/B=180 看起来偏红，但其实 R 是被截断的，真值可能是 400）；过暗块噪点大。两者都会让 AWB 误判。" },
+          { "q": "Gr 和 Gb 真的有差异吗？", "a": "有。差异 1-3% 很常见。高端 sensor 用「**Pixel Crosstalk Correction**」专门处理，但仍不完美。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AWB Stats Module" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Sensor OTP 校准：每个 sensor 都不一样",
+      "type": "concept",
+      "content": "### 一个反直觉的事实\n\n你以为同款 sensor（比如 IMX989）出厂参数完全一致？**错**。\n\n同型号 sensor 之间存在「**个体差异**」：\n- 滤光片镀膜厚度差异（每片有微小不同）\n- 像素响应差异（光电转换效率每个像素略有不同）\n- 颜色响应差异（R / G / B 通道增益基线不同）\n\n这意味着：**同一光源（D65）下，10 个 IMX989 拍同一白纸，会得到 10 组略有不同的 R/G/B 数值**。\n\n如果 AWB 用「**通用参考点**」（一个固定的「D65 RG/BG 值」），10 台手机里会有 9 台**白平衡偏色**。\n\n### 解决方案：OTP 校准\n\n**OTP = One Time Programmable**。sensor 出厂前，工厂用标准光源拍标准灰板，**测出这个具体 sensor 的颜色响应曲线**，然后**烧录到 sensor 内部的 OTP 存储器**。\n\n```\n工厂校准流程：\n  Step 1: sensor 装到夹具上，对准 D65 标准光源\n  Step 2: 拍标准 24 色卡（McBeth 卡）\n  Step 3: 算这个 sensor 在 D65 下的实际 R/G/B 比例\n  Step 4: 把校准数据写入 sensor 的 OTP（不可改写存储器）\n  Step 5: 出厂\n```\n\n手机系统启动时**读取 OTP** → 调整 AWB 算法的参考点：\n\n```\n通用参考点 D65: RG = 1.000, BG = 1.000\n这个 sensor 的 D65: RG = 1.025, BG = 0.985  ← OTP 里写的\n```\n\n### OTP 包含什么\n\n常见 OTP 内容：\n\n| 字段 | 含义 |\n|---|---|\n| `D65_RG` | D65 光源下的 R/G 比 |\n| `D65_BG` | D65 光源下的 B/G 比 |\n| `D50_RG` | D50（早晚日光）下的 R/G 比 |\n| `A_RG` | A 光源（钨丝 2856K）下的 R/G 比 |\n| `H_RG` | H 光源（高色温 D75）下的 R/G 比 |\n| `LSC_table` | 暗角校正表（Day 9 学过）|\n| `BP_table` | 坏点表（哪些像素坏了）|\n| `serial_number` | 这个 sensor 的唯一序列号 |\n\n所以 OTP 不只服务 AWB，也服务 LSC、BPC（坏点校正）等。**是 sensor 的「身份证」**。\n\n### 没有 OTP 会怎样\n\n少数低端 sensor 不带 OTP（成本压缩）。这种 sensor 的 AWB 必须靠**软件兜底**：\n\n- 用「通用」参考点（不准）\n- 或者**每次开机做一次自标定**（拍一帧 → 算光源 → 调参考点）\n\n效果远不如 OTP。所以**带 OTP 是高质量 sensor 的标志**。你妹妹的项目用的肯定带 OTP。\n\n### Tuning 工程师怎么用 OTP\n\nAWB 算法启动时：\n\n```python\ndef awb_init():\n    otp = read_sensor_otp()  # 启动时读一次\n    \n    # 根据 OTP 调整内部参考点表\n    awb.refpoint_D65 = (otp.D65_RG, otp.D65_BG)\n    awb.refpoint_D50 = (otp.D50_RG, otp.D50_BG)\n    awb.refpoint_A   = (otp.A_RG,   otp.A_BG)\n    awb.refpoint_H   = (otp.H_RG,   otp.H_BG)\n    \n    # 用调整后的参考点跑 AWB 算法\n```\n\n这样**每台手机的 AWB 都按它自己 sensor 的特性工作**，一致性好。\n\n### Tuning 项目的 OTP 流程\n\n你将来做项目调教时：\n\n```\n1. 跟 sensor 厂商对接 OTP 内容（哪些字段、什么格式）\n2. 测试样机的 OTP 是否正确（拍标准灰板验证）\n3. AWB 配置文件里指定 OTP 字段映射\n4. 边界 case：OTP 损坏 / 缺失时的 fallback\n```\n\n大多数情况下 sensor 厂商的 BSP 已经处理好 OTP 读取，你只需要在 AWB 配置里说「读哪些字段」。但**OTP 校准的存在**让 AWB 能跨设备保持一致 —— 这一层你必须懂。",
+      "glossary": [
+        { "term": "OTP", "zh": "One Time Programmable 一次性可编程存储", "explain": "sensor 内部的不可改写存储器，工厂校准后写入这台 sensor 的特性数据。" },
+        { "term": "D65 / D50 / A / H 光源", "zh": "标准光源", "explain": "国际照明委员会（CIE）定义的标准光源。D65 ≈ 6500K 中性白，A ≈ 2856K 钨丝灯，H ≈ 7500K。AWB 校准的参考。" },
+        { "term": "McBeth 24 色卡", "zh": "McBeth ColorChecker", "explain": "工厂校准时拍的标准色卡，含 24 种已知色（含 6 个灰阶 + 18 个色彩）。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "OTP 错误了怎么办？", "a": "极少。但如果发现，需要返厂重写。或者软件层用 fallback 默认值（精度差但能用）。" },
+          { "q": "为什么 D65 是「标准」？", "a": "国际照明委员会（CIE）选定。接近正午阳光的色温 + 接近大多数显示器白点。所有色彩科学的「中性白」基准。" },
+          { "q": "OTP 校准要做几个光源？", "a": "至少 2-3 个（覆盖暖光 / 中性 / 冷光范围）。常见 4 个：A（暖）+ D50 + D65 + H（冷）。覆盖整个色温范围让 AWB 内插准。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：色卡 24 色 校准", "search": "色卡 24色 摄影校准" }
+        ],
+        "reads": [
+          { "title": "维基百科 · Standard illuminant", "url": "https://en.wikipedia.org/wiki/Standard_illuminant" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "AWB 启动流程：从 OTP 到第一帧 gain",
+      "type": "concept",
+      "content": "### 完整启动序列\n\n手机相机启动时（用户按拍照按钮 / 打开 app）：\n\n```\n1. ISP 初始化\n   ↓\n2. AWB 模块初始化\n   - 读 sensor OTP（D65/D50/A/H 各色温的 RG/BG 值）\n   - 加载 AWB 配置文件（参考点表、权重、决策参数）\n   - 用 OTP 校准内部参考点表\n   ↓\n3. sensor 开始输出 RAW（第 0 帧）\n   ↓\n4. ISP Bayer 域统计模块计算 64×48 块（第 0 帧）\n   ↓\n5. AWB 算法：\n   a. 接收 64×48 块\n   b. 过滤过曝/过暗块\n   c. 算平均 R/G/B → 得到当前帧的 RG/BG\n   d. 在「**色温坐标系**」上找最近参考点（Day 31 学）\n   e. 输出 (R_gain, G_gain=1, B_gain) + CCT\n   ↓\n6. ISP WB 模块按 gain 处理第 1 帧\n   ↓\n7. 显示给用户\n   \n  整个流程 < 50ms（ISP 初始化时间，AWB 决策本身 < 1ms）\n```\n\n### 第一帧的特殊处理\n\nsensor 启动时**还没有历史帧**，AWB 怎么决策？\n\n两种策略：\n\n**a. 用上一次的 AWB 状态（推荐）**\n\n```\n关相机时：把当前 AWB 的 (R_gain, B_gain, CCT) 存到 NVRAM\n开相机时：从 NVRAM 读出 → 第 0 帧用这个 gain\n第 1 帧基于第 0 帧的统计开始算新 gain\n```\n\n效果：相机刚打开**色彩接近正确**，用户感觉「**秒拍**」。\n\n**b. 用「中性默认值」**\n\n```\n第 0 帧用 D65 默认 gain（R=1, G=1, B=1）\n第 1 帧基于第 0 帧统计算新 gain（damping 平滑）\n```\n\n效果：相机刚打开**色彩可能不准**，第 1-5 帧才收敛。专业模式常用（避免「**用上次的**」让用户疑惑）。\n\n大多数手机用 a 策略。\n\n### AWB 收敛跟 AE 收敛\n\nDay 19 学过 AE 收敛用 damping（一阶滤波）+ settle 判断。AWB **类似但更复杂**：\n\n```\nAWB 收敛：\n  - damping：(R_gain, B_gain) 帧间平滑（避免色彩跳变）\n  - settle：连续 N 帧 RG/BG 偏差 < tolerance 才算稳\n  - 但还要 + 「**光源切换检测**」（用户从室内走到户外，色温从 3000K 跳到 6500K，AWB 要快速切换不能慢慢爬）\n```\n\n光源切换检测：\n\n```python\ndef detect_light_change(current_rgb_gain, history):\n    delta = euclidean_distance(current, mean(history))\n    if delta > big_threshold:\n        # 光源突变\n        return 'fast_converge'  # 加大 damping α，加快收敛\n    return 'normal'\n```\n\n这就是「**进室内 → 进户外 AWB 也能正确切换**」的来源。\n\n### Tuning 工程师调启动 + 收敛\n\n```xml\n<awb_startup>\n  <use_last_state>true</use_last_state>             <!-- 用 NVRAM 上次状态 -->\n  <fallback_default_cct>5500</fallback_default_cct>\n</awb_startup>\n\n<awb_convergence>\n  <damping_alpha>0.2</damping_alpha>                <!-- 比 AE 慢一些（色彩别抖）-->\n  <settle_tolerance>0.05</settle_tolerance>          <!-- RG/BG 差 5% 内算稳 -->\n  <settle_frames>5</settle_frames>\n  <light_change_threshold>0.20</light_change_threshold>\n  <fast_converge_alpha>0.6</fast_converge_alpha>     <!-- 光源切换时用快收敛 -->\n</awb_convergence>\n```\n\n你妹妹调 AWB 收敛时主要调这几个参数。",
+      "glossary": [
+        { "term": "NVRAM", "zh": "非易失性 RAM", "explain": "断电不丢数据的存储区。AWB 用它保存上次的 gain 状态。" },
+        { "term": "AWB Convergence", "zh": "AWB 收敛", "explain": "和 AE 收敛类似，但加了「光源切换快收敛」逻辑应对场景突变。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "AWB damping 比 AE 慢，为什么？", "a": "色彩跳变比亮度跳变更让人不舒服。AE α=0.3 一帧调 30%；AWB α=0.2 一帧调 20%。视觉上更稳。" },
+          { "q": "光源切换为什么要专门处理？", "a": "正常 damping 慢，从 3000K 跳到 6500K（用户走出室内）需要 30-60 帧（1-2 秒）才收敛。中间画面**偏黄**。光源切换检测让收敛只用 5-10 帧（~0.3 秒）。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AWB Convergence" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "AWB 抓 log 看什么",
+      "type": "example",
+      "content": "### 实战：AWB log 字段\n\n你将来调试 AWB bug 时，抓的 log 大概长这样：\n\n```\n[AWB] frame=1234 rg=1.05 bg=0.95 cct=6200 r_gain=0.95 b_gain=1.05 settled=1\n[AWB] stats valid_blocks=2856/3072 saturated=120 dark=96\n[AWB] refpoint=D65 confidence=0.87 fallback_to_grayworld=0\n[AWB] light_change=0 damp_alpha=0.20\n```\n\n字段含义：\n\n| 字段 | 含义 |\n|---|---|\n| `rg / bg` | 当前帧的 R/G、B/G 比例（AWB 测出的色温坐标）|\n| `cct` | 估计的相关色温（K）|\n| `r_gain / b_gain` | AWB 输出的 RGB gain（G 默认 1）|\n| `settled` | 是否已收敛（AF / 拍照等它）|\n| `valid_blocks` | 64×48 中有效（非过曝过暗）的块数 |\n| `saturated / dark` | 被过滤掉的块数 |\n| `refpoint` | 当前最匹配的参考点（Day 31 详讲）|\n| `confidence` | AWB 决策置信度（0-1）|\n| `fallback_to_grayworld` | 是否回退到灰世界算法（置信度低时）|\n| `light_change` | 是否检测到光源突变 |\n| `damp_alpha` | 当前 damping 系数 |\n\n### 看 log 解决问题\n\n**用户报：「拍照偏黄」**\n\n```\n[AWB] frame=1234 rg=1.50 bg=0.55 cct=2900 r_gain=0.67 b_gain=1.82\n```\n\n推断：\n- CCT 估出 2900K（钨丝灯）\n- R_gain 0.67 在压红，B_gain 1.82 在加蓝\n- 但用户**实际拍的是日光下白纸**\n- → AWB 把日光误判成钨丝灯！\n\n排查方向：\n- 是不是「**误导色区**」干扰（Day 33）—— 比如画面有红衣服？\n- 是不是 OTP 错了？\n- 是不是参考点表配置不全？\n\n**用户报：「室内→户外画面切换慢」**\n\n```\n[AWB] frame=1100 rg=1.40 cct=3000 (室内)\n[AWB] frame=1101 rg=1.40 cct=3000 (刚出门)\n[AWB] frame=1110 rg=1.20 cct=4000 (10 帧后才在调)\n[AWB] frame=1130 rg=1.05 cct=5500 (30 帧才到日光)\n```\n\n推断：\n- 室内→户外用了 30 帧（1 秒）才收敛\n- 期间画面偏黄\n- → 光源切换检测没生效\n\n排查：\n- `light_change_threshold` 是不是设太大（0.5 → 0.20）\n- 切换检测算法 bug\n\n**用户报：「夜景画面发绿」**\n\n```\n[AWB] frame=2000 cct=4500 confidence=0.45 fallback_to_grayworld=1\n```\n\n推断：\n- AWB 置信度低（0.45 < 0.6 阈值），回退到灰世界\n- 夜景颜色丰富度不足（黑背景 + 几个彩色霓虹）\n- 灰世界算法误差大 → 偏色\n\n排查：\n- 夜景模式应该有专门 AWB 配置，绕开灰世界\n- 或者拉高 confidence 阈值让算法不要轻易回退\n\n### Tuning 工程师的调试链路\n\n你将来调 AWB bug 的标准流程：\n\n```\n1. 复现 bug 拍 RAW\n2. 用 Chromatix 工具抓 AWB log\n3. 看 cct / rg / bg 值是否合理\n4. 看 valid_blocks 和 confidence\n5. 定位是哪一步算错（参考点选错？灰世界回退？）\n6. 改 Chromatix 配置\n7. 重新出图测试\n```\n\nDay 35 周考会有这种实战题。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **AWB Stats**：每个 64×48 块输出 (R, G, B) + 过曝/过暗标志，AWB 过滤无效块（valid_blocks 通常 < 3072）\n2. **Gr / Gb 区分**：Bayer 阵列中两种 G 像素位置不同，理论等但实际有 1-3% 差异（Pixel Crosstalk）\n3. **OTP 校准**：每个 sensor 出厂时烧录 D65 / D50 / A / H 等光源的 RG/BG 值，让 AWB 能跨设备一致\n4. **AWB 启动流程**：读 OTP → 校准参考点 → 接收第 0 帧统计 → 输出 gain（默认用 NVRAM 上次状态）\n5. **AWB 收敛**：damping α=0.2（比 AE 慢）+ settle 判断 + 光源切换快收敛（α=0.6）\n6. **AWB log 字段**：rg/bg/cct/r_gain/b_gain/refpoint/confidence/fallback —— 调试 AWB bug 的核心信息\n\n### 自我检查\n\n1. AWB 用的 64×48 块有什么字段？为什么要过滤过曝过暗块？\n2. OTP 是什么？为什么需要它？没有 OTP 会怎样？\n3. AWB 启动时第 0 帧的 gain 哪里来？\n4. 光源切换检测干什么用？为什么要专门做？\n5. 看到「fallback_to_grayworld=1」意味着什么？\n\n### 笔记建议\n\n- 把 OTP 包含的 4 个标准光源（A / D50 / D65 / H）抄到笔记\n- 把 AWB log 字段表抄一份（这是面试时「**你怎么 debug AWB**」的标准答法）\n- 想想你妹妹项目里 AWB 收敛的 damping α 大概是多少\n\n### 明天预告\n\nDay 31：参考点（Reference Points）+ 色温坐标系。这是 AWB 的「灵魂」 —— 现代 AWB 不直接用平均，而是建一个 RG/BG 二维坐标系，把光源放在上面，用「**最近参考点**」决定色温。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "AWB Stats + OTP Init" },
+    { "source": "维基百科 · Standard illuminant", "url": "https://en.wikipedia.org/wiki/Standard_illuminant" }
+  ],
+  "dailyQuizId": "daily-day-30"
+}

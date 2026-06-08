@@ -1,0 +1,49 @@
+{
+  "id": "daily-day-29",
+  "title": "Day 29 日测：AWB 总览 + 灰世界",
+  "module": "M4",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "AWB 是干什么的？",
+      "options": [
+        "调亮度让画面正确曝光",
+        "估计光源色温 + 配 RGB 增益让白色物体还原中性白",
+        "对焦让画面清晰",
+        "降噪让画面干净"
+      ],
+      "answer": "估计光源色温 + 配 RGB 增益让白色物体还原中性白",
+      "explain": "AWB = Auto White Balance。目标是模拟人眼的「色彩恒常性」 —— 不论钨丝灯还是日光下，白纸都还原成白。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "AWB 的 RGB 增益通常以哪个通道为基准（=1）？",
+      "options": ["R 通道", "G 通道", "B 通道", "Y 亮度通道"],
+      "answer": "G 通道",
+      "explain": "Bayer 阵列中 G 像素是 R/B 的 2 倍，G 信噪比最好，最适合做基准。AWB 输出 R_gain / 1.0 / B_gain。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "色温 D65 大约是 ___ K（中性白参考）",
+      "answer": ["6500", "6500K"],
+      "explain": "D65 是国际照明委员会（CIE）定义的标准光源，色温 6500K，接近正午太阳。AWB 校准的中性参考。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "灰世界假设的核心想法：所有像素的平均颜色应该是 ___",
+      "answer": ["中性灰", "灰", "灰色", "中性"],
+      "explain": "Gray World Assumption：日常场景颜色丰富，平均接近中性灰。如果实际平均偏色，就是光源问题。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "灰世界算法在「拍纯绿草地」场景下会怎么失败？",
+      "referenceAnswer": "草地里 G 通道远高于 R/B，平均后画面偏绿。灰世界算法以为「光源偏绿」，给 R 和 B 通道加大幅 gain（让平均回到中性）。结果：绿草地被「修正」成灰白色。这就是 Day 29 学的灰世界算法在「单一色彩主导场景」下的根本失败。修正方法是用更高级的算法（参考点 + LWV + DWV + MLC，Day 31-33 学）。"
+    }
+  ]
+}

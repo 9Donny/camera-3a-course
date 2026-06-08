@@ -1,0 +1,109 @@
+{
+  "id": "day-29",
+  "week": 5,
+  "module": "M4",
+  "title": "AWB 总览：白平衡是怎么回事",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "AWB 是干什么的",
+      "type": "concept",
+      "content": "### 你已经摸过 AWB\n\nDay 10（Week 2）我们学过 White Balance：在 ISP 里给 R / G / B 三个通道乘不同的增益（gain），让画面里的「白纸 拍出来真的白」。\n\nDay 23 学过 Extreme Color Analyzer：检测画面 R/G/B 严重不平衡时通知 AWB 「**这是色彩场景，不是光源问题**」防止误判。\n\n现在我们正式进入 AWB 主线。\n\n### 一句话定义\n\n> **AWB = Auto White Balance**（自动白平衡）：检测当前光源色温，给 ISP 三个通道（R/G/B）配增益，把画面里的「白色物体」还原成中性白。\n\n### 为什么需要 AWB\n\n人眼有「**色彩恒常性**」（color constancy）：白纸在阳光下、钨丝灯下、阴天看，**主观感受都是白的**，因为大脑会自动「**减去光源色温**」。\n\nsensor **没有这种能力**：sensor 看到「钨丝灯下的白纸」就是**偏黄的 RGB 数值**（R 高、B 低）。如果不修，照片里白纸**就是黄的**。\n\nAWB 算法做的事就是「**模拟人眼的色彩恒常性**」 —— 估计当前光源、给三通道分别乘修正增益、让白色还原成中性白。\n\n### 三个核心概念回顾\n\n**色温（Color Temperature）**：光源的「**色调**」，单位 Kelvin（K）。\n\n```\n2700K  暖光（钨丝灯）\n4000K  暖白（早晚日光）\n5500K  日光（D55，正午）\n6500K  日光（D65，标准白）\n7500K  冷白（阴天 / 蓝天）\n10000K 极冷（夜空）\n```\n\n色温越低 → 光偏红黄；越高 → 光偏蓝。**这是反直觉的**（生活里我们说「冷光」是高色温，但物理意义上对应能量更高）。\n\n**白平衡增益（WB Gain）**：\n\n```\n要把「钨丝灯下偏黄的白」修成中性白：\n  R 通道 ÷ 1.5（减红）\n  G 通道 × 1.0（不动，G 是参考）\n  B 通道 × 1.5（加蓝）\n  \n等价于：\n  R_gain = 1/1.5 = 0.67\n  G_gain = 1.0\n  B_gain = 1.5\n```\n\n实际工程里通常以 G 为基准（=1），调 R / B 的相对比例。这就是 AWB 的核心输出。\n\n**RG / BG 比例**：用 R/G 和 B/G 这两个无量纲比值表示色温（更直观、不受亮度影响）。\n\n```\n钨丝灯：R/G ≈ 1.6, B/G ≈ 0.5  （偏红 + 偏暗蓝）\nD65：   R/G ≈ 1.0, B/G ≈ 1.0  （平衡）\n阴天：  R/G ≈ 0.8, B/G ≈ 1.3  （偏冷蓝）\n```\n\n### AWB 的难点：怎么估算光源\n\nsensor 看到的是「光源 × 物体反射率」的乘积，**单看一张图无法分离**。AWB 必须靠**假设**来推断光源：\n\n1. **灰世界假设**（Gray World）：所有像素的平均颜色应该是中性灰\n2. **白点假设**（White Patch）：画面里最亮的点应该是白色\n3. **统计建模**：基于大量真实场景数据训练的统计模型\n\n现代手机 AWB 是**多种假设融合 + AI 增强**。今天先看最基础的「灰世界假设」。",
+      "glossary": [
+        { "term": "AWB", "zh": "自动白平衡", "explain": "Auto White Balance，估计光源色温 + 给 RGB 通道配增益的算法。3A 之二。" },
+        { "term": "色温 Color Temperature", "zh": "色温", "explain": "光源色调的物理量，单位 K。2700K 偏黄、6500K 中性、10000K 偏蓝。" },
+        { "term": "色彩恒常性", "zh": "Color Constancy", "explain": "人眼自动「减去」光源色温的能力，让物体颜色看起来稳定。AWB 模拟这个能力。" },
+        { "term": "RG / BG 比例", "zh": "R/G B/G 比值", "explain": "AWB 内部表示色温的无量纲量，与亮度无关。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么 G 是基准而不是 R 或 B？", "a": "Bayer 阵列里 G 像素数量是 R/B 的 2 倍（GRBG 排列），G 通道信噪比最好，最适合做基准。" },
+          { "q": "色温为什么用 Kelvin？", "a": "黑体辐射理论：理想黑体在不同温度下发出的光色调不同。绝对零度 0K 不发光、6500K 发的光接近正午太阳。Kelvin 是物理标准。" },
+          { "q": "手机 AWB 比单反难吗？", "a": "更难。单反多数用户会自己设白平衡（钨丝/日光/阴天）。手机 99% 全自动，AWB 必须自己识别光源。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：摄影 白平衡 色温", "search": "摄影 白平衡 色温 原理" }
+        ],
+        "reads": [
+          { "title": "维基百科 · Color temperature", "url": "https://en.wikipedia.org/wiki/Color_temperature" },
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AWB 章节开篇" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "灰世界假设：AWB 的「**第一根棍子**」",
+      "type": "concept",
+      "content": "### 假设是什么\n\n> **灰世界假设（Gray World Assumption）**：一张正常照片里所有像素的平均颜色，应该接近中性灰（R=G=B）。\n\n直觉：你拍一张随机照片，里面有红的（苹果）、绿的（草）、蓝的（天）、黄的（沙），**各种颜色平均一下**应该是「**中性灰**」 —— 没有偏色。\n\n如果实际平均出来 R 比 G 高 50%，那就是「光源偏红」（钨丝灯），AWB 把 R 通道压低 50% 就能还原。\n\n### 算法实现\n\n```python\ndef gray_world_awb(stats_64x48):\n    R_avg = mean(b.R for b in stats_64x48)\n    G_avg = mean(b.G for b in stats_64x48)\n    B_avg = mean(b.B for b in stats_64x48)\n    \n    # 让 G 不动，调 R 和 B 来匹配\n    R_gain = G_avg / R_avg\n    G_gain = 1.0\n    B_gain = G_avg / B_avg\n    \n    return (R_gain, G_gain, B_gain)\n```\n\n5 行代码。**就这么简单**。\n\n这就是 70 年代相机最早的 AWB 算法。\n\n### 它工作得怎么样\n\n**在「正常场景」下**：好。日常拍照场景颜色丰富、平均确实接近灰，AWB 准确。\n\n**在「极端场景」下**：糟。\n\n失败例子 1：拍一片绿草地（90% 画面是绿色）\n- 平均：R 低、G 高、B 低（偏绿）\n- 灰世界算法：「光源偏绿」 → R/B gain 拉高 → 草地拍出来**变成灰白**\n- 用户：「我拍的是草地啊，怎么变白了？」\n\n失败例子 2：拍夕阳（整画面偏红橙）\n- 平均：R 高、G 中、B 低\n- 灰世界算法：「光源偏红」 → 修成中性 → 夕阳变成**蓝紫色**\n\n这就是 Day 23 学过的 Extreme Color Analyzer 的来源 —— **检测到色彩极端时不让 AWB 修过头**。\n\n### 灰世界假设的成立条件\n\n灰世界**只在画面颜色多样化时成立**。所以现代 AWB **不直接用全图平均**，而是：\n\n1. **过滤掉极端色彩区域**（不参与平均）\n2. **加权采样**（颜色越「中性」的块权重越高）\n3. **结合白点假设**（最亮区域应该是白）\n4. **建立参考点表**（不同色温下「典型中性物体」的 R/G、B/G 比例值，用查表代替简单平均）\n\nWeek 5 后面 6 天就是学这一系列「**改良版 AWB**」。\n\n### 一个关键观察\n\nDay 22 我们学过 AE 的 64×48 块统计输出 (Y, R, G, B)。**这正是 AWB 用的输入数据**。AE 用 Y（亮度）做曝光决策，AWB 用 R/G/B 做白平衡决策。\n\n**两个算法共用同一份 64×48 统计**：硬件层效率最高。\n\n### Tuning 工程师的灰世界版本\n\n实际项目里很少用纯灰世界（太弱）。但有些场景会回退到它：\n\n- AWB 模型置信度低时（场景识别不确定）\n- 极暗光（统计噪声大，复杂算法不可靠）\n- 视频快速切换场景时（避免突变）\n\nChromatix 里有 fallback_to_gray_world 这种参数。",
+      "glossary": [
+        { "term": "Gray World Assumption", "zh": "灰世界假设", "explain": "AWB 最朴素的算法：所有像素平均应该是中性灰，否则就是光源偏色。" },
+        { "term": "白点假设 White Patch", "zh": "白点假设", "explain": "AWB 另一个朴素算法：画面最亮的点应该是白。两者常协同。" },
+        { "term": "Color Constancy", "zh": "色彩恒常性", "explain": "AWB 想要复现的人眼能力。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "灰世界假设有什么经典反例？", "a": "整片绿草地、夕阳、蓝天大海、红墙特写。所有「画面被一种色彩主导」的场景都会让灰世界失败。" },
+          { "q": "为什么不只用白点假设？", "a": "白点假设需要画面里**真的有白色物体**。夜景没白纸、纯彩色场景没白点 → 失败。" },
+          { "q": "现代 AWB 还会用灰世界吗？", "a": "用，作为 fallback 兜底。但主算法是更复杂的统计建模 + 参考点查表（Day 31-33 学）。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "维基百科 · Color balance", "url": "https://en.wikipedia.org/wiki/Color_balance" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "AWB 在 ISP 里的位置（再看一遍）",
+      "type": "concept",
+      "content": "### Day 10 复习\n\nWeek 2 Day 10 学过白平衡在 ISP 流水线里的位置：\n\n```\nRAW → OB → LSC → Demosaic → 【WB】→ CCM → Gamma → ... → JPEG\n                              ↑\n                          这一步 AWB 的输出生效\n```\n\n但 AWB 算法本身**在哪里运行**？跟 AE 一样：\n\n```\n┌── Bayer 域统计 64×48 ──┐\n└──────┬──────────────┘\n       ↓\n┌── AWB 算法 ─────────┐\n│  分析 R/G/B 分布     │\n│  估计色温            │\n│  输出 R/G/B gain     │\n└──────┬───────────────┘\n       ↓ 写参数到 ISP\n┌── ISP WB 模块 ─────┐\n│  对每个像素乘 gain  │\n└────────────────────┘\n```\n\nAWB 算法**和 ISP WB 模块是分开的**：\n- 算法：决定**用什么 gain**（每帧一次，跑在 ISP 固件 / DSP）\n- WB 模块：**应用 gain**（每像素一次，硬件流水线）\n\n### 关键：AWB 用的是「**未经白平衡的 RGB**」\n\n注意：AWB 看到的 64×48 块**没经过 WB 处理**（统计模块在 OB/LSC 之后、WB 之前）。所以它看到的是「**带光源偏色**」的原始数据 —— 这正好让 AWB 能**测出**偏色。\n\n如果统计是 WB 之后做的，AWB 看到的总是「**已经平衡过**」的数据 → 测不出色温 → 没法工作。\n\n这是 ISP 流水线设计里一个**精妙之处**。\n\n### AWB 的输出有 3 种形式\n\n**1. 直接 RGB Gain**\n\n```\nR_gain = 0.65\nG_gain = 1.00\nB_gain = 1.45\n```\n\nISP 用这三个数对每像素乘。\n\n**2. CCT（相关色温）**\n\n```\nCCT = 3200 K  (钨丝灯)\n```\n\n表示估计的光源色温。**给后续模块用**（CCM 也按色温分段）。\n\n**3. RG / BG 坐标**\n\n```\nRG = R_avg / G_avg = 1.55  (R 比 G 高，光源偏红)\nBG = B_avg / G_avg = 0.62  (B 比 G 低，光源偏暗蓝)\n```\n\nAWB 内部决策用，对应「**色温坐标系**」上的一个点。\n\n这三种之间可以互相转换。但 **RG/BG 是 AWB 内部最常用**的形式。\n\n### CCM 也用 AWB 的输出\n\nDay 10 我们学过 CCM（Color Correction Matrix）是一个 3×3 矩阵。**不同色温要用不同 CCM**：\n\n```xml\n<ccm_table>\n  <entry cct=\"2700\" ccm=\"...3x3 matrix for tungsten\"/>\n  <entry cct=\"4000\" ccm=\"...for cool white\"/>\n  <entry cct=\"5500\" ccm=\"...for daylight\"/>\n  <entry cct=\"6500\" ccm=\"...for D65 (standard)\"/>\n  <entry cct=\"7500\" ccm=\"...for cloudy\"/>\n</ccm_table>\n```\n\n**AWB 估出 CCT → 查表选 CCM → 应用到画面**。这是 AWB → CCM 的协同。\n\n所以 AWB 不仅决定 WB gain，还**间接决定**用哪个 CCM。两个模块都依赖 AWB 的色温估计。\n\n### Tuning 工程师调 AWB 时关心什么\n\n```\n1. AWB 算法本身（参考点表、权重、决策逻辑）\n2. CCM 表（每个色温对应一个 3x3 矩阵）\n3. 各场景的 fallback / boost 参数\n4. 多摄一致性（不同 sensor 的 AWB 同步）\n```\n\nWeek 5 主要学第 1 项 + 第 2 项的关联。Week 6 学第 3 + 4 项。",
+      "glossary": [
+        { "term": "WB Gain", "zh": "白平衡增益", "explain": "AWB 输出的 (R, G, B) 三通道增益，ISP WB 模块按此应用到每像素。" },
+        { "term": "CCT", "zh": "Correlated Color Temperature 相关色温", "explain": "AWB 估计的光源色温，单位 K。CCM 按此分段选择不同 3×3 矩阵。" },
+        { "term": "CCM", "zh": "Color Correction Matrix 色彩矩阵", "explain": "Day 10 学过。3×3 矩阵把 sensor RGB 转成标准 sRGB。每个色温配一组。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "AWB Gain 和 ISO Gain 是同一回事吗？", "a": "不是。AWB Gain 是「调三通道平衡」（让白变白），三个通道 gain 不同；ISO Gain 是「整体提亮」，所有通道乘一样的数。两者顺序：sensor 输出 → ISO Gain 整体提亮 → ... → AWB Gain 三通道修正。" },
+          { "q": "WB Gain 通常多大？", "a": "钨丝灯 R≈0.5 B≈1.6；D65 ≈ 1.0/1.0；阴天 R≈1.2 B≈0.8。各通道 gain 一般在 0.5-2.0 之间。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AWB 整体架构图" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "Week 5 路线图",
+      "type": "concept",
+      "content": "### 这一周的学习计划\n\n| Day | 主题 | 解决什么问题 |\n|---|---|---|\n| Day 29（今天）| AWB 总览 + 灰世界假设 | 了解 AWB 是什么、最简单算法 |\n| Day 30 | Bayer 网格统计 + Sensor OTP 校准 | AWB 怎么读 64×48 数据；不同 sensor 的差异怎么消除 |\n| Day 31 | 参考点 + 色温坐标系 | 现代 AWB 用查表代替平均，参考点是关键 |\n| Day 32 | 光源权重向量（Light Weight Vector）| 多光源场景怎么判断 |\n| Day 33 | 距离权重向量 + 误导色区（MLC）| 难场景的处理（草地、夕阳、红墙）|\n| Day 34 | AWB 决策聚合 | 多个 sub-algorithm 怎么综合 |\n| Day 35 | Week 5 总结 + 周考 | 串完 AWB 第一阶段 |\n\n### 难度预期\n\nAWB 比 AE **复杂**，但参数比 AE **少**（一个项目大约 100-200 个 AWB 参数 vs AE 的 200-400）。\n\n难点在于「**多个假设互相弥补**」的算法设计 —— 灰世界 + 白点 + 参考点 + 多光源 + ROI 协同。**学会原理后调起来反而比 AE 直观**。\n\n### Week 5 学完你能做的\n\n- 看懂高通 7.0 PDF 的 AWB 章节（第 100-180 页）\n- 理解 AWB 抓 log 时的字段（R_gain / B_gain / CCT / refpoint_id 等）\n- 解释「绿草地为什么变灰」「夕阳为什么变蓝」这种经典 AWB bug 的原理\n- 答出基础的 AWB 面试题（不在 PRD 23 题里，但常被问）\n\n### Week 6 预告\n\nWeek 6 学 AWB **进阶**：AGW 高级灰世界 / FA 人脸辅助 / AWB Flash / 双摄同步 / Smart Convergence。Week 5 是地基，Week 6 是楼层。\n\n### 学习建议\n\n这一周如果遇到「概念有点绕」的地方（特别是 Day 31 参考点 + Day 33 误导色区）：\n\n1. 不要钻牛角尖，先记住**结构**\n2. 对比 AE：AE 是「测亮度」，AWB 是「测色温」，很多机制平行\n3. 用具体场景思考：「我拍这张照片 AWB 怎么决策」\n\n你 Week 3-4 学完 AE 已经有「**3A 思维**」了，Week 5 应该比 Week 3 容易。",
+      "glossary": [],
+      "extras": {
+        "faq": [
+          { "q": "AWB 章节是 60 天里第几大模块？", "a": "第二大（仅次于 AEC）。Week 5+6 共 14 天，跟 AEC 的 Week 3+4 持平。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：白平衡 单反 调教", "search": "摄影 白平衡 调试" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "page": 100, "section": "AWB 整章" }
+        ]
+      }
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **AWB = 自动白平衡**：估计光源色温 + 配 RGB gain，让白还原成中性白\n2. **色温（CCT）单位 Kelvin**：低 = 暖（钨丝 2700K）、中 = 中性（D65 6500K）、高 = 冷（阴天 7500K+）\n3. **RG / BG 比例**：AWB 内部用的色温坐标，无量纲、不受亮度影响\n4. **灰世界假设**：所有像素平均应该是中性灰 → 计算 R/G、B/G 比例 → 反推 gain\n5. **AWB 输入**：和 AE 共用 64×48 块统计（Bayer 域，未经 WB 处理）\n6. **AWB 输出**：(R, G, B) gain + CCT，CCM 按 CCT 选 3×3 矩阵\n7. **灰世界局限**：单一色彩主导场景（草地 / 夕阳 / 蓝天）会失败 → Day 30+ 学改良版\n\n### 自我检查\n\n1. AWB 是干什么的？为什么人眼不需要 AWB 而 sensor 需要？\n2. 什么是色温？2700K vs 6500K vs 10000K 各对应什么场景？\n3. WB Gain 通常以哪个通道为基准（=1）？为什么？\n4. 灰世界假设的核心想法是什么？什么场景下会失败？\n5. AWB 在 ISP 流水线里的位置和 ISP WB 模块的关系是什么？\n\n### 笔记建议\n\n- 把色温 ↔ 场景对应表抄到笔记（2700/4000/5500/6500/7500/10000K）\n- 整理 AWB 的 3 种输出形式（Gain / CCT / RG-BG）\n- 想想你妹妹 7250 项目里 AWB 应该用了哪些假设\n\n### 明天预告\n\nDay 30：Bayer 网格统计 + Sensor OTP 校准。AWB 怎么从 64×48 块读 RGB；不同 sensor 出厂时颜色响应不同（同样的「白」拍出来 RGB 数值不一样），怎么靠 OTP 校准消除差异。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "page": 100, "section": "AWB 章节开篇" },
+    { "source": "维基百科 · Color temperature", "url": "https://en.wikipedia.org/wiki/Color_temperature" },
+    { "source": "维基百科 · Color balance", "url": "https://en.wikipedia.org/wiki/Color_balance" }
+  ],
+  "dailyQuizId": "daily-day-29"
+}
