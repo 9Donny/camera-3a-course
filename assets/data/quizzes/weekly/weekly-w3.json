@@ -1,0 +1,180 @@
+{
+  "id": "weekly-w3",
+  "title": "Week 3 周考：AEC 第一阶段综合",
+  "module": "M3",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "options": [
+        "32×24 块 / 评价测光",
+        "64×48 块 / 中心测光",
+        "128×96 块 / 点测光",
+        "可配置 / 平均测光"
+      ],
+      "answer": "64×48 块 / 中心测光",
+      "explain": "PRD 第 17 题标准答案。64×48 = 3072 块，中心测光 + ROI 加权。",
+      "prompt": "PRD 第 17 题：高通 AE 用多少数据块统计？什么测光模式？"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "options": [
+        "完全相同",
+        "lux_index 是场景亮度档位，exp_index 是曝光表行号；通过 lux_to_exp 映射桥接",
+        "exp_index 决定 lux_index",
+        "两者随机相关"
+      ],
+      "answer": "lux_index 是场景亮度档位，exp_index 是曝光表行号；通过 lux_to_exp 映射桥接",
+      "explain": "lux_index 反映场景多亮，exp_index 是查曝光表用的索引。中间通过 lux_to_exp 表桥接（暗 → 行号大 → 曝光长 + ISO 高）。",
+      "prompt": "lux_index 和 exp_index 的关系？"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "options": [
+        "luma_target 查表",
+        "adjusted_target 加 face 修正",
+        "safe_target = adjusted_target - ADRC 引入的额外亮度",
+        "写 sensor 寄存器"
+      ],
+      "answer": "safe_target = adjusted_target - ADRC 引入的额外亮度",
+      "explain": "Step 3 减去 ADRC 引入的 dark_boost_extra，得到 safe_target，让最终画面恰好达到 adjusted_target。",
+      "prompt": "PRD 第 15 题：safe_target 三步推导的「Step 3」是什么？"
+    },
+    {
+      "id": "q4",
+      "type": "choice",
+      "options": [
+        "硬件计算太慢",
+        "Sensor 没有那么多寄存器",
+        "物理限幅（一帧最多调 2 EV） + 防闪烁 + 防误判",
+        "Tuning 工程师故意设这样"
+      ],
+      "answer": "物理限幅（一帧最多调 2 EV） + 防闪烁 + 防误判",
+      "explain": "三个原因都是：每帧 2 EV 物理上限 + damping 防止画面闪烁 + 等连续帧稳定避免临时变化误判。",
+      "prompt": "为什么手机 AE 不能一帧把曝光从「户外」直接调到「室内」？"
+    },
+    {
+      "id": "q5",
+      "type": "choice",
+      "options": [
+        "随便定的",
+        "约 18% 灰对应 luma 的 70%，留出亮部余量",
+        "硬件限制",
+        "等于 0xFF / 3"
+      ],
+      "answer": "约 18% 灰对应 luma 的 70%，留出亮部余量",
+      "explain": "理想 18% 灰经 Gamma 后约 119，但实际场景偏暗，设 80 留出亮部余量防过曝。",
+      "prompt": "luma_target = 80（8-bit）这个数字的工程意义？"
+    },
+    {
+      "id": "q6",
+      "type": "choice",
+      "options": [
+        "0.01",
+        "0.3",
+        "0.9",
+        "1.0"
+      ],
+      "answer": "0.3",
+      "explain": "α = 0.3 是常见值（每帧靠近目标 30%）。0.01 太慢、0.9 易振荡、1.0 = 无 damping。",
+      "prompt": "AE damping 公式 `exp_smoothed = α × target + (1-α) × prev`，常见 α 取值是多少？"
+    },
+    {
+      "id": "q7",
+      "type": "choice",
+      "options": [
+        "不管",
+        "重置整个 AE 状态",
+        "把那个点对应的 64×48 块加权（Touch ROI），下一帧测光偏向那里",
+        "立即拍照"
+      ],
+      "answer": "把那个点对应的 64×48 块加权（Touch ROI），下一帧测光偏向那里",
+      "explain": "Touch ROI 机制。点击位置映射到 64×48 网格，那块的权重 ×3.0，下一帧 AE 优先照顾那个点的亮度。",
+      "prompt": "用户在屏幕上点了一下，AE 怎么响应？"
+    },
+    {
+      "id": "q8",
+      "type": "choice",
+      "options": [
+        "1/50 秒",
+        "1/100 秒",
+        "1/200 秒",
+        "保持 1/77 秒"
+      ],
+      "answer": "1/100 秒",
+      "explain": "antibanding 50Hz 允许档位 1/50, 1/100, 1/200。1/77 ≈ 13ms，最近档是 1/100 (10ms)。Gain 补偿 13/10 ≈ 1.3x 让总曝光不变。",
+      "prompt": "中国电网 50Hz，AE 算的曝光时间 1/77 秒会被吸附到哪个值？"
+    },
+    {
+      "id": "q9",
+      "type": "choice",
+      "options": [
+        "雪景识别不到",
+        "中间区被划成亮区，target 总被压低，画面永远偏暗",
+        "AE 不收敛",
+        "没有影响"
+      ],
+      "answer": "中间区被划成亮区，target 总被压低，画面永远偏暗",
+      "explain": "bright_low 太低 → 大量「中等亮」块被错分成亮区 → bright_ratio 高 → bright_weight 修正持续生效 → adjusted_target 总被压低 → 画面整体偏暗。",
+      "prompt": "Bright Region 测光中，bright_low 设得太低（比如 180）会有什么问题？"
+    },
+    {
+      "id": "q10",
+      "type": "choice",
+      "options": [
+        "Sensor 物理硬件极限",
+        "曝光优先策略和 Gain 优先策略的切换点",
+        "ISP 处理的中间步骤",
+        "Tuning 工程师的标定原点"
+      ],
+      "answer": "曝光优先策略和 Gain 优先策略的切换点",
+      "explain": "拐点之前用「拉曝光时间不动 ISO」（曝光优先），之后用「不动曝光时间拉 ISO」（Gain 优先）。一般在 lux 200 / 1/30 秒。",
+      "prompt": "曝光表的「拐点」对应什么物理意义？"
+    },
+    {
+      "id": "q11",
+      "type": "fill",
+      "answer": [
+        "曝光调节"
+      ],
+      "explain": "亮度获取（64×48 + 加权）→ 计算 Target（safe_target 推导）→ 曝光调节（lux_index → exp_index → 查表 → 写 sensor）。",
+      "prompt": "PRD 第 1 题：AE 算法的完整 3 步流程是「亮度获取」、「计算 Target」、「___」"
+    },
+    {
+      "id": "q12",
+      "type": "fill",
+      "answer": [
+        "log2 亮度偏差",
+        "log2 (target_lum / current_lum)",
+        "亮度偏差"
+      ],
+      "explain": "三项：项 1 stats_target_lux_index 基准；项 2 log2(real_gain×exp_time / target_gain×target_time) 曝光偏差；项 3 log2(target_lum / current_lum) 亮度偏差。",
+      "prompt": "PRD 第 5 题：lux_index 公式三项是基准 + log2 曝光偏差 + ___"
+    },
+    {
+      "id": "q13",
+      "type": "fill",
+      "answer": [
+        "5.0",
+        "5"
+      ],
+      "explain": "Face ROI weight = 5.0（最高优先级）。Touch ROI = 3.0。Saliency = 2-3。",
+      "prompt": "Face ROI 加权的常见 weight 是 ___ 倍（参考 Day 20）"
+    },
+    {
+      "id": "q14",
+      "type": "short",
+      "referenceAnswer": "Step 1: luma_target —— 按 lux 查表的基础亮度（暗 60、室内 80、强光 90）；Step 2: adjusted_target = luma_target × scene_factor + scene_offset，加 face / dark region / bright region / saturation prevention 等场景修正后的目标；Step 3: safe_target = adjusted_target − dark_boost_extra，减去 ADRC 引入的额外亮度提升估计后的最终目标。safe_target 用于驱动 AE 调 sensor，保证 ADRC 处理之后画面亮度恰好达到 adjusted_target，避免整体过曝。",
+      "prompt": "默写 PRD 第 15 题答案：safe_target 三步推导。"
+    },
+    {
+      "id": "q15",
+      "type": "short",
+      "referenceAnswer": "夜景下：1) 64×48 统计严重两极 —— 80% 块亮度 < 30（黑背景），20% 块亮度 > 220（霓虹），中间几乎没有；2) Bright/Dark Region 都触发：dark_ratio=0.8 > 阈值，bright_ratio=0.2 > 阈值；3) lux_index 算出约 130（暗光档）；4) 查曝光表得到 1/30 秒 + ISO 800 左右；5) 但只这个曝光会让霓虹过曝、背景仍暗 → 必须靠 ISP 的 ADRC + LTM 救场：暗部加 1.5x gain（暗街道可见），亮部不动（霓虹仍清晰）；6) 这就是手机「夜景模式」的核心 —— 靠 AE + ADRC 联动拉开动态范围。最终用户看到「霓虹清晰 + 街道可见」，远比单纯拉曝光更好。",
+      "prompt": "用 AE 视角解释「夜景拍霓虹灯，背景一片黑」这个场景下 AE 的决策。"
+    }
+  ],
+  "scope": "weekly"
+}

@@ -1,0 +1,60 @@
+{
+  "id": "daily-day-21",
+  "title": "Day 21 日测：Week 3 串讲（综合）",
+  "module": "M3",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "options": [
+        "luma_target",
+        "exp_index",
+        "lux_index",
+        "Coarse Integration Time"
+      ],
+      "answer": "lux_index",
+      "explain": "lux_index 反映场景亮度档位，被几乎所有 ISP 模块用作分段配置的依据。",
+      "prompt": "下列哪个变量是 ISP 后续模块的「全局变量」（降噪、CCM、Gamma 都按它分段配置）？"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "options": [
+        "1 帧（瞬时）",
+        "10-20 帧（约 0.5 秒）",
+        "100 帧",
+        "永远不会收敛"
+      ],
+      "answer": "10-20 帧（约 0.5 秒）",
+      "explain": "damping α=0.3 时，每帧靠近目标 30%，约 10-20 帧能收敛到接近目标。30fps 下约 0.5 秒。",
+      "prompt": "用户从户外（lux 280）走进室内（lux 180）。AE 大约多少帧后能收敛？"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "answer": [
+        "计算 Target",
+        "计算target",
+        "Target 计算"
+      ],
+      "explain": "三步：1)亮度获取（64×48 加权）→ 2)计算 Target（luma_target → adjusted → safe）→ 3)曝光调节（写 sensor）。",
+      "prompt": "PRD 第 1 题：AE 算法的 3 步流程是「亮度获取」、「___」、「曝光调节」"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "answer": [
+        "final_target"
+      ],
+      "explain": "Day 18 学过：luma_target → +scene 修正 → adjusted_target → -ADRC 修正 → safe_target → 限幅 → final_target。",
+      "prompt": "AE 内部 4 个 target 的顺序是 luma_target → adjusted_target → safe_target → ___"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "referenceAnswer": "1) 64×48 块统计：上半天空亮（~230），下半人脸暗（~50），中心权重平均 ~110；2) Face ROI 检测到人脸，那块加权 ×5.0 → final_luma 偏向人脸 ~65；3) lux_index 算出约 200，对应 luma_target 80；4) Face Analyzer 检测到人脸偏暗 → adjusted_target ~88；5) ADRC 也活跃 → safe_target = 88 - dark_boost_extra ~80；6) target 80 > current 65，AE 决定加亮，算出新 exp_index 减少（曝光更长 + ISO 升）；7) damping 后写 sensor，连续多帧渐进收敛到人脸 luma 接近 80；8) 用户感觉「人脸不黑了」（虽然天空略过曝是必然代价）。",
+      "prompt": "用 AE 视角分析「逆光拍人脸」场景：从 64×48 统计到 sensor 写入大致经过哪些步骤？"
+    }
+  ],
+  "scope": "daily"
+}

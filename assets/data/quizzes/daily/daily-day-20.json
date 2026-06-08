@@ -1,0 +1,60 @@
+{
+  "id": "daily-day-20",
+  "title": "Day 20 日测：Bright/Dark Region + ROI（PRD-Q19）",
+  "module": "M3",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "options": [
+        "min, mid, mid, max",
+        "dark_low, dark_high, bright_low, bright_high",
+        "0, 64, 192, 255",
+        "shadow, mid_low, mid_high, highlight"
+      ],
+      "answer": "dark_low, dark_high, bright_low, bright_high",
+      "explain": "Chromatix 里的标准命名：dark_low (默认 0), dark_high (~50), bright_low (~210), bright_high (~255)。",
+      "prompt": "Bright/Dark Region 测光的 4 个边界参数是？"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "options": [
+        "Touch ROI",
+        "Face ROI",
+        "Saliency ROI",
+        "中心权重表"
+      ],
+      "answer": "Face ROI",
+      "explain": "Face ROI 是「主体」语义（拍人时人脸最重要），权重一般 5.0；Touch ROI 是临时行为，3.0；Saliency 是辅助，2-3。",
+      "prompt": "下列哪个 ROI 通常权重最大（最优先）？"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "answer": [
+        "64×48",
+        "64x48"
+      ],
+      "explain": "AE 内部处理 64×48 块的统计，Touch ROI 也是按这个网格加权的。",
+      "prompt": "Touch ROI 加权时，需要把屏幕坐标 (x, y) 映射到 ___ 网格"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "answer": [
+        "最大",
+        "最近"
+      ],
+      "explain": "多人脸时优先最大人脸（即最近的那个人）。这是最实用的策略，避免远处路人干扰主体测光。",
+      "prompt": "Face ROI 检测到多个人脸时，常见处理策略是「只优先 ___ 那张人脸」"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "referenceAnswer": "1) 基础曝光表：拐点位置、Analog Gain 上限、Digital Gain 是否启用；2) lux_to_exp 映射：lux_index 到曝光表行号的桥接；3) Bright/Dark Region：dark_high / bright_low / dark_weight / bright_weight；4) ROI 加权：Touch / Face / Saliency 三类的权重和半径；5) HDR sensor 多曝光表分别调（长 / 短 / 超短）；6) 抗带状：曝光时间吸附到 50/60Hz 整数倍，gain 补足总曝光量。调教方法：标准光源箱 + 灰板从亮到暗扫一遍，验证亮度收敛 + 拐点过渡平滑 + 真实场景验证（夜景/室内/户外/雪景/夕阳/逆光人像）。",
+      "prompt": "用 PRD 第 19 题的答案展开版回答：高通曝光表怎么调试？至少列出 5 个层次。"
+    }
+  ],
+  "scope": "daily"
+}

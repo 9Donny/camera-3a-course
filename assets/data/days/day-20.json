@@ -1,0 +1,118 @@
+{
+  "id": "day-20",
+  "week": 3,
+  "module": "M3",
+  "title": "Bright Region / Dark Region 测光（PRD-Q19）",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "为什么需要 Bright/Dark Region 测光",
+      "type": "concept",
+      "content": "### 中心测光的盲点\n\nDay 15 我们学过中心测光：3072 块加权平均，中间权重高。但它**有个根本问题**：**只考虑「中心」，不考虑亮度分布**。\n\n两个反例：\n\n**反例 1**：拍夕阳。画面下半天空很亮（夕阳），上半地面是建筑剪影（很暗）。\n\n中心测光按权重平均，得到「中等亮度」。AE 决策按 luma_target 拉曝光 → 结果：天空过曝白成一片，建筑稍亮但仍是黑剪影。**用户想要**「夕阳颜色 + 建筑细节」都看到。\n\n**反例 2**：拍黑夜里的霓虹灯。画面 80% 是黑暗（背景），20% 是亮霓虹。\n\n中心测光按权重得到「**很暗**」。AE 大幅拉曝光 → 霓虹灯过曝看不清，背景变成「**雪花点**」（噪点放大）。\n\n两个例子说明：**只算平均不够，还要看亮度怎么分布**。\n\n### 亮度直方图\n\n现代 AE 在 64×48 块统计的基础上，**还会算一张「亮度直方图」**：\n\n```\nLuma  | 块数（出现次数）\n  0-31 | ▓▓▓▓▓▓▓ 410\n 32-63 | ▓▓▓▓ 230   ← 暗区\n 64-95 | ▓▓ 120\n96-127 | ▓ 80\n128-159| ▓ 70\n160-191| ▓ 60\n192-223| ▓ 60\n224-255| ▓▓ 100   ← 亮区\n```\n\n两端的「亮区」「暗区」**严重影响最终成像**。AE 必须分别测光。\n\n### 三段划分\n\n现代 AE 把直方图分成三段：\n\n```\n0  ──── dark_low ──── dark_high ──── bright_low ──── bright_high ──── 255\n   暗区                中间区                                  亮区\n   |                   |                                       |\n   像素值 < dark_high    dark_high < luma < bright_low          luma > bright_low\n```\n\n四个边界：\n\n- `dark_low`（默认 0）\n- `dark_high`（默认 50-60）\n- `bright_low`（默认 200-220）\n- `bright_high`（默认 255）\n\n这就是 PRD 第 19 题问的边界值。",
+      "glossary": [
+        { "term": "Bright Region", "zh": "亮区", "explain": "直方图里像素亮度 > bright_low 的区域，需要单独测光防止过曝。" },
+        { "term": "Dark Region", "zh": "暗区", "explain": "直方图里像素亮度 < dark_high 的区域，需要单独测光防止噪点。" },
+        { "term": "亮度直方图", "zh": "Luma Histogram", "explain": "统计画面里每个亮度档位的像素数，AE 用它做精细决策。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "中心测光和 region 测光是替换关系吗？", "a": "不是。中心测光算「平均亮度」、region 测光算「亮区/暗区分布」，两者都用。AE 同时考虑两类信息。" },
+          { "q": "为什么不直接用直方图？", "a": "用，但用「整体直方图」决策太复杂。简化为三段（亮/中/暗）够用且直观。" },
+          { "q": "三段够吗？为什么不四段五段？", "a": "工程平衡。区分度足够 + 调参参数少。极端 AI 调教会做更细的分段。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：直方图 摄影", "search": "直方图 摄影 测光" }
+        ],
+        "reads": [
+          { "title": "维基百科 · Image histogram", "url": "https://en.wikipedia.org/wiki/Image_histogram" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "PRD 第 19 题：怎么调亮区/暗区参数",
+      "type": "concept",
+      "content": "### PRD 第 19 题（你妹妹笔记的版本）\n\n> 高通曝光表怎么调试？\n\n这一题表面是问曝光表，深入答**还要包含 Bright/Dark Region**（因为亮区/暗区参数是曝光表调教的核心配套）。\n\n### Region 参数的四个边界\n\nChromatix 里有这一组参数：\n\n```xml\n<aec_bright_dark_region>\n  <dark_low>0</dark_low>\n  <dark_high>50</dark_high>\n  <bright_low>210</bright_low>\n  <bright_high>255</bright_high>\n  <dark_target_ratio>0.20</dark_target_ratio>      <!-- 暗区像素占比 < 这个值才不修正 -->\n  <bright_target_ratio>0.10</bright_target_ratio>  <!-- 亮区像素占比 < 这个值才不修正 -->\n  <dark_weight>1.5</dark_weight>                   <!-- 暗区超标时 target 修正系数 -->\n  <bright_weight>0.85</bright_weight>              <!-- 亮区超标时 target 修正系数 -->\n</aec_bright_dark_region>\n```\n\n### 决策逻辑\n\n```python\n# 分类每个 64×48 块\nfor block in stats:\n    if block.luma < dark_high:  block.region = 'dark'\n    elif block.luma > bright_low: block.region = 'bright'\n    else: block.region = 'middle'\n\ndark_ratio = (count of dark blocks) / 3072\nbright_ratio = (count of bright blocks) / 3072\n\n# 按比例修正 adjusted_target\ntarget_factor = 1.0\nif dark_ratio > dark_target_ratio:\n    # 暗区太多，让 target 降低（防暗区过曝噪点）\n    target_factor *= dark_weight   # > 1.0 = 降目标\n\nif bright_ratio > bright_target_ratio:\n    # 亮区太多，让 target 降低（防亮区过曝）\n    target_factor *= bright_weight  # < 1.0\n\nadjusted_target *= target_factor\n```\n\n注意（**容易绕**）：\n\n- `dark_weight = 1.5` 看起来是「**让暗区更亮**」，但实际作用是「**降低整体 target**」让暗区**更深沉**（不强行提亮，避免噪点）\n- `bright_weight = 0.85` 让 target **更低**，让亮区**不那么亮**（保留细节）\n\n这两个**方向**很关键，初学时容易记反。\n\n### Tuning 工程师的调教节奏\n\n实际项目里，调 Bright/Dark Region 参数的步骤：\n\n```\nStep 1: 在标准光源箱拍标定图卡（含极亮 + 极暗区）\nStep 2: 看 log，验证 dark_ratio / bright_ratio 测出来对不对\nStep 3: 调 dark_high / bright_low 边界（50 / 210 是默认，按 sensor 调）\nStep 4: 调 dark_weight / bright_weight 修正强度\nStep 5: 真实场景验证（夕阳、雪景、夜景霓虹）\n```\n\n### 边界调教的判断\n\n**dark_high 设太低**（比如 30）：\n- 暗区被定义得太严，很多「次暗」（30-50）不被识别为暗区\n- 实际暗区噪点问题没解决\n\n**dark_high 设太高**（比如 80）：\n- 几乎一半画面被定义为「暗区」\n- 整体 target 一直被压低，画面**永远偏暗**\n\n**bright_low 同理**：太低（180）→ 中间区域被划成亮区，target 总被压低；太高（240）→ 真正亮区识别不到。\n\n### 实际工程问题\n\n用户报「**雪景拍出来灰蒙蒙的**」（PRD 没列但常见问题）：\n\n排查：\n1. 雪景 bright_ratio 应该 > 0.5（大片雪），但实际只有 0.2 → 没识别到\n2. 看是不是 bright_low = 240 设太高了\n3. 调到 200（雪面 luma 通常 200-220）→ bright_ratio 上升 → AE 修正生效 → 雪面恢复白色\n\n这就是「**雪景偏灰**」的修法之一（另一种是 Bright Region Scene Analyzer 主动加亮，Week 4 学）。",
+      "glossary": [
+        { "term": "dark_high", "zh": "暗区上界", "explain": "亮度低于此值的块被分类为暗区。常见 50-60。" },
+        { "term": "bright_low", "zh": "亮区下界", "explain": "亮度高于此值的块被分类为亮区。常见 200-220。" },
+        { "term": "dark_target_ratio", "zh": "暗区比例阈值", "explain": "暗区块占比超过这个值才触发暗区修正。" },
+        { "term": "dark_weight / bright_weight", "zh": "区域修正权重", "explain": "暗区/亮区超标时对 adjusted_target 的修正系数。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么暗区超标要降 target？反直觉？", "a": "因为暗区已经够暗，强行加亮（提 target）会让暗区噪点放大，画面更糟。降 target → AE 不刻意提亮 → 暗区保持暗 → 噪点不被放大。" },
+          { "q": "bright_weight 取 0.85 还是 0.95？", "a": "看产品风格。0.85 = 重视亮部细节（适合夜景、雪景）；0.95 = 几乎不修正，亮部偶尔过曝可接受。" },
+          { "q": "中间区域（middle）会被修正吗？", "a": "Region 模块不直接修正。但中间区如果占比小（比如直方图两端高），其他模块（如 ADRC）会处理。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：摄影 高光保护", "search": "摄影 高光保护 暗部细节" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Bright/Dark Region" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Touch ROI 与 Face ROI 加权",
+      "type": "concept",
+      "content": "### ROI 是什么\n\n**ROI** = Region of Interest（感兴趣区域）。AE 把画面里的「特殊区域」单独算亮度并加权，让那些区域**优先被照顾**。\n\nDay 15 我们简单提过 Touch ROI 和 Face ROI。今天展开。\n\n### 三类 ROI\n\n| ROI 类型 | 来源 | 作用 |\n|---|---|---|\n| **Touch ROI** | 用户在屏幕上点按位置 | 那个点亮度优先 |\n| **Face ROI** | 人脸检测算法识别的人脸框 | 脸部亮度优先 |\n| **Saliency ROI** | 显著性检测（AI 识别的「主体」） | 主体亮度优先 |\n\n这三个 ROI **都用同一套加权机制**，区别只是「ROI 来源不同」。\n\n### Touch ROI 加权\n\n用户在屏幕上点 (x, y) 位置：\n\n```python\n# 1. 把屏幕坐标 (x, y) 映射到 64×48 网格\nblock_x = int(x / screen_width * 64)\nblock_y = int(y / screen_height * 48)\n\n# 2. 给中心块和周围 N×N 加权\nfor i in range(-N, N+1):\n    for j in range(-N, N+1):\n        bx, by = block_x + i, block_y + j\n        if 0 <= bx < 64 and 0 <= by < 48:\n            distance = sqrt(i*i + j*j)\n            boost = touch_roi_max_weight × exp(-distance² / 2σ²)\n            weight_table[by][bx] *= boost\n\n# 3. 重新加权计算 final_luma\n```\n\n这就是「**点哪儿亮哪儿**」的来源。常见参数：\n\n```xml\n<touch_roi>\n  <max_weight>3.0</max_weight>      <!-- ROI 中心权重相对原值的倍数 -->\n  <radius_blocks>4</radius_blocks>   <!-- ROI 半径（64×48 网格下的块数）-->\n  <gaussian_sigma>2</gaussian_sigma> <!-- 高斯平滑半径 -->\n</touch_roi>\n```\n\n### Face ROI 加权\n\n人脸检测算法（一般是 NPU 的轻量模型）输出**人脸 bounding box**：`(x, y, w, h)`。\n\n```python\n# 把 BBox 转 64×48 网格\nblock_x_min = int(x / screen_width * 64)\nblock_x_max = int((x + w) / screen_width * 64)\nblock_y_min = int(y / screen_height * 48)\nblock_y_max = int((y + h) / screen_height * 48)\n\n# 矩形内所有块加权\nfor by in range(block_y_min, block_y_max):\n    for bx in range(block_x_min, block_x_max):\n        weight_table[by][bx] *= face_roi_weight  # 比如 5.0\n```\n\n常见参数：\n\n```xml\n<face_roi>\n  <weight>5.0</weight>                  <!-- 比 touch 更高，因为更重要 -->\n  <multi_face_strategy>largest</multi_face_strategy>\n  <min_face_size_ratio>0.05</min_face_size_ratio>  <!-- 太小的人脸忽略 -->\n</face_roi>\n```\n\n关键点：\n- 多人脸时一般**只优先最大那张**（最近的人）\n- 太远的人脸（< 5% 画面）忽略，避免干扰主体\n\n### Saliency ROI（AI 显著性）\n\n这是更现代的方案：用 AI 模型识别「**用户最可能想拍的主体**」，画面中重要性热力图：\n\n```\n热力图（0-1 之间，越高越重要）：\n  0.1 0.1 0.2 0.3 0.2 0.1\n  0.1 0.3 0.5 0.7 0.5 0.2  ← 中间是「主体」\n  0.2 0.5 0.9 0.9 0.8 0.4\n  0.1 0.4 0.7 0.8 0.7 0.3\n  0.0 0.1 0.2 0.3 0.2 0.1\n```\n\nAE 直接把热力图当 ROI 加权用：\n\n```\nweight_table *= (1 + saliency_map × saliency_boost)\n```\n\nWeek 7 我们会学 Saliency AF（自动对焦也用同样原理）。\n\n### 多个 ROI 同时存在\n\n实际场景：用户拍人像时点了人脸 → 同时有 **Touch ROI + Face ROI**。两个怎么合并？\n\n```python\n# 简单做法：取最大权重\nfinal_weight = max(touch_weight, face_weight)\n\n# 复杂做法：累加但限幅\nfinal_weight = min(touch_weight + face_weight, max_total_weight)\n```\n\n### 调试技巧\n\n抓 log 时会看到：\n\n```\n[AEC] roi=touch(20,15,r=4) face_count=1 face_main=(18,12,8,12)\n[AEC] saliency_max=0.87 at (32,24)\n[AEC] roi_luma=120 main_luma=80 final_luma=110 (with ROI boost)\n```\n\n你能看出当前画面里有几个 ROI、它们对最终亮度的影响。",
+      "glossary": [
+        { "term": "ROI", "zh": "感兴趣区域", "explain": "Region of Interest，AE 优先照顾的区域。" },
+        { "term": "Touch ROI", "zh": "触摸 ROI", "explain": "用户在屏幕上点按的位置，临时高优先级 ROI。" },
+        { "term": "Face ROI", "zh": "人脸 ROI", "explain": "人脸检测算法输出的人脸框，恒定高优先级 ROI（脸在就算）。" },
+        { "term": "Saliency", "zh": "显著性", "explain": "AI 模型识别画面里「最显眼的主体」的能力。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么 face_roi_weight 比 touch_roi_weight 大？", "a": "Touch 是用户主动行为，只要照顾到就够。Face 是「主体」语义，必须强保护。" },
+          { "q": "ROI 是 AE 的吗还是 AF 的？", "a": "AE / AF / AWB 三个都用 ROI（位置一致），但权重表各自独立。" },
+          { "q": "拍照按下后 Touch ROI 还在吗？", "a": "通常按下后锁定 AE+AF，ROI 状态保持。某些专业模式拍照后 ROI 重置。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：手机拍照 点击对焦", "search": "手机 点击对焦 测光" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Touch / Face / Saliency ROI" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "测光全景：把所有概念串起来",
+      "type": "concept",
+      "content": "### 一张图把测光全部串起\n\n```\n┌── 64×48 块统计（Day 15）──┐\n│  3072 个 (Y, R, G, B) 数据  │\n└──────────┬─────────────────┘\n           ↓\n┌── 中心测光权重表（Day 15）──┐\n│  64×48 高斯权重，中心高边缘低 │\n└──────────┬─────────────────┘\n           ↓ ← 加 ROI 修正\n┌── ROI 加权（Day 20）──────┐\n│  Touch ROI / Face ROI /    │\n│  Saliency ROI 提权         │\n└──────────┬─────────────────┘\n           ↓\n     final_luma\n           ↓\n┌── Bright/Dark Region 测光（Day 20）──┐\n│  分类块 → 算 ratio → 修正 target       │\n└──────────┬───────────────────────────┘\n           ↓\n┌── Scene Analyzers（Week 4 学）──┐\n│  10 种 Analyzer 各自修正 target   │\n└──────────┬───────────────────────┘\n           ↓\n   adjusted_target\n           ↓\n┌── ADRC 修正（Day 18）──┐\n│  减去 dark_boost_extra  │\n└──────────┬─────────────┘\n           ↓\n      safe_target\n           ↓\n┌── AE 收敛（Day 19）──┐\n│  damping + settle 状态 │\n└──────────┬───────────┘\n           ↓\n      exp_index\n           ↓\n   写 sensor 寄存器\n```\n\n### 测光的层次关系\n\n这张图里测光分**4 个层次**：\n\n1. **数据层**：3072 块 (Y, R, G, B) 数据\n2. **空间加权层**：中心权重 + ROI 加权 → final_luma\n3. **分布加权层**：Bright/Dark Region → ratio → target 修正\n4. **场景层**（Week 4）：10 种 Analyzer → 综合 target 修正\n\n每层的功能不一样：\n\n- **空间层**回答「**画面哪些位置重要**」\n- **分布层**回答「**画面整体的亮度分布特点**」\n- **场景层**回答「**当前是什么场景**」\n\n层次越深，决策越精细。\n\n### 现代 AE 的智能化\n\n传统 AE（10 年前）：\n- 中心测光为主\n- ROI 加权\n- 简单的 Bright/Dark 修正\n\n现代 AE（今天）：\n- 加入 AI Saliency\n- 加入 Scene Analyzer 决策树\n- 加入 Face / Skin / Multi-object\n- 加入 Time-domain（连续帧学习）\n\n你现在学的高通 7.0 / 10 文档基本是现代 AE 主流方案。\n\n### 你现在掌握的 AE 测光面试题\n\n到 Day 20 为止，PRD 第 19 题（怎么调高通曝光表）你应该能这样答：\n\n> 高通曝光表调试分几个层次：\n> \n> 1. **基础曝光表**（Day 5/16）：拐点位置、曝光时间档位、Analog Gain 上限\n> 2. **lux_to_exp 映射**（Day 17）：lux_index 到曝光表行号的桥接\n> 3. **Bright/Dark Region** 参数（Day 20）：dark_high / bright_low / dark_weight / bright_weight\n> 4. **ROI 加权**（Day 20）：Touch / Face / Saliency 的权重\n> 5. **HDR sensor**：多张曝光表分别调（Day 16）\n> \n> 标定时用标准光源箱 + 灰板从亮到暗扫一遍，验证每个 lux 下的画面亮度收敛到 target，再做拐点过渡平滑、ROI 测试、Bright/Dark 边界测试。\n\n这是一个相对完整的回答，比 PRD 妹妹笔记的简短答案更系统。",
+      "glossary": [
+        { "term": "测光", "zh": "Metering", "explain": "AE 算法收集统计数据 + 加权 + 决策的整个过程。" },
+        { "term": "AI Saliency", "zh": "AI 显著性", "explain": "用 AI 模型自动识别画面主体的能力，现代手机 AE/AF 都用。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "测光速度有多快？", "a": "硬件统计 < 1ms（一帧总时间 33ms 的零头），AE 决策算法 1-3ms。整个测光流程在一帧内完成。" },
+          { "q": "拍照和取景预览的测光有区别吗？", "a": "有。拍照模式下 AE 设置更保守（damping 强、settle_frames 多）；预览模式追求实时（damping 弱、收敛快）。" },
+          { "q": "测光会不会用 GPU 加速？", "a": "可以用 GPU 算 AI 显著性图，但传统加权计算用 CPU 已经足够。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：手机 AI 摄影", "search": "手机 AI 拍照 主体识别" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Metering 章节集合" }
+        ]
+      }
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **中心测光不够** — 还要看亮度分布。Bright/Dark Region 测光做这件事\n2. **PRD 第 19 题部分答案**：dark_high / bright_low 边界 + dark_weight / bright_weight 修正系数\n3. **三类 ROI**：Touch / Face / Saliency，都通过加权 64×48 网格表实现\n4. **测光的 4 个层次**：数据层 → 空间加权 → 分布加权 → 场景层\n5. **现代 AE 大量用 AI**：Saliency 显著性、Face 识别、Scene Analyzer\n\n### 自我检查\n\n1. 默写 Bright/Dark Region 的 4 个边界参数和它们的常见值。\n2. dark_weight 大于 1 是降 target 还是提 target？为什么这样设计？\n3. Touch ROI 怎么从屏幕坐标映射到 64×48 网格？\n4. Face ROI 和 Touch ROI 哪个权重通常更大？为什么？\n5. 用一张图画出测光的 4 个层次。\n\n### 笔记建议\n\n- 把 Bright/Dark Region 的 4 个参数加 4 个 weight 整理成 cheatsheet\n- 把 PRD 第 19 题的扩展答案抄到面试备考本上\n- 关注 dark_weight 和 bright_weight 的「**反直觉**」方向（暗区超标 → 降 target，不是提）\n\n### 明天预告\n\nDay 21：Week 3 总结 + 周考。完整画一遍 AE 数据流地图、把所有 PRD 第 1/5/15/17/19 题的答案默一遍、做 15 题周考。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Bright/Dark Region + Touch/Face ROI" },
+    { "source": "维基百科 · Image histogram", "url": "https://en.wikipedia.org/wiki/Image_histogram" }
+  ],
+  "dailyQuizId": "daily-day-20"
+}

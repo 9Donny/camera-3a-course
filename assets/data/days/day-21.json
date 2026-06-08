@@ -1,0 +1,73 @@
+{
+  "id": "day-21",
+  "week": 3,
+  "module": "M3",
+  "title": "Week 3 总结：AE 完整地图 + AE 类面试题串讲",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Week 3 我们学了什么",
+      "type": "concept",
+      "content": "### 一周回顾\n\n| Day | 主题 | 答出的 PRD 题 |\n|---|---|---|\n| Day 15 | AE 总览 + 64×48 数据块 | Q1 (Step 1) / Q17 |\n| Day 16 | 曝光表深入 + 拐点 + HDR sensor 多曝光表 | — |\n| Day 17 | lux_index 计算公式 + exp_index | Q5 |\n| Day 18 | safe_target 三步推导 | Q15 |\n| Day 19 | AE 收敛逻辑（damping / settle）+ 抗带状深入 | — |\n| Day 20 | Bright/Dark Region + ROI 加权 | Q19 (部分) |\n\n这一周打的「**AE 主线**」基础足够你完整答出 5 个 PRD 题，并且能看懂高通 7.0 PDF 里 AEC 整个章节（第 14-100 页）。\n\n### Week 3 是 60 天最难的一周吗？\n\n几乎是。AEC 是高通 3A 文档里**最大、最深**的模块，但你已经把它的「**主干**」串起来了。\n\nWeek 4 我们会学剩下的「**枝叶**」——10 种 Scene Analyzer、3-EXP HDR、双摄 AEC 这些**进阶**话题。你会发现 Week 4 反而比 Week 3 更具体、更好学（因为已经有主干）。\n\n### 一图概览本周所有内容\n\n```\n┌──────── Sensor 输出 RAW ────────┐\n└─────────────┬───────────────────┘\n              ↓\n┌──── Day 15: 64×48 块统计 ────┐\n│  3072 块 (Y, R, G, B) → AE     │\n└─────────────┬─────────────────┘\n              ↓\n┌── Day 15+20: 加权与 ROI ──┐\n│  中心权重 + Touch/Face ROI │\n└─────────────┬─────────────┘\n              ↓\n         final_luma\n              ↓\n┌── Day 17: lux_index 公式 ──┐\n│  log2 项 + 修正项叠加        │\n└─────────────┬───────────────┘\n              ↓\n         lux_index\n              ↓\n┌── Day 18: safe_target 三步 ──┐\n│  luma_target → adjusted →     │\n│  safe_target                   │\n└─────────────┬─────────────────┘\n              ↓ + Day 20: Region 修正\n         safe_target\n              ↓\n┌── Day 19: 收敛逻辑 ──┐\n│  damping + settle      │\n└─────────────┬─────────┘\n              ↓\n         exp_index\n              ↓\n┌── Day 16: 查曝光表 ──┐\n│  linecount + gain     │\n└─────────────┬─────────┘\n              ↓\n┌── Day 16: gain 量化 ──┐\n│  gain_index + Digital  │\n└─────────────┬─────────┘\n              ↓ + Day 19: antibanding 吸附\n         写 sensor 寄存器\n```\n\n### 你现在的能力\n\n做完 Week 3，你已经能：\n\n- ✅ 完整答 PRD 第 1 / 5 / 15 / 17 题\n- ✅ 部分答 PRD 第 19 题\n- ✅ 看懂高通 PDF 的 AEC 章节\n- ✅ 调试 AE 抓 log 时知道每个字段意思（lux_idx / exp_idx / luma / target / settled）\n- ✅ 区分 lux_index / exp_index / luma_target / safe_target\n- ✅ 解释「**逆光人脸**」「**雪景偏灰**」「**夜景过曝**」这些场景下 AE 怎么决策\n\n这已经是 **Camera Tuning 工程师初级到中级的水平**。下一周再加 10 个 Scene Analyzer 你就完全是中级了。",
+      "glossary": [
+        { "term": "AE 主线", "zh": "AE Backbone", "explain": "Bayer 统计 → 加权 → lux_index → target → 曝光表 → sensor 写入 的核心流程。" },
+        { "term": "AE 进阶", "zh": "AE Advanced", "explain": "Scene Analyzer / HDR / 双摄 AEC 等模块，Week 4 详讲。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "学完 Week 3 还需要看 PDF 吗？", "a": "需要。我教的是「主干」，PDF 有大量参数和工程细节。学完主干后看 PDF 才不会被淹没。" },
+          { "q": "AE 调教多久能熟练？", "a": "理解原理（你现在的水平）→ 1 个月。能独立调一个项目 → 6-12 个月。能负责一个产品 → 2-3 年。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "回顾 Day 15-20 的所有 references" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "AE 类面试题 cheatsheet",
+      "type": "concept",
+      "content": "### Cheat Sheet：所有 AE 类 PRD 题的标准答案\n\n这一节抄到笔记本上，**面试前一天再过一遍**。\n\n### Q1：AE 算法的完整流程\n\n> 三步：\n> \n> 1. **亮度获取**：图像经过 OB / LSC 后，分成 64×48 网格统计亮度，每块输出 (Y, R, G, B)。AE 通过中心测光权重表 + ROI 加权，算出 final_luma。\n> 2. **计算 Target**：用 luma_target（按 lux 查表）作为基础，叠加 face / dark region / bright region / extreme color 等 Scene Analyzer 修正，得到 adjusted_target；再减去 ADRC 引入的额外亮度提升估计，得到 safe_target。\n> 3. **曝光调节**：safe_target 与 final_luma 比对 → 算 lux_index（公式 = 基准 + log2 曝光偏差 + log2 亮度偏差）→ 通过 lux_to_exp 映射查 exp_index → 查曝光表得到 linecount + gain_index → 写 sensor 的 Coarse Time + Analog Gain 寄存器。\n\n### Q2：怎么获取亮度信息\n\n> 通过 ISP 的 Bayer 域统计模块。图像经过 OB（黑电平校正）和 LSC（暗角补偿）后，分成 64×48 网格（共 3072 块）。每块计算平均的 (Y, R, G, B) 值（Y 给 AE 用，RGB 给 AWB 用）。\n> \n> 然后 AE 算法接收这 3072 块统计数据，配合中心测光权重表和 ROI 加权（Touch / Face / Saliency）算出最终亮度 final_luma。\n\n### Q3：Target 怎么算\n\n> 见 PRD-Q15 答案（safe_target 三步推导）。\n\n### Q4：曝光怎么调节\n\n> AE 决策完成后：\n> \n> 1. lux_index → 查 lux_to_exp 表 → 拿到 exp_index\n> 2. exp_index → 查曝光表（按 sensor 标定）→ 拿到 linecount + gain_index + digital_gain\n> 3. gain_index → 查 sensor gain table → analog_gain（具体倍数）\n> 4. 写 sensor 寄存器：Coarse Integration Time（曝光行数）+ Analog Gain（增益档位）\n> 5. 同时 ISP 写 Digital Gain（如果 sensor gain 不够补足）\n> 6. 下一帧 sensor 用新参数曝光\n\n### Q5：lux_index 怎么算\n\n> 公式：\n> \n> ```\n> lux_index = stats_target_lux_index\n>           + dec_const_aec_log2 × log2(real_gain × exp_time / target_real_gain × target_exp_time)\n>           + dec_const_lum_log2 × log2(target_lum / current_lum)\n> ```\n> \n> 三项：基准 + 曝光偏差修正 + 亮度偏差修正。\n> \n> 项 1 是基准锚点（sensor 标定时确定的「目标 lux 索引」）。\n> 项 2 是「实际 vs 目标曝光参数」的偏差对数（曝光更激进 → lux 应该更低）。\n> 项 3 是「实际 vs 目标亮度」的偏差对数（亮度不足目标 → lux 应该更低）。\n\n### Q15：safe_target 三步推导\n\n> 三步：\n> \n> 1. **luma_target**：基础亮度配置，按 lux 查表（暗光 60、室内 80、强光 90）。\n> 2. **adjusted_target**：luma_target 加 face / dark region / bright region / saturation prevention 等 Scene Analyzer 修正后的值。\n> 3. **safe_target**：adjusted_target 减去 ADRC 引入的额外亮度提升估计（dark_boost_extra），得到的最终 AE 目标。\n> \n> safe_target 是 AE 真正驱动 sensor 用的目标，保证 ADRC 处理之后画面亮度恰好达到 adjusted_target，避免过曝。\n\n### Q17：高通 AE 多少数据块？什么测光模式？\n\n> 64×48 = 3072 个数据块。中心测光模式（中心权重高、边缘权重低），结合 Touch ROI / Face ROI / Saliency ROI 加权。\n\n### Q19：高通曝光表怎么调试\n\n> 调试涵盖几个层次：\n> \n> 1. **基础曝光表**：拐点位置（一般 lux 200 / 1/30 秒，OIS 机型可放到 1/8 秒）、Analog Gain 上限（决定暗光画质）、Digital Gain 是否启用\n> 2. **lux_to_exp 映射**：lux_index 到曝光表行号的桥接，决定不同亮度场景下用哪行\n> 3. **Bright/Dark Region**：dark_high / bright_low 边界 + dark_weight / bright_weight 修正系数（注意方向：暗区超标 → 降 target，不是提）\n> 4. **ROI 加权**：Touch / Face / Saliency 三类 ROI 的权重、半径、平滑系数\n> 5. **HDR sensor**：多张曝光表分别调（长 / 短 / 超短）\n> 6. **抗带状**：曝光时间吸附到 50/60Hz 整数倍，gain 补足总曝光量\n> \n> 调试方法：标定时用标准光源箱 + 灰板从亮到暗扫一遍，验证每个 lux 下画面亮度收敛到 target；做拐点过渡平滑测试；ROI 加权测试；Bright/Dark 边界测试；最后真实场景验证（夜景、室内、户外、雪景、夕阳、人像逆光）。\n\n### Q22：flux 越大越暗\n\n> 这是 Day 6 的题。flux 不是亮度而是闪光灯发光通量的某个工程参数（在某些公司定义里），数值越大 → 触发的闪光强度阈值越低 → 画面越暗（因为预闪测光时计算出的「需要补光的程度」更弱）。\n> \n> 简单说：flux 是工程参数，要查具体公司的 tuning 文档定义。",
+      "glossary": [],
+      "extras": {
+        "faq": [
+          { "q": "面试官会问得这么完整吗？", "a": "不一定。但能完整答说明你**真懂**。面试官会问关键点（target 推导、lux_index 公式），你给完整答案就脱颖而出。" },
+          { "q": "记不住 lux_index 公式怎么办？", "a": "记结构「基准 + log2 曝光偏差 + log2 亮度偏差」就够。具体常数名字背不出来不影响。" },
+          { "q": "PRD 第 18 / 23 题（metering 两模块）什么时候答？", "a": "Day 22-28（Week 4）会详讲 Scene Analyzer，到时再串。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "把这页打印出来，面试前过一遍" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "实战练习：用 AE 视角分析 3 个场景",
+      "type": "example",
+      "content": "### 练习 1：逆光拍人脸\n\n场景：你站在窗户前拍朋友，窗户后面是亮天空。\n\n**用 AE 视角分析**：\n\n```\n1. 64×48 块统计：\n   - 上半部分（天空）：亮度 230 左右（接近过曝）\n   - 下半部分（朋友脸）：亮度 50 左右（很暗）\n   - 平均（中心权重）：约 110\n\n2. ROI 加权：\n   - Face ROI 检测到朋友的脸，给那块加权 ×5.0\n   - 加权后 final_luma 偏向脸的亮度 ≈ 65\n\n3. lux_index 计算：\n   - 假设当前曝光参数已经是「室内」配置\n   - 但 final_luma 65 < target 80，亮度偏差为负\n   - 这一项的修正让 lux_index 降低 → 假设算出 lux_index = 200\n\n4. target 推导：\n   - luma_target（lux 200）= 80\n   - Scene Analyzer：Face Analyzer 检测到人脸 + 脸偏暗 → adjusted_target = 80 × 1.1 = 88\n   - ADRC 在暗光下也活跃 → safe_target = 88 - 8 = 80\n\n5. 决策：\n   - target 80 > current 65，要加亮\n   - 算出新 exp_index 减少（曝光时间增加 + ISO 增加）\n   - damping 后写 sensor，下一帧画面变亮\n\n6. 多帧后收敛：\n   - 朋友脸亮度从 50 → 70 → 80\n   - 天空亮度从 230 → 245（接近过曝但 ADRC 救一点）\n   - 用户感觉「**人脸不黑了**」\n```\n\n### 练习 2：夜景拍霓虹灯\n\n场景：晚上街边拍亮霓虹招牌，背景是黑天和暗街道。\n\n**用 AE 视角分析**：\n\n```\n1. 64×48 块统计：\n   - 80% 块亮度 < 30（背景黑）\n   - 20% 块亮度 > 220（霓虹）\n   - 直方图严重两极分化\n\n2. Bright/Dark Region：\n   - dark_ratio = 0.80 > dark_target_ratio 0.20\n   - bright_ratio = 0.20 > bright_target_ratio 0.10\n   - 两个都触发！dark_weight 1.5 + bright_weight 0.85\n   - target_factor = 1.5 × 0.85 = 1.275\n   - adjusted_target = 80 × 1.275 = 102 ← 反而升高？\n\n   注意：这里方向有点 tricky。如果 dark 超标的修正是「降低 target」，那 dark_weight 应该 < 1.0 而不是 1.5。\n   实际工程上 dark_weight > 1 的设计是「暗区多 → 不强行提亮 → target 不动甚至降一些」。\n   多个 weight 怎么乘以 / 加 / 取最大值，是 tuning 风格。\n\n3. lux_index：\n   - 整体平均亮度 = 80% × 20 + 20% × 230 ≈ 62\n   - 中心权重也偏暗 → lux_index 大约 130（暗光）\n\n4. 决策：\n   - 用 lux 130 对应的曝光表行（中后部）\n   - 大概 1/30 秒 + ISO 800\n   - 但这样霓虹会过曝。怎么办？\n\n5. ADRC + LTM 救场：\n   - lux 130 下 ADRC 强力工作\n   - 暗部加 1.5x gain，亮部不动\n   - 结果：暗街道可见 + 霓虹仍清晰\n\n   这是「**手机夜景模式**」的核心：靠 ADRC/LTM 拉开动态范围。\n```\n\n### 练习 3：从户外走进室内（场景切换）\n\n```\n第 0 帧（户外）：\n  lux_index = 280（户外阴影）\n  exp_time = 1/500s, ISO = 100\n  luma = 80, settled = 1\n\n第 1 帧（刚跨过门槛）：\n  64×48 统计 luma 突降到 25\n  Damping：α=0.3，新 exp_index 不直接跳，先算修正\n  lux_index 重算：曝光参数没变 + luma 大降 → lux_index 跌到约 220\n  exp_index 增加（曝光更长 / ISO 更高），但 damping 下只走 30%\n  写 sensor：曝光时间从 1/500 → 1/300（damping 后）\n  settle = 0（偏差大）\n\n第 5 帧：\n  lux_index 已经更接近真实（约 195）\n  exp_time 已经 1/100s, ISO = 200\n  luma 回到约 65\n  settle = 0（仍在调）\n\n第 12 帧：\n  lux_index 收敛到 200\n  exp_time = 1/60s, ISO = 400\n  luma = 79（接近 target 80）\n  连续 5 帧偏差 < tolerance → settle = 1\n\n第 13 帧之后：\n  AF / AWB 重新启动（之前等 settle）\n  画面稳定显示室内场景\n```\n\n这个收敛过程肉眼能感觉到（约 0.5 秒）。\n\n### 练习的意义\n\n这三个场景**串起 Week 3 所有内容**。如果你能用 AE 视角逐步分析：\n\n- ✅ 你已经把 AE 主干吃透了\n- ✅ 你将来抓任何 log 都能看懂\n- ✅ 面试官给你一个场景问「AE 怎么决策」你能现场答\n\n**这就是这一周的目的**。",
+      "glossary": []
+    },
+    {
+      "id": "s4",
+      "title": "Week 4 预告",
+      "type": "concept",
+      "content": "### Week 4 学什么\n\nWeek 3 我们学了 AE 的「主干」。Week 4 学「**枝叶**」：\n\n| Day | 主题 | PRD 关联 |\n|---|---|---|\n| Day 22 | Scene Analyzer 总览 + Brighten/Saturation Prevention | Q18 / Q23 |\n| Day 23 | Dark Prevention + Extreme Color 分析器 | — |\n| Day 24 | Face Analyzer + Touch / Saliency / Depth | Q21（视频拍人脸偏亮） |\n| Day 25 | Frame Analyzer + LLS（Low Light Suppress） | — |\n| Day 26 | ADRC 深入 + 3-EXP HDR | Q10 |\n| Day 27 | MFHDR / SHDR 选择策略 | — |\n| Day 28 | Week 4 总结：双摄 AEC + 周考 | — |\n\nWeek 4 学完，AE 类 PRD 题（Q1-Q5 / Q15 / Q17-Q23）你就**全部能答**了。\n\n### Week 4 后还有什么\n\n剩下的 60 天大致：\n\n- **Week 5-6**：AWB（自动白平衡），同样工作量大但很多概念跟 AE 同源（统计 + 权重 + 修正）\n- **Week 7**：AF（自动对焦）+ Flash + HDR + Flicker\n- **Week 8**：色彩科学 + Chromatix 工具实操 + 模拟面试 + 简历润色\n\n### 你的位置\n\n```\n████████████████████░░░░░░░░░░░░  35% (Week 3/8)\n```\n\n你已经走过 1/3 多了。AE 主干这块**最难**已经过。\n\n### Week 3 常见问题\n\n**「我感觉这周内容好密」**\n\n是。AE 是 60 天里**最大**的模块。我把它拆 2 周（Week 3 + 4）已经是最人性化了。坚持过来你就跨过最高的山头。\n\n**「公式记不住怎么办」**\n\n公式不重要，**结构**重要。\n\n- safe_target 三步：luma → adjusted → safe（结构记住，方向记住）\n- lux_index 三项：基准 + 曝光偏差 + 亮度偏差（结构记住）\n- AE 流程：64×48 → final_luma → lux_index → target → exp_index → 写 sensor（结构记住）\n\n面试时让你「**默写**」具体公式概率不大，让你「**讲清楚**」结构概率大。\n\n**「Tuning 工程师真的要知道这么多吗？」**\n\n要。Tuning 工程师 = **会调 + 知道为什么这么调**。只会调的是「调试员」，知道原理的是「**工程师**」。岗位差别就在这里。\n\n### 周末安排\n\n你跟 PRD 计划是「**4 小时/天 + 周末更多**」。Week 3 周末建议：\n\n- 把 Day 15-20 的所有 cheat sheet 汇总到一份「**AE 总笔记**」（一页 A4）\n- 把 PRD 第 1 / 5 / 15 / 17 / 19 题答案默写一遍\n- 翻一翻高通 7.0 PDF 的 AEC 章节（第 14-100 页），对照本周内容找熟悉的术语\n\n如果有时间多，可以**预读 Day 22-23 的 Scene Analyzer 总览**，让 Week 4 第一天更轻松。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本周小结",
+      "type": "recap",
+      "content": "### Week 3 收获\n\n- ✅ 完整了解 AE 算法主干（64×48 → final_luma → lux_index → target → exp_index → sensor）\n- ✅ 答出 PRD 第 1 / 5 / 15 / 17 / 19 题（5 道 AE 类题）\n- ✅ 理解 lux_index 公式 + safe_target 三步推导\n- ✅ 看懂 Bayer 统计、中心测光、ROI 加权、Bright/Dark Region 测光\n- ✅ 掌握 AE 收敛机制（damping + settle）和 antibanding 工程实现\n- ✅ 能用 AE 视角分析逆光、夜景、场景切换 3 类典型场景\n\n### 自我检查\n\n1. **画一张 AE 全数据流图**（不准看本日 s1 的图）。从 sensor RAW 到写 sensor 寄存器。\n2. **默写 PRD 第 1 / 5 / 15 / 17 题答案**。\n3. **解释 4 个 target**：luma_target / adjusted_target / safe_target / final_target 的差别。\n4. **讨论场景**：用户报「**夜景偏黄**」，你怎么用 AE 视角排查？（提示：lux_index → CCM → AWB → Face ROI 链路）\n5. **完成本周周考**（15 题，进入「考核」页）。\n\n### Week 3 周考\n\n打开「考核 → 周测试 → Week 3」做 15 题综合测验。\n\n如果 80% 以上正确率，你已经过了 AE 主干这关。如果不到，**回去重看错题对应的 Day**（错题会标注哪天的内容）。\n\n### 笔记最终建议\n\n本周笔记最起码包含：\n\n1. AE 全流程图（一张）\n2. lux_index 公式（含三项含义）\n3. safe_target 三步推导（含每步输入输出）\n4. 曝光表关键字段（linecount / gain_index / digital_gain）\n5. Bright/Dark Region 4 个边界 + 4 个 weight\n6. AE 收敛 3 机制（限幅 + damping + settle）\n7. 抗带状 50Hz 公式（吸附整数倍 + gain 补偿）\n\n这一份「**AE 武功秘籍**」面试前一天再过一遍，你就拥有了**「能跟面试官展开聊 AE 1-2 小时」**的底气。\n\n### 下周见\n\n明天进 Week 4。Week 3 是登山，Week 4 是巡山，更轻松一些 :)",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "AEC 整章（第 14-100 页）" },
+    { "source": "本周 Day 15-20 所有 references" }
+  ],
+  "dailyQuizId": "daily-day-21"
+}

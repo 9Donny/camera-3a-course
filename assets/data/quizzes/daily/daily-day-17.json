@@ -1,0 +1,62 @@
+{
+  "id": "daily-day-17",
+  "title": "Day 17 日测：Lux Index + Exp Index",
+  "module": "M3",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "options": [
+        "0-1",
+        "0-100",
+        "0-350",
+        "0-100000"
+      ],
+      "answer": "0-350",
+      "explain": "高通约定俗成的范围 0-350。0 = 极暗（漆黑），350 = 极亮（强阳光）。",
+      "prompt": "lux_index 的取值范围一般是？"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "options": [
+        "目标 + Gamma 修正 + 锐化修正",
+        "基准 + log2 曝光偏差 + log2 亮度偏差",
+        "曝光时间 + ISO + 数字增益",
+        "luma_target + face 修正 + region 修正"
+      ],
+      "answer": "基准 + log2 曝光偏差 + log2 亮度偏差",
+      "explain": "PRD 第 5 题答案：项 1 基准（stats_target_lux_index），项 2 曝光偏差，项 3 亮度偏差。",
+      "prompt": "PRD 第 5 题：lux_index 公式包含哪三项？"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "answer": [
+        "曝光表行号",
+        "曝光表的行号"
+      ],
+      "explain": "lux_index 反映场景亮度，exp_index 是查曝光表时的索引（行号）。两者通过 lux_to_exp 表桥接。",
+      "prompt": "lux_index 是「场景亮度档位」，exp_index 是 ___"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "answer": [
+        "降噪、CCM、Gamma",
+        "降噪 CCM Gamma",
+        "Tone Mapping ADRC AWB",
+        "降噪 锐化 LTM"
+      ],
+      "explain": "几乎所有 ISP 模块都按 lux_index 分段配置：降噪、CCM、Gamma、Tone Mapping、ADRC、Dark Boost、AWB、AF、Flash 都用。",
+      "prompt": "lux_index 影响 ISP 哪些模块的参数？写出至少 3 个"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "referenceAnswer": "lux 范围跨 8 个数量级（0.001-100000），浮点运算精度问题且查表慢；lux_index 是 lux 的对数压缩 + 整数化（0-350 整数），范围小、查表快、对数特性接近人眼感知（韦伯-费希纳定律），更适合 AE 算法内部使用。同时 lux_index 也是 ISP 后续模块（降噪、CCM、Gamma 等）的全局变量，方便按亮度档位分段调教。",
+      "prompt": "为什么需要 lux_index 这个内部变量，不直接用 lux 单位？"
+    }
+  ],
+  "scope": "daily"
+}

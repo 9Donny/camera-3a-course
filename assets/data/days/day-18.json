@@ -1,0 +1,116 @@
+{
+  "id": "day-18",
+  "week": 3,
+  "module": "M3",
+  "title": "Target 与 Safe Target：AE 目标亮度三步推导（PRD-Q15）",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Target 是什么、为什么有 4 个",
+      "type": "concept",
+      "content": "### 上次 target 出现是哪里\n\nDay 12 我们说过 Tone Mapping 和 LTM / GTM / ADRC 都参考 **safe_target**（安全目标亮度）。Day 15 我们说 AE 算的就是「让 final_luma 接近 target」。\n\n但 AE 算法里**target 不是一个数，而是一族**：\n\n| 名字 | 来源 | 含义 |\n|---|---|---|\n| **luma_target** | tuning 配置（最基础的） | 「画面应该多亮」的基础值，比如 80（10-bit 用 320 / 4） |\n| **adjusted_target** | luma_target + 场景修正 | 加上 face / dark region / bright region 等修正后的目标 |\n| **safe_target** | adjusted_target + ADRC 修正 | 把 ADRC 提过的暗部纳入考虑后的「安全」目标 |\n| **final_target** | safe_target 限幅后 | 实际写入 ISP 的最终值 |\n\n这四者的差别就是「**目标怎么从粗糙调到精细**」的过程，每加一层修正，目标就更逼近真实场景需要。\n\n### 这就是 PRD 第 15 题\n\nPRD 第 15 题原文：\n\n> Safe target 三步推导。\n\n这是面试**最核心的 AE 题之一**，必背。三步是从 luma_target 到 safe_target 的三个修正阶段：\n\n```\nStep 1: luma_target（基础值，固定档）\n   ↓ + 场景修正（face / region）\nStep 2: adjusted_target（场景敏感的目标）\n   ↓ + ADRC 提暗修正\nStep 3: safe_target（最终目标）\n```\n\n本节先讲 Step 1 = luma_target 怎么定。\n\n### Step 1：luma_target 的取值\n\nluma_target 在 tuning 文档里通常是个**固定数值**，比如：\n\n```xml\n<luma_target>80</luma_target>     <!-- 8-bit 范围 0-255 -->\n```\n\n但**不同 lux 下 luma_target 不同**：\n\n```xml\n<luma_target_table>\n  <entry lux=\"50\"  target=\"60\"/>     <!-- 暗光：目标更低（避免过曝噪点）-->\n  <entry lux=\"120\" target=\"75\"/>\n  <entry lux=\"200\" target=\"80\"/>     <!-- 室内日常 -->\n  <entry lux=\"240\" target=\"85\"/>\n  <entry lux=\"280\" target=\"90\"/>\n  <entry lux=\"320\" target=\"95\"/>     <!-- 强光：目标更高（避免曝光不足）-->\n</luma_target_table>\n```\n\n规律：**亮度越高，luma_target 越高**（但不会到 255 全白）。\n\n### 为什么 80 是「黄金数」\n\n你看几乎所有手机 luma_target 都在 70-90 之间，为什么？\n\n**两个原因**：\n\n**a. 18% 灰假设**\n\n摄影学里有个传统：「**18% 灰**是中性灰」（Day 6 学过 D65 标准光源时提过）。一个完美中性场景的平均亮度应该是 18% 灰 ≈ **0.18 × 255 = 46（线性域）**。\n\n但 ISP 里 luma 是经过 Gamma 后的（γ=2.2），对应的输出值 ≈ `(0.18)^(1/2.2) × 255 ≈ 119`。\n\n等等，那应该是 119 才对，怎么是 80？\n\n**b. 实际场景偏暗**\n\n现实中场景**很少是「中性 18% 灰」**，大多数偏暗（人脸黑头发、有阴影区域）。luma_target 设 80 比 119 低一点，留出**亮部余量**避免过曝。**安全胜于理想**。\n\n经验法则：`luma_target ≈ 18% 灰对应 luma 的 70%-80%` 是平衡点。\n\n### 不同公司的 luma_target 风格\n\n- **苹果**：偏暗 (≈ 70)，保留亮部细节，照片素雅\n- **三星**：偏亮 (≈ 90)，第一眼通透好看\n- **华为**：中等偏亮 (≈ 85)\n- **小米**：中等 (≈ 80)，可能根据机型调整\n\n**Tuning 风格的第一选择**就是 luma_target。",
+      "glossary": [
+        { "term": "luma_target", "zh": "亮度目标值", "explain": "AE 想要画面达到的基础亮度，0-255 (8-bit) 或 0-1023 (10-bit)。" },
+        { "term": "18% 灰", "zh": "18% 灰", "explain": "摄影术语，中性灰反射率约为 18%。色彩科学校准基准。" },
+        { "term": "luma", "zh": "亮度通道", "explain": "图像处理中表示「亮度」的通道，YUV 的 Y、HSV 的 V 都属于。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "luma_target 为什么不直接是 18% 灰？", "a": "因为 ISP 的 luma 是 Gamma 编码后的，需要先做对数→线性转换。但实际场景偏暗，所以最终用 80 而非 119。" },
+          { "q": "luma_target 越高越好吗？", "a": "不是。太高（>120）整体过曝、亮部细节丢失；太低（<60）整体偏暗、噪点凸显。80 是工程平衡。" },
+          { "q": "luma_target 用 8-bit 还是 10-bit？", "a": "AE 内部一般 10-bit，乘 4。但你看 tuning 文档可能两种都见过。注意单位。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：18 度灰 摄影", "search": "18度灰 中性灰 摄影" }
+        ],
+        "reads": [
+          { "title": "维基百科 · Middle gray", "url": "https://en.wikipedia.org/wiki/Middle_gray" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Step 2：adjusted_target — 场景修正",
+      "type": "concept",
+      "content": "### 为什么需要修正\n\nluma_target = 80 是个「平均场景」的目标。但实际场景千差万别：\n\n- **逆光人脸**：背景天空亮，人脸暗。如果按 luma_target=80 测光（中心权重），结果偏向天空，人脸还是黑\n- **大片白雪**：白雪反射率 90%+，按 luma_target=80 会让白雪「灰」掉（曝光不足）\n- **演唱会场景**：大片黑色背景 + 一个亮舞台，luma_target=80 让背景过曝\n\n这些都是**用户感知不对**的场景。AE 需要「**因场景而异**」调整 target。\n\n### adjusted_target 的修正项\n\n基础公式：\n\n```\nadjusted_target = luma_target × scene_factor + scene_offset\n```\n\n其中 `scene_factor` 和 `scene_offset` 由**多个修正源**叠加。最常见的：\n\n**1. Face ROI 修正**\n\n如果检测到人脸：\n\n```python\nif face_detected and face_mean_luma < luma_target × 0.7:\n    # 人脸过暗（明显比 target 低 30%）\n    adjusted_target = luma_target × 1.1   # 提高 target，让 AE 总体加亮\n```\n\n这就是「**逆光人脸**」自动加亮的来源。Week 4 详讲。\n\n**2. Dark Region 修正**\n\nDay 20 详讲。简化版：\n\n```python\nif dark_region_ratio > 0.3:    # 画面 30% 以上是「暗区」\n    # 怕暗区噪点放大\n    adjusted_target = luma_target × 0.95   # 略微降低 target\n```\n\n**3. Bright Region 修正**\n\n```python\nif bright_region_ratio > 0.4:  # 画面 40% 以上是「亮区」\n    # 比如雪景\n    adjusted_target = luma_target × 1.15   # 提高 target，让雪白真的「白」\n```\n\n**4. Saturation Prevention（饱和保护）修正**\n\n如果直方图最高 5% 已经接近 255（饱和）：\n\n```python\nadjusted_target = luma_target × 0.9   # 防止过曝丢细节\n```\n\n### 多个修正怎么叠加\n\n实际公式不是简单连乘，而是带优先级的「**Scene Analyzer 决策树**」（Week 4 详讲，PRD-Q18）：\n\n```\nScene Analyzers (10 个) → 输出 (factor, offset) 组\n   ↓ 决策聚合器\n   ↓ 选优先级最高的几个\nadjusted_target = luma_target × Π factor + Σ offset\n```\n\n常见 Scene Analyzers（Week 4 全部学）：\n\n- Face\n- Dark Region\n- Bright Region\n- Saturation Prevention\n- Touch ROI\n- Saliency（显著性）\n- Depth\n- Frame Average\n- Low Light Suppress（LLS）\n- Extreme Color\n\n### 妹妹笔记里的 metering 两模块\n\nPRD 第 18 / 23 题问到「**Metering 怎么实现，分哪两个模块**」。答案：\n\n> 1. **evtable**（曝光表，Day 5 / 16）—— 决定**怎么调曝光**\n> 2. **AE 数据统计模块**（包含上面这一系列 Scene Analyzer + 64×48 stats）—— 决定**怎么定 target**\n\n所以「Metering = 64×48 stats + 各种 Scene Analyzer + Bright/Dark Region 测光 + 曝光表」 = 整个 AE 的「**怎么决策**」。\n\n### Step 2 输出\n\n这一步结束，我们有 `adjusted_target`，比 luma_target 更贴合具体场景。\n\n但还没结束 —— 现代 ISP 还有 ADRC / LTM 这些「**会偷偷把暗部拉亮**」的模块。它们会让画面**在 ADRC 之后**比 AE 算的 luma 更亮。AE 必须把这部分「补回来」，否则总体会过曝。\n\n这就是 Step 3 的工作。",
+      "glossary": [
+        { "term": "Scene Analyzer", "zh": "场景分析器", "explain": "AE 里的一系列模块，根据场景特征返回 target 修正项。共 10 个，Week 4 详讲。" },
+        { "term": "adjusted_target", "zh": "调整后目标", "explain": "luma_target 加完场景修正后的中间值。" },
+        { "term": "Saturation Prevention", "zh": "饱和保护", "explain": "防止亮部过曝（>255 截断）丢失细节，让 AE 拉低 target。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "Scene Analyzer 之间会冲突吗？", "a": "会。例如 Face 想加亮、Saturation Prevention 想压低。决策聚合器按优先级 / 加权处理。Week 4 详讲。" },
+          { "q": "为什么不只用一个综合分析器？", "a": "模块化方便维护、调试。出问题时知道是哪个分析器误判。" },
+          { "q": "用户能控制 Scene Analyzer 吗？", "a": "通过设置如「专业模式」可以禁用部分分析器，让 AE 更接近用户预期。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：相机场景识别 AI 测光", "search": "相机 场景识别 AI 自动测光" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Scene Analyzer 各章节（Week 4 学）" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Step 3：safe_target — 考虑 ADRC 后的最终目标",
+      "type": "concept",
+      "content": "### ADRC 是怎么影响 target 的\n\nDay 12 我们学过 ADRC 的核心：**给暗部加 gain，让暗部变亮**。\n\n但这意味着 **ADRC 之后的画面比 AE 测出来的亮**。AE 算法测的是 ADRC 之前的 luma。如果 AE 直接以 adjusted_target 为目标驱动 sensor，画面经过 ADRC 后会**整体偏亮**。\n\n用数字说明：\n\n```\nAE 测：64×48 平均 luma = 70（ADRC 之前）\n目标：adjusted_target = 80\nAE 决策：曝光加点（让 luma 提到 80）\n\n但是！ADRC 偷偷加了 1.3x dark gain（暗部）：\n实际显示亮度 = 80 × (1 + 0.3 × dark_占比) ≈ 95\n```\n\n用户最终看到的是 95，**比目标 80 高 19%**！画面过曝。\n\n### 解决方案：safe_target\n\n```\nsafe_target = adjusted_target / (1 + ADRC 引入的额外 gain)\n```\n\n或更精确（PRD 公式）：\n\n```\nsafe_target = adjusted_target − dark_boost_extra\n```\n\n其中 `dark_boost_extra` 是 ADRC 给暗部增益**比例性**带来的整体亮度上升估计。\n\n这样 AE 用 safe_target 驱动 sensor，ADRC 拉暗部后，**最终画面正好达到 adjusted_target**，用户看到的就是想要的亮度。\n\n### dark_boost_extra 怎么算\n\nDay 12 我们学过 PRD 第 16 题，dark_boost_gain 的公式：\n\n```\ndark_gain = (target_lum / safe_lum) × adrc_gain\n```\n\n反过来推：\n\n```\nadrc_extra_brightness = dark_gain × dark_pixel_ratio × scaling\n                                                   ↑\n                           工程经验系数，平衡用\n```\n\n实际公式可能更复杂（带 lux 分段），但核心思路就是：**ADRC 拉了多少亮度，AE 就把目标降多少**。\n\n### 三步推导完整图\n\nPRD 第 15 题答案就是这三步：\n\n```\n┌─ Step 1 ───────────────────┐\n│ luma_target = 80            │\n│  (基础亮度配置)              │\n└──────────┬─────────────────┘\n           ↓ +scene修正\n┌─ Step 2 ───────────────────┐\n│ adjusted_target = 88        │\n│  (e.g. 检测到人脸，target+10%)│\n└──────────┬─────────────────┘\n           ↓ -ADRC 修正\n┌─ Step 3 ───────────────────┐\n│ safe_target = 75            │\n│  (因 ADRC 会再加亮 13)       │\n└──────────┬─────────────────┘\n           ↓\n     给 AE 当目标\n```\n\n### 实际数字流程\n\n```\nluma_target          (Step 1, 配置文件查表)\n   ↓ +face/region scene 修正\nadjusted_target      (Step 2, 加 +/-10% 类的修正)\n   ↓ -ADRC dark_boost_extra\nsafe_target          (Step 3, 减去 ADRC 的额外亮度)\n   ↓ 限幅\nfinal_target         (Step 4 - 限幅，避免极端值)\n```\n\n这就是 AE 内部 target 的完整生成流程。\n\n### 调教例子\n\n用户报「**用了 ADRC 后画面过曝**」。排查：\n\n1. 看抓 log，luma_target = 80, adjusted_target = 85, safe_target = ?\n2. safe_target 应该 ≈ 85 - dark_boost_extra\n3. 实际 log 里 safe_target = 85（**没减**）\n4. 检查 tuning：是不是漏配了 dark_boost_extra 计算的查表？\n\n问题就找到了。这是真实工程问题。\n\n### 面试时怎么答 PRD-Q15\n\n按上面的图答：\n\n> 三步：\n> \n> 1. luma_target — 基础值，按 lux 查表（暗 60 / 亮 90，常见 80）\n> 2. adjusted_target — luma_target 加 face / region / saturation 等场景修正项后的值\n> 3. safe_target — adjusted_target 再减去 ADRC 引入的额外亮度提升估计\n> \n> safe_target 是 AE 真正驱动 sensor 用的目标值，保证 ADRC 处理之后画面亮度恰好达到 adjusted_target，避免过曝。\n\n这是 60 天里**最重要的 AE 答案之一**，必背。",
+      "glossary": [
+        { "term": "safe_target", "zh": "安全目标亮度", "explain": "AE 三步推导的最终输出，考虑 ADRC 后能让画面恰好达到 adjusted_target 的目标。" },
+        { "term": "dark_boost_extra", "zh": "ADRC 额外亮度", "explain": "ADRC 因为给暗部加 gain 而引入的画面整体亮度上升估计。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "如果 ADRC 关了 safe_target = adjusted_target 吗？", "a": "对。dark_boost_extra = 0 时 safe_target 就退化为 adjusted_target。" },
+          { "q": "safe_target 比 luma_target 低还是高？", "a": "通常**低**（因为 ADRC 提暗会让画面变亮）。但极端场景可能两者都偏离 luma_target。" },
+          { "q": "safe_target 还有没有进一步修正？", "a": "有。final_target 还会限幅（不能 < 30 也不能 > 200，避免极端值）。但这一步主要是工程保护。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：HDR 调教 ADRC", "search": "HDR 动态范围 调教 ADRC" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AEC Target 章节（Step 1-3 推导）" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "整张 AE 数据流图",
+      "type": "concept",
+      "content": "### 把 Day 15-18 串起来\n\n你现在对 AE 内部应该有一张「**完整地图**」了：\n\n```\n┌──── 第 N 帧 sensor 输出 RAW ────┐\n└──────────────┬──────────────────┘\n               ↓ ISP 早期处理（OB/LSC）\n┌──── Bayer 域统计（Day 15）────┐\n│  分 64×48 块                    │\n│  → 3072 个 (Y, R, G, B) 数据组   │\n└──────────────┬──────────────────┘\n               ↓\n┌──── AE 算法主流程 ────────────┐\n│ 1. 加权（中心测光 + ROI）       │\n│    → final_luma                │\n│ 2. lux_index 公式（Day 17）     │\n│    → lux_index                 │\n│ 3. lux_target_table 查表       │\n│    → luma_target ← Step 1      │\n│ 4. Scene Analyzers 修正         │\n│    → adjusted_target ← Step 2  │\n│ 5. ADRC 估算 + 减修正           │\n│    → safe_target ← Step 3      │\n│ 6. 收敛逻辑（Day 19）           │\n│    → 决定本帧是否调曝光        │\n│ 7. 算 exp_index                 │\n│ 8. 查曝光表（Day 16）           │\n│    → linecount + gain_index    │\n│ 9. 写 sensor 寄存器             │\n└──────────────┬──────────────────┘\n               ↓\n┌──── ISP 后段（用 lux_index + safe_target）────┐\n│  Tone Mapping → 用 safe_target                  │\n│  ADRC → 用 lux_index                            │\n│  Dark Boost → 用 lux_index + safe_target         │\n│  AWB / 降噪 / Gamma → 都按 lux_index 分段        │\n└──────────────┬──────────────────────────────────┘\n               ↓\n┌──── 第 N+1 帧 ────┐\n│ 用新参数拍新帧    │\n└───────────────────┘\n```\n\n### 你已经能答出的 AE 面试题\n\n到 Day 18 为止，PRD 的 23 道题里你能答出：\n\n| PRD 题号 | 题目 | 在哪天学 |\n|---|---|---|\n| Q1 | AE 算法流程 | Day 15 |\n| Q5 | lux_index 计算 | Day 17 |\n| Q15 | safe_target 三步推导 | Day 18 |\n| Q17 | 64×48 数据块统计 | Day 15 |\n\n剩下 AE 类题（Q2/Q3/Q4/Q18/Q19/Q21/Q22/Q23）会在 Day 19-21 + Week 4 学完。\n\n### Tuning 工程师的「全景」\n\n看一遍 Tuning 工程师**实际**调 AE 时关心的参数：\n\n```\n基础层：\n  - luma_target_table (按 lux 分段)\n  - aec_lux_to_exp_table\n  - exposure_table (主表，含拐点)\n  - sensor_gain_table\n\n场景层（Week 4 学）：\n  - face_assist_*\n  - dark_region_*\n  - bright_region_*\n  - saturation_prevention_*\n  - extreme_color_*\n  - 其他 Scene Analyzer\n\nHDR 层（Week 4/7 学）：\n  - adrc_table\n  - dark_boost_curve\n  - hdr_long_exp / short_exp\n\n收敛层（Day 19）：\n  - convergence_speed\n  - settle_threshold\n  - antibanding\n```\n\n现在你看到这些字段，应该都能在脑子里**对上号**。\n\n### 实战练习\n\n打开任一 tuning 文档（高通 7.0 PDF 第 14-100 页），翻到「AEC Tuning」章节，**对照本周内容**找：\n\n1. 是否能找到 `luma_target` 字段？\n2. 是否能找到曝光表的 `linecount` `gain_index`？\n3. 是否能找到 `lux_index` 出现的地方？\n4. 是否能找到「safe target」相关讨论？\n\n如果都能找到，**Week 3 前 4 天的内容你已经吃透了**。",
+      "glossary": [
+        { "term": "Convergence Speed", "zh": "收敛速度", "explain": "AE 调到目标的快慢配置参数。Day 19 详讲。" },
+        { "term": "Settle Threshold", "zh": "稳定阈值", "explain": "AE 判断「已收敛」的亮度差阈值。比如 |luma - target| < 5 才算稳定。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "AE 全流程一帧要多久？", "a": "约 2-5ms（一帧总时间 33ms 的零头）。剩下时间用于 sensor 曝光 + 其他 ISP 处理。" },
+          { "q": "AE 算法跑在哪？", "a": "高通 ISP 上的固件（firmware）+ 主控 CPU 协作。统计在硬件，决策在固件。" },
+          { "q": "AE 算法能跑在 GPU 吗？", "a": "理论可以但不必。AE 计算量小（3000 块加权和），CPU 一帧零点几毫秒搞定。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：相机调教 高通 Chromatix", "search": "高通 Chromatix tuning 教程" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "page": 14, "section": "AEC 完整章节" }
+        ]
+      }
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **AE 有 4 个 target**：luma_target / adjusted_target / safe_target / final_target，逐步精细化\n2. **PRD 第 15 题答案 = safe target 三步推导**：\n   - Step 1: luma_target — 按 lux 查表（80 是黄金数）\n   - Step 2: adjusted_target — luma_target × scene_factor + scene_offset\n   - Step 3: safe_target — adjusted_target − ADRC 引入的额外亮度\n3. **Scene Analyzers 共 10 个**：Face / Region / Saturation 等，Week 4 全部学\n4. **luma_target = 80 的来源**：18% 灰假设 + 实际场景偏暗的工程平衡\n5. **AE 全流程地图**：你能画出 64×48 → final_luma → lux_index → 4 个 target → exp_index → sensor 寄存器\n\n### 自我检查\n\n1. 默写 PRD 第 15 题：safe_target 三步推导每一步的输入和修正项。\n2. luma_target 通常取多少？为什么不是 119（理论 18% 灰）？\n3. ADRC 关闭时 safe_target 等于什么？\n4. 列出至少 5 个 Scene Analyzer。\n5. 「逆光人脸自动加亮」的 AE 决策链是什么？\n\n### 笔记建议\n\n- **必默写**：PRD 第 15 题答案。这是面试**最高频**的 AE 题之一\n- 把 luma_target 的工程含义记下来（80 = 18% 灰 × 0.7）\n- 把 4 个 target 的关系画一张图\n\n### 明天预告\n\nDay 19：AE 收敛逻辑 + 抗带状深入。AE 不是一帧到位，而是逐帧靠近 target。怎么靠近、多快靠近、什么时候算「稳定」、抗 banding 怎么做。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "AEC Target 推导章节" },
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Scene Analyzer 各章节（Week 4）" },
+    { "source": "维基百科 · Middle gray", "url": "https://en.wikipedia.org/wiki/Middle_gray" }
+  ],
+  "dailyQuizId": "daily-day-18"
+}

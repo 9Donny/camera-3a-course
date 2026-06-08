@@ -1,0 +1,117 @@
+{
+  "id": "day-19",
+  "week": 3,
+  "module": "M3",
+  "title": "AE 收敛逻辑与抗带状深入",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "为什么 AE 不能一帧到位",
+      "type": "concept",
+      "content": "### 直觉上一帧到位最好\n\n你也许会想：AE 算出 safe_target = 80，当前 luma = 30 → **下一帧直接调到 80** 不就好了？\n\n但实际中**所有 AE 都是「分多帧逐步靠近」**。原因有 3 个：\n\n### 原因 1：物理上不可能\n\n要从 luma 30 跳到 luma 80 需要把曝光增加约 1.4 倍（Gamma 后差距），但 sensor 的 Coarse Integration Time 改一次有上限。常见：\n\n```\n每帧最大可调曝光 ratio = 2.0x\n每帧最大可调 gain = 2.0x\n```\n\n意思：一帧之内最多让画面亮度翻 4 倍（曝光 × ISO 各翻倍）。\n\nDay 1 学的曝光方程换算：4 倍 = 2 EV。AE 一帧最多调 2 EV。\n\n如果环境从烈日（lux 320）突然进入黑暗（lux 60，跨 6 EV），AE 至少需要 **3 帧** 才能调到位。\n\n### 原因 2：避免画面闪烁\n\n用户看着取景框预览。如果 AE 从亮（曝光时间 1ms）一帧跳到暗（曝光时间 30ms），画面亮度突然提升 30 倍，**视觉上是「闪了一下」**。\n\n人眼对亮度突变非常敏感（进化里这是「捕食者警报」）。AE 必须**渐变**调整。\n\n### 原因 3：避免误判\n\n场景临时变化：你拍照时旁边有人闪了一下闪光灯。如果 AE 一帧到位，曝光会暴跌，但下一帧人走了，又得拉回来 → 画面**频繁震荡**。\n\n所以 AE 必须有「**判断当前变化是稳定的还是临时的**」的能力。逐帧调整 + 平滑机制刚好提供这种鲁棒性。\n\n### 收敛 = 三个机制叠加\n\n所以 AE 收敛是这三个机制的合奏：\n\n| 机制 | 作用 |\n|---|---|\n| **变化速率限幅** | 每帧最多调 2 EV（物理保护） |\n| **damping 阻尼** | 一阶低通滤波，平滑处理（避免闪烁） |\n| **settle 判断** | 连续 N 帧稳定才认为「收敛」（避免误判） |\n\n下面分别详讲。",
+      "glossary": [
+        { "term": "Convergence", "zh": "收敛", "explain": "AE 经过若干帧让画面亮度稳定在 target 附近的过程。" },
+        { "term": "Settle", "zh": "稳定", "explain": "AE 判断「已收敛」的状态。后续模块（AF / 拍照触发）等待 settle=1 才开始。" },
+        { "term": "Damping", "zh": "阻尼", "explain": "类似低通滤波，让 AE 调整更平滑、不振荡。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么单反 AE 看起来比手机慢？", "a": "单反屏幕 60Hz、AE 也是逐帧调，但单反 AE 算法保守、damping 强，看起来「慢但稳」。" },
+          { "q": "电影机 AE 收敛要求？", "a": "电影机要求**极平滑**收敛，因为画面曝光跳动观众都能看见。设置很慢，几乎不允许 1 EV 以上的瞬变。" },
+          { "q": "手机抓拍模式 AE 怎么调？", "a": "调高 convergence_speed，降低 damping → 更快但更容易闪。是个用户体验取舍。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：摄影 AE 锁定", "search": "摄影 AE 锁定 测光" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AE Convergence" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Damping 阻尼：一阶低通滤波",
+      "type": "concept",
+      "content": "### Damping 是什么\n\nAE 算出本帧的「**新 exp_index**」（基于当前 luma 和 safe_target）后，**不直接用**，而是和上一帧的 exp_index 做加权平均：\n\n```\nexp_index_smoothed = α × exp_index_target + (1 - α) × exp_index_prev\n```\n\n其中 `α` 是收敛速度参数（0-1）：\n\n- `α = 1`：直接跳到目标（无阻尼）\n- `α = 0.1`：每帧只接近 10%（强阻尼，慢收敛）\n- `α = 0.3`：每帧 30%（默认值附近）\n\n这就是「**一阶低通滤波**」（IIR Low Pass Filter），数学上等价于「**RC 电路**」的电压响应。\n\n### 直觉上是什么效果\n\n用 α = 0.3 举例：从 exp_index 0 跳到 30 的过程：\n\n```\n帧 1: exp_index = 0 + 0.3 × (30 - 0) = 9\n帧 2: 9 + 0.3 × (30 - 9) = 15.3\n帧 3: 15.3 + 0.3 × (30 - 15.3) = 19.7\n帧 4: 19.7 + 0.3 × (30 - 19.7) = 22.8\n帧 5: 22.8 + 0.3 × (30 - 22.8) = 25.0\n...\n帧 10: ≈ 28.5\n帧 15: ≈ 29.5\n帧 20: ≈ 29.85\n```\n\n收敛时间：**约 10-20 帧** （0.3 - 0.7 秒）。这是用户感觉「**自然**」的速度。\n\n### α 怎么定\n\nTuning 里 α 不是一个固定值，而是按场景查表：\n\n```xml\n<convergence_speed>\n  <entry condition=\"normal\" alpha=\"0.3\"/>\n  <entry condition=\"snapshot\" alpha=\"0.6\"/>     <!-- 拍照按下时加快 -->\n  <entry condition=\"video_recording\" alpha=\"0.2\"/>  <!-- 录像更稳 -->\n  <entry condition=\"flash_calc\" alpha=\"0.8\"/>    <!-- 闪光预闪要快 -->\n</convergence_speed>\n```\n\n更高级还有「**自适应 α**」：根据当前偏差大小动态调：\n\n```\nif |target - current| > big_threshold:\n    α = 0.5    # 偏差大时收敛快\nelse:\n    α = 0.2    # 接近目标时变慢\n```\n\n### 为什么不用更复杂的 PID\n\n工业控制里有 PID（比例-积分-微分），更精确。但 AE 不用 PID 因为：\n\n1. **AE 偏差是离散的**，PID 的积分项意义不大\n2. **目标变化频繁**（场景在动），积分项反而坏事\n3. **简单一阶滤波**已经够好，工程师调 α 就够了\n\n所以 AE 的反馈控制保留得很简单：**只有比例项 + 阻尼**。\n\n### 实际影响\n\n你换场景时（比如户外走进室内），观察取景框：\n\n```\n第 0 帧（户外）：明亮，画面正常\n第 1 帧（刚进室内）：突然暗了，AE 还没反应\n第 2-10 帧：画面越来越亮（AE 在调）\n第 15 帧之后：恢复正常亮度\n```\n\n这个「**渐变变亮**」过程就是 damping 在工作。",
+      "glossary": [
+        { "term": "IIR Filter", "zh": "无限脉冲响应滤波器", "explain": "信号处理里最常见的滤波器，AE damping 是它的简化形式。" },
+        { "term": "Convergence Speed (α)", "zh": "收敛速度参数", "explain": "AE damping 的核心参数，0-1 之间，越大收敛越快但越易振荡。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "α 太大会怎样？", "a": "AE 容易过冲（overshoot），画面亮度会先冲过 target 再回弹，看起来「弹一下」。" },
+          { "q": "α 太小会怎样？", "a": "收敛慢，用户走进室内 1 秒后画面还在变亮，体验差。" },
+          { "q": "α 能动态调吗？", "a": "可以。前面公式提到「自适应 α」就是按偏差量调。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：低通滤波器", "search": "一阶 低通滤波 IIR" }
+        ],
+        "reads": [
+          { "title": "维基百科 · Low-pass filter", "url": "https://en.wikipedia.org/wiki/Low-pass_filter" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Settle 判断：什么时候算「稳定」",
+      "type": "concept",
+      "content": "### settle 的定义\n\nAE 内部有一个布尔标志 `settled`：\n\n- `settled = 1` (true)：AE 已收敛，画面亮度稳定\n- `settled = 0` (false)：AE 还在调整\n\n这个标志非常重要，因为**很多其他模块都等它**：\n\n| 模块 | 为什么等 settle |\n|---|---|\n| **AF（自动对焦）** | AE 不稳时画面亮度变，AF 用的对比度也跟着变，对焦失败 |\n| **AWB（自动白平衡）** | 亮度变化时统计不可靠，AWB 不该决策 |\n| **拍照（snapshot）** | 用户按拍照按钮时，AE 没收敛就拍 → 照片亮度可能错 |\n| **HDR 触发** | 多帧合成必须基于稳定曝光，否则鬼影 |\n\n### settle 怎么判断\n\n两个条件**都满足**才 settle：\n\n```python\nlum_diff = abs(current_luma - safe_target)\nif lum_diff < tolerance and stable_frames >= settle_frames:\n    settled = True\nelse:\n    settled = False\n    stable_frames += 1 if lum_diff < tolerance else 0  # 重置或累加\n```\n\n两个关键参数：\n\n**1. `tolerance`（容差）**：偏差小于多少认为「接近」目标？常见：\n\n```\ntolerance = 5        # 8-bit luma 范围 0-255，差 5 内算稳\ntolerance = 20       # 10-bit luma 范围 0-1023，差 20 内算稳\n```\n\n相当于 **2-5%** 的亮度差。\n\n**2. `settle_frames`（稳定帧数）**：连续多少帧偏差都小于 tolerance？\n\n```\nsettle_frames = 5    # 30fps 下 = 167ms\nsettle_frames = 10   # 333ms\n```\n\n常用 5-10 帧。少于 5 容易误判（偶然落在 target 附近），多于 10 太慢。\n\n### 调试时怎么看 settle\n\n抓 log 时会看到：\n\n```\n[AEC] frame=1234 lux_idx=217 luma=78 target=80 diff=2 stable_n=4 settled=0\n[AEC] frame=1235 lux_idx=217 luma=79 target=80 diff=1 stable_n=5 settled=1   ← 收敛了\n[AEC] frame=1236 lux_idx=217 luma=80 target=80 diff=0 stable_n=6 settled=1\n[AEC] frame=1240 lux_idx=210 luma=72 target=80 diff=8 stable_n=0 settled=0   ← 场景变了，重置\n```\n\n你能从这种 log 直接看出：\n- AE 是否在追目标\n- 是否已经稳定\n- 什么时候被场景变化打断\n\n### 一个常见 bug\n\n用户报「**对焦慢**」（实际是 AE 不稳）：\n\n排查：\n1. 看 AF 启动时是否 settled=1\n2. 如果一直 settled=0，AE 没稳 → AF 不会启动 → 看起来是「对焦慢」\n3. 进一步看为什么 AE 不稳：可能是 tolerance 设太小，或场景太复杂导致 luma 一直波动\n\n这是真实工程 bug。\n\n### 拍照按下时的特殊处理\n\n用户按拍照按钮时 AE 还没 settle 怎么办？两种策略：\n\n**a. 等收敛**：拍照按钮触发后等到 settle=1 才真的拍\n- 优点：画面亮度准\n- 缺点：用户感觉「**按下到出片 1 秒卡顿**」\n\n**b. 强制收敛**：把 α 临时调高到 0.6+，加快收敛\n- 优点：响应快\n- 缺点：画面闪一下\n\n**c. 锁住 AE**：进入拍照模式后立刻冻结当前曝光参数，不再调\n- 优点：用户立刻能拍\n- 缺点：场景变化后画面亮度可能不对\n\n大多数手机用 b + c 混合：进入拍照模式快速收敛 + 按下时锁定。这就是「**预拍**」的内部机制。",
+      "glossary": [
+        { "term": "settled", "zh": "已收敛标志", "explain": "AE 内部布尔变量，标记当前曝光是否稳定。其他模块都等它。" },
+        { "term": "tolerance", "zh": "容差", "explain": "判断「亮度足够接近 target」的阈值，常见 2-5%。" },
+        { "term": "settle_frames", "zh": "稳定帧数", "explain": "连续多少帧达到容差才算 settle。30fps 下 5-10 帧（167-333ms）。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "tolerance 太大会怎样？", "a": "AE 太容易 settle，但目标其实没追准，画面会偏亮或偏暗。" },
+          { "q": "tolerance 太小会怎样？", "a": "AE 总是不 settle，AF 启动不了，对焦慢；用户体验差。" },
+          { "q": "video 模式要 settle 吗？", "a": "要。但 settle 标志不会让录像「停顿」，只是后端模块的一个状态信号。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：相机 对焦慢", "search": "相机 对焦慢 调试" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AE Settle 状态机" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "Antibanding 抗带状深入",
+      "type": "concept",
+      "content": "### Day 5 已经讲过基础\n\nDay 5 我们说过 antibanding 的核心：\n\n> 中国电网 50Hz，灯光以 100Hz 闪烁。如果曝光时间是 50Hz 的非整数倍，画面会有「**横条纹**」。\n> \n> 解决：曝光时间锁定为 1/50, 1/100, 1/200, ...（50Hz 的整数倍）\n\n今天看 AE 算法**实际怎么实现**这个约束。\n\n### 算法层面的两个挑战\n\n**挑战 1**：AE 算出的最佳曝光时间可能是 1/77 秒，但 antibanding 不允许这个时间。**怎么处理**？\n\n答：把 AE 算的曝光时间「**就近吸附**」到 antibanding 允许的离散档位。\n\n```\nAE 算的：1/77 秒\nantibanding 离散档：1/50, 1/100, 1/200\n   ↓ 吸附到最近\n实际用：1/100 秒\n```\n\n但 1/77 → 1/100 比目标曝光少 23%，**画面会偏暗**。\n\n**挑战 2**：曝光时间被压缩了，怎么补回来？\n\n答：用 **gain 补足**。`实际 ratio = 77/100 = 0.77` → 用 1.3x 额外 gain 补足。\n\n```\n曝光时间 = 1/100 秒 (吸附)\nGain 补偿 = 1 / 0.77 ≈ 1.30x\n```\n\nGain 增加 1.3x → 噪点轻微增加（小代价）。换来无 banding（大收益）。\n\n### 完整算法\n\n```python\ndef antibanding_correction(target_exp_us, target_gain, ab_freq=50):\n    period_us = 1_000_000 / (ab_freq * 2)   # 50Hz 灯 → 10000us 周期\n    n = round(target_exp_us / period_us)\n    n = max(n, 1)  # 至少一个周期\n    actual_exp_us = n * period_us\n    \n    # gain 补偿原本曝光时间不足或多余\n    gain_correction = target_exp_us / actual_exp_us\n    actual_gain = target_gain * gain_correction\n    \n    return actual_exp_us, actual_gain\n```\n\n关键点：**曝光时间和 gain 联动调整**，让总曝光量（exp × gain）保持不变。\n\n### 边界 case：极短曝光\n\n如果场景极亮，AE 算的曝光时间是 1/2000 秒，但 antibanding 最低档是 1/200 秒怎么办？\n\n```\ntarget = 1/2000 us = 500us\nab 周期 = 10000us（50Hz）\nn = round(500/10000) = 0\nactual = max(0, 1) × 10000 = 10000us = 1/100 秒\n```\n\n如果用 1/100 秒**画面会暴过曝**。这种情况只能：\n\n**a. 关掉 antibanding**：极强光下可以容忍带状（高亮区不明显）\n\n**b. 降 gain 到 < 1.0**：sensor 一般不允许；ISP Digital Gain < 1 罕见\n\n**c. 用更高 antibanding 频率**：50Hz → 200Hz（电视 / 电脑屏幕）。如果用户在拍屏幕，倒可以\n\n实际工程：旗舰手机会**自动检测当前光源是否有 banding 风险**（看快速直方图变化），有风险才启用 antibanding。\n\n### 60Hz vs 50Hz 怎么选\n\nAndroid 系统设置里有「**抗闪 50Hz / 60Hz / 自动**」。\n\n- **50Hz**：中国、欧洲、亚洲大部分地区\n- **60Hz**：北美、日本部分地区\n- **自动**：根据 SIM 卡 / 系统区域猜，或用算法检测\n\n**算法检测**怎么做？连续拍几帧短曝光（1/120 秒），如果 50Hz 灯下会有明显条纹（每 1/50 秒一条），统计条纹频率就能反推电网频率。Auto Flicker Detection（Week 7 详讲）。\n\n### 滚动快门 vs 全局快门的影响\n\nDay 3 学过，手机用 **滚动快门**（Rolling Shutter）：每行不是同时曝光，而是逐行扫描。这就是为什么 banding 是「**条纹**」而不是「全图忽明忽暗」。\n\n如果是全局快门（Global Shutter，工业相机），banding 是**整帧亮度变化**，更难看但更易调。\n\n### 实战例子\n\n用户报「**晚上室内拍照有横条纹**」：\n\n排查：\n1. 看 antibanding 设置是否启用（有些手机默认是「自动」但检测失败）\n2. 看曝光时间是否吸附到 50Hz 整数倍\n3. 看 light flicker 检测算法的 log\n4. 必要时强制设 50Hz\n\n这是常见暗光问题。",
+      "glossary": [
+        { "term": "Antibanding", "zh": "抗带状", "explain": "防止电网频率（50/60Hz）造成画面横条纹的算法。Day 5 学过基础。" },
+        { "term": "Auto Flicker Detection", "zh": "自动闪烁检测", "explain": "算法判断当前光源是 50Hz 还是 60Hz。Week 7 详讲。" },
+        { "term": "Rolling Shutter", "zh": "滚动快门", "explain": "每行依次曝光的快门方式，是手机 sensor 的常态。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "白天户外要 antibanding 吗？", "a": "不需要。日光不闪烁，banding 不存在。但算法默认开启不影响。" },
+          { "q": "antibanding 让画质变差吗？", "a": "略变差（多用 gain 补曝光），但比 banding 看起来好得多。" },
+          { "q": "为什么 LED 灯也有 banding？", "a": "LED 是直流驱动但电源转换有 100/120Hz 纹波。便宜 LED 纹波重，贵 LED 接近恒流不闪。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：手机拍屏幕 横条纹", "search": "手机 拍屏幕 横条纹 抗闪" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Antibanding 章节" }
+        ]
+      }
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **AE 不能一帧到位**：物理限制 + 防闪烁 + 防误判，必须逐帧靠近\n2. **三个收敛机制**：变化速率限幅 + damping 阻尼（α 一阶滤波）+ settle 判断\n3. **damping 公式**：`exp_smoothed = α × target + (1-α) × prev`，α 默认 0.3，10-20 帧收敛\n4. **settle 判断**：偏差 < tolerance + 连续 N 帧稳定。AF / AWB / 拍照都等 settle\n5. **抗带状深入**：曝光时间吸附到 50Hz 整数倍，gain 补足总曝光量\n\n### 自我检查\n\n1. AE 一帧最多调多少 EV？为什么有这个限制？\n2. damping 公式怎么写？α 太大、太小各有什么后果？\n3. settle 的两个判断条件是什么？\n4. 为什么 AF 要等 AE settle？\n5. 50Hz 抗带状下，AE 算的 1/77 秒会变成什么？gain 怎么补？\n\n### 笔记建议\n\n- 把 damping 公式抄一遍：`exp_smoothed = α × target + (1-α) × prev`\n- 整理 AE 调参 cheat sheet：\n  - `convergence_speed`（α）\n  - `tolerance`\n  - `settle_frames`\n  - `antibanding_freq`\n- 想想拍照按下时的 AE 三策略（等/快收敛/锁定）\n\n### 明天预告\n\nDay 20：Bright Region / Dark Region 测光。这是 PRD 第 19 题预备（怎么调高通曝光表）的关键。我们看 AE 怎么把画面分成「亮区」「暗区」「中间」三块，分别测光决策。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "AEC Convergence + Antibanding" },
+    { "source": "维基百科 · Low-pass filter", "url": "https://en.wikipedia.org/wiki/Low-pass_filter" },
+    { "source": "维基百科 · Rolling shutter", "url": "https://en.wikipedia.org/wiki/Rolling_shutter" }
+  ],
+  "dailyQuizId": "daily-day-19"
+}

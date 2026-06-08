@@ -1,0 +1,61 @@
+{
+  "id": "daily-day-16",
+  "title": "Day 16 日测：曝光表深入",
+  "module": "M3",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "options": [
+        "曝光表里中间那一行",
+        "曝光优先和 Gain 优先两种策略的切换点",
+        "Sensor 的极限曝光时间",
+        "Tuning 工程师的标定原点"
+      ],
+      "answer": "曝光优先和 Gain 优先两种策略的切换点",
+      "explain": "拐点之前 AE 用「拉曝光时间不动 ISO」（曝光优先），之后用「不动曝光时间拉 ISO」（Gain 优先）。",
+      "prompt": "曝光表的「拐点（Knee Point）」是什么意思？"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "options": [
+        "1/2000 秒",
+        "1/30 秒",
+        "1 秒",
+        "1/8 秒"
+      ],
+      "answer": "1/30 秒",
+      "explain": "防手抖原则：手能稳得住的极限约 1/30 秒。OIS 机型可以延长到 1/8 秒。",
+      "prompt": "普通手机（无 OIS）的拐点对应曝光时间一般定在多少？"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "answer": [
+        "4.0",
+        "4"
+      ],
+      "explain": "Day 16 的例子里 gain_index 0-32 共 32 档，每档 1.07x，gain_index 15 ≈ 4.0x。",
+      "prompt": "曝光表里 gain_index = 15 通常对应 sensor 的 analog_gain ≈ ___ x（参考 Day 16 的 sensor gain table 例子）"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "answer": [
+        "多份",
+        "多张",
+        "多个"
+      ],
+      "explain": "HDR sensor 一帧出多个曝光（长 / 短 / 超短），每个曝光对应一份曝光表，需要分别调。",
+      "prompt": "HDR sensor 的曝光表通常有 ___ 份（一份 / 多份）"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "referenceAnswer": "1) 拐点位置（一般 lux 200/对应 1/30 秒，OIS 机型可放到 1/8 秒）—— 决定何时切换曝光/增益策略，关系到防手抖体验；2) 拐点后 ISO 上限（一般 6400-12800）—— 决定暗光画质，越高暗光越亮但噪点越多；3) 拐点处的曝光时间（防手抖前提下尽量长）—— 让 ISO 不要过早介入。",
+      "prompt": "Tuning 工程师调曝光表时关注的 3 个核心参数是什么？为什么？"
+    }
+  ],
+  "scope": "daily"
+}

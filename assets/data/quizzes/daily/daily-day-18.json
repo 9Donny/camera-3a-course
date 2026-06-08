@@ -1,0 +1,60 @@
+{
+  "id": "daily-day-18",
+  "title": "Day 18 日测：Target / Safe Target 三步推导（PRD-Q15）",
+  "module": "M3",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "options": [
+        "ADRC 修正",
+        "luma_target — 按 lux 查表的基础值",
+        "查曝光表",
+        "写 sensor 寄存器"
+      ],
+      "answer": "luma_target — 按 lux 查表的基础值",
+      "explain": "Step 1: luma_target；Step 2: adjusted_target（加 Scene Analyzer 修正）；Step 3: safe_target（减 ADRC 引入的额外亮度）。",
+      "prompt": "PRD 第 15 题：safe_target 三步推导的「Step 1」是什么？"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "options": [
+        "因为 80 = 0xFF / 3.18",
+        "约等于 18% 灰对应 luma 的 70%（实际场景偏暗的工程平衡）",
+        "硬件强制取值",
+        "随便选的"
+      ],
+      "answer": "约等于 18% 灰对应 luma 的 70%（实际场景偏暗的工程平衡）",
+      "explain": "理想 18% 灰经过 Gamma 后约为 119。但实际场景多数偏暗（黑发/阴影），所以 luma_target 设 80 而不是 119，留出亮部余量防过曝。",
+      "prompt": "luma_target 常见的取值是 80（8-bit）。这个数字怎么来的？"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "answer": [
+        "dark_boost_extra",
+        "ADRC 额外亮度",
+        "ADRC 引入的额外亮度"
+      ],
+      "explain": "ADRC 给暗部加 gain 让画面整体变亮。AE 必须把这部分预扣，否则最终过曝。",
+      "prompt": "Step 3 中 safe_target = adjusted_target - ___"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "answer": [
+        "adjusted_target"
+      ],
+      "explain": "ADRC 关 → dark_boost_extra = 0 → safe_target = adjusted_target。",
+      "prompt": "如果 ADRC 关闭了，safe_target 等于 ___"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "referenceAnswer": "Step 1：luma_target —— 按 lux 查表的基础亮度配置（暗光 60、室内 80、强光 90）；Step 2：adjusted_target = luma_target × scene_factor + scene_offset，叠加 face / dark region / bright region / saturation prevention 等 Scene Analyzer 修正后的目标；Step 3：safe_target = adjusted_target − dark_boost_extra，减去 ADRC 引入的额外亮度提升估计后的最终目标。safe_target 用于驱动 AE 调 sensor 曝光，保证 ADRC 处理之后画面亮度恰好达到 adjusted_target，避免整体过曝。",
+      "prompt": "默写 PRD 第 15 题答案：safe_target 三步推导的每一步含义和输入输出。"
+    }
+  ],
+  "scope": "daily"
+}

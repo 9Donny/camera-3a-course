@@ -1,0 +1,63 @@
+{
+  "id": "daily-day-19",
+  "title": "Day 19 日测：AE 收敛与抗带状",
+  "module": "M3",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "options": [
+        "0.5 EV",
+        "2 EV",
+        "6 EV",
+        "无限制"
+      ],
+      "answer": "2 EV",
+      "explain": "工程上 AE 一帧最多调 ~2 EV（曝光 ×2 + ISO ×2 = 4 倍亮度）。物理限制 + 防闪烁 + 防误判都要求逐帧渐变。",
+      "prompt": "AE 一帧最多可以调多少 EV？"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "options": [
+        "收敛越慢",
+        "收敛越快但易振荡",
+        "和 α 大小无关",
+        "目标值变大"
+      ],
+      "answer": "收敛越快但易振荡",
+      "explain": "α 大 = 每帧靠近目标的步子大 = 收敛快但容易过冲；α 小 = 步子小 = 收敛慢但稳。常见 0.3。",
+      "prompt": "AE damping 公式 `exp_smoothed = α × target + (1-α) × prev` 中，α 取值越大，效果是？"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "answer": [
+        "连续 N 帧稳定",
+        "连续多帧稳定",
+        "连续 5 帧稳定",
+        "连续 10 帧稳定",
+        "stable_frames >= settle_frames"
+      ],
+      "explain": "两个条件都要满足：当前偏差小 + 已经稳定连续 N 帧（一般 5-10 帧）。",
+      "prompt": "AE 判断「已收敛」(settled=1) 的两个条件是：偏差 < tolerance（容差）和 ___"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "answer": [
+        "1/100",
+        "1/100s"
+      ],
+      "explain": "50Hz 灯的 antibanding 允许档位是 1/50, 1/100, 1/200。1/77 ≈ 13ms，最近档是 1/100 (10ms)。",
+      "prompt": "中国电网频率 50Hz，AE 算的曝光时间是 1/77 秒，吸附到 antibanding 离散档后会变成 ___ 秒"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "referenceAnswer": "因为 AE 不稳时画面亮度连续变化：1) AF 用画面对比度判断对焦清晰，亮度变化会让对比度也变，AF 算法可能把亮度变化误判成失焦；2) AWB 用 RGB 通道统计判断光源，亮度不稳时统计也不稳，AWB 决策不可靠。所以两者都要等 AE 收敛后画面稳定，再开始自己的工作，避免误判和振荡。",
+      "prompt": "为什么 AF（自动对焦）和 AWB（自动白平衡）都要等 AE settle=1 才启动？"
+    }
+  ],
+  "scope": "daily"
+}

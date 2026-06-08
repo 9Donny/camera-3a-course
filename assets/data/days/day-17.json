@@ -1,0 +1,119 @@
+{
+  "id": "day-17",
+  "week": 3,
+  "module": "M3",
+  "title": "Lux Index 与 Exp Index：场景亮度的内部编码",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "为什么要 lux_index 这个概念",
+      "type": "concept",
+      "content": "### Day 1 的 BV 在哪里\n\nDay 1 我们学过曝光方程：AV + TV = BV + SV = EV，其中 BV = 亮度值，是场景物理亮度的对数表达。\n\n问题：BV 是个**有理数**（可正可负、可有小数）。AE 算法在 ISP 里跑，**整数运算更快**。所以工程上不用 BV，而是它的整数版：**lux_index**。\n\n### 定义\n\n> **lux_index 是一个 0-350 的整数，表示当前场景亮度档位。0 = 极暗，350 = 极亮。**\n\n它和 BV 是线性等价：\n\n```\nlux_index = (BV - BV_dark) × scale  +  offset\n```\n\n常用配置（高通约定俗成）：\n\n| BV | lux_index | 场景 |\n|---|---|---|\n| -3 | 0 | 漆黑（看不见） |\n| 0 | 60 | 月光 |\n| 3 | 120 | 路灯下 |\n| 5 | 160 | 室内昏暗 |\n| 7 | 200 | 室内日常 |\n| 10 | 240 | 多云室外 |\n| 13 | 280 | 阴影户外 |\n| 16 | 350 | 强阳光 |\n\n（具体映射每个公司略有不同，但范围 0-350、整数、单调递增是行业共识）\n\n### 为什么不直接用 lux 单位\n\n物理 lux（勒克斯，光照度单位）也是个连续量，从 0.001（月光）到 100000（烈日）跨 8 个数量级。\n\n用 lux 直接做 AE 算法的中间变量：\n- 范围太大，浮点运算精度问题\n- 进表查找慢（要做对数运算）\n\nlux_index 是 **lux 的对数压缩 + 整数化**，正好把 8 个数量级压缩到 0-350 整数范围。\n\n### lux_index 的物理含义\n\n大体规律：**lux_index 每增加约 60，亮度翻 8 倍（3 EV）**。\n\n所以 lux_index 240 → 280，亮度翻 ~3 倍（多云 → 阴影户外）。lux_index 60 → 120，亮度也翻 ~3 倍（月光 → 路灯）。\n\n这个**对数特性**让 AE 算法更接近人眼感受（人眼对亮度的感知也是对数的，韦伯-费希纳定律）。",
+      "glossary": [
+        { "term": "lux_index", "zh": "勒克斯指数", "explain": "AE 内部使用的整数亮度档位，0-350，对应 BV 或 lux 的对数压缩。" },
+        { "term": "BV", "zh": "亮度值", "explain": "Brightness Value，曝光方程里的场景亮度，Day 1 学过。" },
+        { "term": "lux", "zh": "勒克斯", "explain": "光照度的物理单位，每平方米接收的光通量（lm/m²）。" },
+        { "term": "韦伯-费希纳定律", "zh": "感知对数律", "explain": "人眼对亮度感知和实际亮度成对数关系，这是相机用 EV / lux_index 的根本原因。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么 lux_index 上限是 350 不是别的？", "a": "高通定义。覆盖了从月光到烈日全部 23+ EV 范围。给整数运算预留余量。" },
+          { "q": "lux_index 是 sensor 测出来的吗？", "a": "不是。sensor 直接输出像素值。lux_index 是 AE 算法**算**出来的（下一节）。" },
+          { "q": "BV 和 lux 谁更基础？", "a": "lux 是物理单位（光照度）。BV = log2(lux/2.5)，是对数化后给摄影师用的。lux_index = BV 的整数化。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：摄影 EV 曝光值", "search": "摄影 EV 曝光值 lux 关系" }
+        ],
+        "reads": [
+          { "title": "维基百科 · Light meter", "url": "https://en.wikipedia.org/wiki/Light_meter" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "PRD 第 5 题：lux_index 怎么算",
+      "type": "concept",
+      "content": "### PRD 第 5 题\n\n> 为什么需要 lux index ？lux index 是怎么计算出来的？\n\n第一问昨天和上一节都答过了：**整数化 + 对数压缩，方便 AE 算法**。\n\n第二问是今天的核心：**lux_index 怎么算**。\n\n### 直觉版公式\n\n基本想法：sensor 实际看到的亮度（像素值）是 **环境亮度 × 曝光参数** 的结果。我们已经知道曝光参数（AE 上一帧写的），sensor 输出的亮度也已知，**反推**就能得出环境亮度：\n\n```\n像素亮度 = 环境亮度 × exp_time × gain  + 暗电流\n   ↓ 反推\n环境亮度 ≈ 像素亮度 / (exp_time × gain)\n   ↓ 取对数 + 整数化\nlux_index ≈ A × log2(像素亮度) - log2(exp_time × gain) + B\n```\n\n（A、B 是常数，由 sensor 标定决定）\n\n### 真实公式（高通版本）\n\n看 PRD 妹妹笔记里的公式（PRD 第 5 题原文）：\n\n```\nlux_index = stats_target_lux_index\n          + dec_const_aec_log2 × log2(real_gain × exp_time / target_real_gain × target_exp_time)\n          + dec_const_lum_log2  × log2(target_lum / current_lum)\n```\n\n这是工程上的**完整版**，三个修正项：\n\n1. **基准**：`stats_target_lux_index` —— 当前曝光达到目标时假定的 lux 档位\n2. **曝光修正**：基于「**实际曝光参数 vs 目标曝光参数**」的偏差\n3. **亮度修正**：基于「**实际平均亮度 vs 目标亮度**」的偏差\n\n### 拆开理解\n\n**项 1（基准）**：你设定 luma_target = 80，当 64×48 平均亮度真的等于 80 时，lux_index 就该是某个「锚定档位」（比如 240）。\n\n**项 2（曝光偏差）**：实际曝光 = 1/30 + ISO 400，目标曝光 = 1/60 + ISO 200。说明实际**比目标多吸了 4 倍光**（曝光时间 ×2 + ISO ×2）→ 说明环境**比预想的暗** → lux_index 应该低 → 这一项是负的。\n\n**项 3（亮度偏差）**：曝光参数都对了，但平均亮度还是不到目标的 80（只有 60）→ 说明环境**还是比预想的暗** → lux_index 再降 → 这一项也是负的。\n\n两个修正合起来，AE 知道当前环境到底有多暗。\n\n### 一个数值例子\n\n场景：用户从户外（lux_index 240）走进室内（lux_index 200）。\n\n**第 N 帧**（刚进门）：\n- AE 还在用户外的曝光（1/500s + ISO 100）\n- 但室内更暗，平均亮度从 80（target）跌到 30\n- 项 3 修正：log2(80/30) ≈ 1.4，乘以系数 dec_const_lum_log2（比如 -20） → -28\n- lux_index = 240（基准）+ 0（项 2，曝光参数还没变）- 28 ≈ **212**\n\n**第 N+1 帧**：AE 看到 lux_index 212 → 查曝光表得到新的 exp_time + gain → 写 sensor。\n\n**第 N+10 帧**：曝光时间已经拉到 1/100s，平均亮度回到 80\n- 项 3 接近 0，项 2 变成主要项\n- log2((1/100×ISO100) / (1/500×ISO100)) = log2(5) ≈ 2.3，乘 dec_const_aec_log2（比如 -10） → -23\n- lux_index ≈ 240 - 23 = **217**\n\n收敛在 lux_index 217 左右，对应室内亮度（合理）。\n\n### 三个常数怎么定\n\n```\nstats_target_lux_index = 240   # 标定时定，也叫「校准 lux」\ndec_const_aec_log2 = -10        # 经验值，控制曝光偏差权重\ndec_const_lum_log2 = -20        # 经验值，控制亮度偏差权重（一般比项 2 大）\n```\n\nTuning 工程师**几乎不调这些常数**（动了影响整体曝光风格），只在 sensor 换型时**重新标定 stats_target_lux_index**。",
+      "glossary": [
+        { "term": "stats_target_lux_index", "zh": "统计目标 lux 索引", "explain": "lux_index 公式的基准锚点，sensor 标定时确定。" },
+        { "term": "real_gain", "zh": "总实际增益", "explain": "Analog × Digital × ISP 总 gain。曝光表里有这个字段。" },
+        { "term": "current_lum", "zh": "当前亮度", "explain": "64×48 块加权平均后的画面亮度。Day 15 算的。" },
+        { "term": "target_lum", "zh": "目标亮度", "explain": "AE 想要画面达到的亮度（safe_target，Day 18 详讲）。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "log2 在 ISP 里怎么算？", "a": "查表（pre-computed log2 lookup）。ISP 没有专门的浮点运算单元，用查表+整数线性插值。" },
+          { "q": "为什么项 2 和项 3 系数不同？", "a": "经验：亮度偏差是「直接观测」的、可信度高，权重大；曝光偏差是间接的（依赖上一帧参数正确），权重小。" },
+          { "q": "lux_index 算的有误差怎么办？", "a": "AE 是反馈环，下一帧再修正。误差不会累积。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：自动曝光 lux", "search": "自动曝光 算法 lux 估计" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "page": 76, "section": "6.3 Lux Index" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Exp Index：从 lux_index 到 sensor 寄存器",
+      "type": "concept",
+      "content": "### lux_index 之后的下一步\n\nDay 16 我们已经预演过：**lux_index → 查曝光表 → 拿到 exp_time + gain → 写 sensor**。\n\n但中间还有一个变量叫 **exp_index**（曝光指数），它是「**曝光表里的行号**」，专门用来索引曝光表。\n\n```\nlux_index = 217（场景亮度）\n   ↓ 查 lux_to_exp 映射表\nexp_index = 12（曝光表第 12 行）\n   ↓ 查曝光表第 12 行\nexposure_entry: { linecount: 1500, gain_index: 15, ... }\n   ↓ 写 sensor\nCoarse Time = 1500, Analog Gain = 4.0x\n```\n\n### lux_index vs exp_index 区别\n\n两个概念**很容易搞混**，PRD 第 5 题之后通常会接着问区别：\n\n| | lux_index | exp_index |\n|---|---|---|\n| 含义 | 场景**亮度**档位 | 曝光表**行号** |\n| 范围 | 0-350 | 0-30（看曝光表行数）|\n| 谁产出 | AE 算法（基于 64×48 + 曝光参数）| 查 lux→exp 映射表 |\n| 谁消费 | 后续所有 ISP 模块（safe_target / dark boost / ...）| 只用来查曝光表 |\n| 物理意义 | 当前环境多亮 | 当前应该用哪档曝光配置 |\n\n### lux → exp 映射表\n\n这张表也叫「**Auto Exposure Table**」或「**aec_lux_to_exp_table**」，是 lux_index 到曝光表行号的桥梁：\n\n```xml\n<lux_to_exp_entry>\n  <lux_index>240</lux_index>\n  <exp_index>0</exp_index>      <!-- lux 240 对应曝光表第 0 行（最亮档）-->\n</lux_to_exp_entry>\n<lux_to_exp_entry>\n  <lux_index>200</lux_index>\n  <exp_index>5</exp_index>\n</lux_to_exp_entry>\n<lux_to_exp_entry>\n  <lux_index>120</lux_index>\n  <exp_index>15</exp_index>     <!-- 拐点附近 -->\n</lux_to_exp_entry>\n<lux_to_exp_entry>\n  <lux_index>0</lux_index>\n  <exp_index>30</exp_index>     <!-- 最暗档 -->\n</lux_to_exp_entry>\n```\n\nlux_index 减少（场景变暗）→ exp_index 增加（往曝光表后面走）→ 拿到更长曝光 / 更高 ISO。\n\n### 调试时你会看到的字段\n\n抓 log 时会看到：\n\n```\n[AEC] frame=1234 lux_idx=217 exp_idx=8 luma=78 target=80 settled=1\n```\n\n这一行包含：\n- 帧号 1234\n- 场景 lux_index = 217\n- 当前 exp_index = 8（曝光表第 8 行）\n- 当前画面平均亮度 = 78\n- 目标亮度 = 80\n- AE 已收敛（settled=1）\n\n你妹妹笔记里如果出现这种 log，你应该都能读懂了。\n\n### 用一个面试题串起来\n\n问：「**AE 一帧大概做哪些计算？**」\n\n答（按 PRD-Q1 完整流程）：\n\n> 1. 收 64×48 块统计 → 算 final_luma\n> 2. 用项 2 + 项 3 修正项算 lux_index（Day 17）\n> 3. 用 lux_to_exp 表把 lux_index 转成 exp_index\n> 4. 用 exp_index 查曝光表，拿到 linecount + gain_index + digital_gain\n> 5. gain_index 通过 sensor gain table 转成 analog_gain（Day 16）\n> 6. 写 sensor 寄存器（Coarse Time + Analog Gain）\n> 7. 同时把 lux_index 和 safe_target 提供给 ISP（Tone Mapping / Dark Boost / ADRC 等）\n\n这是完整一帧 AE 决策的内部链路。",
+      "glossary": [
+        { "term": "exp_index", "zh": "曝光指数", "explain": "曝光表里的行号，是 AE 决策的最终选择。" },
+        { "term": "aec_lux_to_exp_table", "zh": "lux 到 exp 映射表", "explain": "把 lux_index 转成 exp_index 的桥梁表。" },
+        { "term": "settled", "zh": "已收敛", "explain": "AE 算法判断当前曝光稳定（亮度接近 target，连续多帧不变化），后续模块（如对焦、AWB）才能稳定工作。Day 19 详讲。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "lux→exp 表能不能不要？", "a": "不能。曝光表只能离散查行；lux_index 是连续值。中间必须有桥梁。" },
+          { "q": "为什么不直接做 lux_index → 寄存器？", "a": "可以，但每改 sensor 都要改这套映射。分成两层（lux→exp + exp→寄存器）后，第二层是 sensor 特性，第一层是 tuning 风格，分工清晰。" },
+          { "q": "lux→exp 的曲线是线性的吗？", "a": "不是。一般中间陡两头平。中等亮度变化要快速反应，极端值要稳定。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：自动曝光 收敛", "search": "自动曝光 收敛 算法" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "page": 76, "section": "Lux/Exp Index 章节" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "lux_index 在 ISP 全链路中的角色",
+      "type": "concept",
+      "content": "### lux_index 是 3A 的「全局变量」\n\n你以为 lux_index 只是 AE 内部用？错。它**几乎被 ISP 所有后续模块依赖**：\n\n| 模块 | 怎么用 lux_index | 为什么 |\n|---|---|---|\n| **Demosaic** | 暗光下用更激进的去马赛克算法 | 暗光信噪比低，简单 demosaic 出花纹 |\n| **降噪** | lux_index 越小，降噪越强 | 暗光噪点多 |\n| **锐化** | 暗光降低锐化强度 | 锐化会放大噪点 |\n| **Gamma** | 不同 lux 用不同 Gamma 曲线 | 暗光要更大 Gamma 提暗部 |\n| **LTM/GTM** | safe_target 由 lux_index 决定 | Day 12 学过 |\n| **Dark Boost** | dark gain 公式直接含 lux | Day 12 PRD-Q16 |\n| **CCM** | 不同 lux 选不同色彩矩阵 | 暗光下 CCM 要更保守（避免色噪）|\n| **AWB** | lux_index 影响光源判断置信度 | 暗光 AWB 不可靠，要更稳重 |\n| **AF** | 暗光切换长曝光对焦 | |\n| **Flash** | lux_index < 阈值才触发闪光 | |\n\n所以 lux_index 是「**ISP 调教的全局开关**」，几乎每个模块的参数都按 lux_index 分段配置。\n\n### Tuning 工程师常做的「按 lux 分段调」\n\nChromatix 配置里大量这种结构：\n\n```xml\n<noise_reduction_strength_table>\n  <entry lux=\"50\" strength=\"95\"/>     <!-- 极暗：最强降噪 -->\n  <entry lux=\"100\" strength=\"80\"/>\n  <entry lux=\"150\" strength=\"60\"/>\n  <entry lux=\"200\" strength=\"40\"/>\n  <entry lux=\"240\" strength=\"20\"/>     <!-- 室外：弱降噪 -->\n  <entry lux=\"300\" strength=\"10\"/>\n</noise_reduction_strength_table>\n```\n\n你后续看到任何「按 lux 分段」的表，都是这种思路。**lux_index 是 ISP 调教的「时间轴」**。\n\n### 你妹妹遇到的「夜景偏黄」可能怎么回事\n\n实际工程问题：用户报「**夜景拍人脸偏黄**」（PRD-Q21）。\n\n排查思路（用 lux_index 视角）：\n\n1. 看抓的 log，lux_index 多少？比如 lux_index=80（很暗）\n2. 这个 lux 对应的 CCM 是什么？比如 CCM 是「暗光下偏暖」\n3. 这个 lux 对应的 AWB 增益怎么调的？\n4. Face ROI 加权后总曝光是不是过曝（过曝会让肤色失真偏黄）\n\n你能想清楚 lux_index 80 状态下整套 ISP 的配置，就能定位问题。\n\n### lux_index 的边界值\n\n两个特别要注意：\n\n**lux_index 极低（< 30）**：极暗。AE 已经走到曝光表最末，无法再增加曝光。这时候要「**low light gain**」（数字增益硬补）。画面噪点重，是手机暗光性能的极限。\n\n**lux_index 极高（> 320）**：强光。AE 已经把曝光表第 0 行（最短曝光）顶住了，但场景还是过曝。这时候只能「**降低 gain 到 < 1.0**」（少见）或「**激进 ADRC**」压亮部。\n\nTuning 工程师在这两个边界要做特别配置。",
+      "glossary": [
+        { "term": "Noise Reduction Strength Table", "zh": "降噪强度表", "explain": "按 lux 分段配置的降噪强度，暗光强降噪、亮光弱降噪。" },
+        { "term": "Low Light Gain", "zh": "低光增益", "explain": "lux_index 极低时 AE 仍要加亮的额外数字增益，损失画质换可见度。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么 lux_index 影响 AWB？", "a": "暗光下统计噪点大，光源判断不稳；AWB 会更保守，倾向用历史值或前一帧。" },
+          { "q": "lux_index 跳变时怎么避免画面闪烁？", "a": "AE 收敛策略 + 各模块的「时域平滑」：参数变化要在多帧内渐变。Day 19 学。" },
+          { "q": "lux_index 是每帧都算吗？", "a": "是。每帧重算，但平滑后才被使用。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：手机夜景模式", "search": "手机夜景模式 原理 多帧合成" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "ISP 各模块的 lux 分段配置（散见各章节）" }
+        ]
+      }
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **lux_index 是什么**：0-350 整数，BV 的整数化对数压缩\n2. **PRD 第 5 题答案**：lux_index 公式 = 基准 + log2(曝光偏差) + log2(亮度偏差)，三项加权和\n3. **lux_index vs exp_index**：前者是场景亮度，后者是曝光表行号，两者通过 lux→exp 映射桥接\n4. **lux_index 是 ISP 全局变量**：降噪、CCM、Gamma、LTM、AWB、AF 都按 lux 分段调\n\n### 自我检查\n\n1. lux_index 的物理含义是什么？范围多少？为什么不直接用 lux？\n2. 默写 lux_index 公式的三项（基准 + 两个修正项）。\n3. 为什么需要 exp_index？只用 lux_index 不行吗？\n4. lux_index 在 ISP Pipeline 里被多少模块用？\n5. 如果用户报「室内拍照偏暗」，你怎么用 lux_index 视角排查？\n\n### 笔记建议\n\n- 把 lux_index ↔ BV ↔ lux 的关系画一张表\n- 默写 PRD-Q5 的公式（项 1 + 项 2 + 项 3）\n- 把 lux_index 影响的 ISP 模块列出来（至少 5 个）\n\n### 明天预告\n\nDay 18：Target / Safe Target 推导。这是 PRD 第 15 题。我们看 AE 的「目标亮度」是怎么从 luma_target 一步步加 ADRC、Bright/Dark Region 修正得到 safe_target 的，三步推导。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "page": 76, "section": "6.3 Lux Index" },
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "ISP 各模块按 lux 分段配置散见各章节" },
+    { "source": "维基百科 · Light meter", "url": "https://en.wikipedia.org/wiki/Light_meter" }
+  ],
+  "dailyQuizId": "daily-day-17"
+}

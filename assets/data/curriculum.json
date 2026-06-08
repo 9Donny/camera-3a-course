@@ -71,6 +71,13 @@
     { "id": "day-11", "week": 2, "module": "M2", "title": "Gamma 与 Tone Mapping：决定画面对比度的关键", "goal": "懂 γ=2.2 + GTM/LTM 区别 + 答 PRD 第 14 题（Gamma 优先）" },
     { "id": "day-12", "week": 2, "module": "M2", "title": "LTM / GTM / ADRC：现代 HDR 调教的核心", "goal": "默写 LTM 4 步 + TMC 作用 + Dark Boost/ADRC gain 推导（PRD-Q9/13/16）" },
     { "id": "day-13", "week": 2, "module": "M2", "title": "降噪、锐化与影响对比度的模块", "goal": "懂降噪 vs 细节取舍 + USM 锐化 + 答 PRD 第 7 题" },
-    { "id": "day-14", "week": 2, "module": "M2", "title": "Week 2 总结：ISP Pipeline 全景图", "goal": "完整画出 22 模块流水线 + 周考 + 进入 Week 3" }
+    { "id": "day-14", "week": 2, "module": "M2", "title": "Week 2 总结：ISP Pipeline 全景图", "goal": "完整画出 22 模块流水线 + 周考 + 进入 Week 3" },
+    { "id": "day-15", "week": 3, "module": "M3", "title": "AE 算法总览：64×48 数据块与中心测光", "goal": "答出 PRD 第 1 题（流程）+ 第 17 题（数据块） + 看懂 AE 反馈环" },
+    { "id": "day-16", "week": 3, "module": "M3", "title": "曝光表深入：拐点 + HDR sensor 多曝光表", "goal": "看懂曝光表 XML + 拐点 3 个调教参数 + HDR 多曝光配置" },
+    { "id": "day-17", "week": 3, "module": "M3", "title": "Lux Index 与 Exp Index：场景亮度的内部编码", "goal": "默写 PRD 第 5 题 lux_index 公式 + 区分 lux/exp_index" },
+    { "id": "day-18", "week": 3, "module": "M3", "title": "Target 与 Safe Target：AE 目标亮度三步推导", "goal": "默写 PRD 第 15 题 safe_target 三步 + 4 个 target 关系" },
+    { "id": "day-19", "week": 3, "module": "M3", "title": "AE 收敛逻辑与抗带状深入", "goal": "理解 damping + settle 机制 + antibanding 实现" },
+    { "id": "day-20", "week": 3, "module": "M3", "title": "Bright/Dark Region 测光（PRD-Q19）", "goal": "答出 PRD 第 19 题展开版 + ROI 加权机制" },
+    { "id": "day-21", "week": 3, "module": "M3", "title": "Week 3 总结：AE 完整地图 + 面试题串讲", "goal": "完整画 AE 数据流图 + 5 道 PRD 题答案 + 周考" }
   ]
 }

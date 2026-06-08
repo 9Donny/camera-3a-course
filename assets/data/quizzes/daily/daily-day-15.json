@@ -1,0 +1,60 @@
+{
+  "id": "daily-day-15",
+  "title": "Day 15 日测：AE 总览 + 64×48 数据块",
+  "module": "M3",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "options": [
+        "32×24 = 768",
+        "64×48 = 3072",
+        "128×96 = 12288",
+        "由 Tuning 工程师自定义"
+      ],
+      "answer": "64×48 = 3072",
+      "explain": "PRD 第 17 题的标准答案：64×48 = 3072 块。这是高通 ISP 的硬件设计，平衡了精度和计算成本。",
+      "prompt": "高通 ISP 的 Bayer 域统计模块把图像分成多少个数据块？"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "options": [
+        "1 次",
+        "10 次",
+        "30 次",
+        "1000 次"
+      ],
+      "answer": "30 次",
+      "explain": "30fps 视频每秒 30 帧，AE 每帧决策一次，所以一秒 30 次。每次循环约 33ms。",
+      "prompt": "AE 算法的反馈循环大致每秒运行多少次（30fps 视频）？"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "answer": [
+        "中心测光"
+      ],
+      "explain": "中心测光（Center-weighted Metering）+ Touch ROI / Face ROI 加权。手机大多数厂商默认。",
+      "prompt": "PRD 第 17 题：高通 AE 默认采用的测光模式是 ___"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "answer": [
+        "Analog Gain",
+        "analog gain",
+        "模拟增益"
+      ],
+      "explain": "曝光时间和模拟增益是 AE 写到 sensor 的两个核心寄存器，决定了实际曝光强度。",
+      "prompt": "AE 的输出最终写到 sensor 的两个核心寄存器是 Coarse Integration Time（曝光行数）和 ___"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "referenceAnswer": "1) 亮度获取：经过 OB/LSC 后图像分成 64×48 网格，每块统计亮度，AE 加权得到 final_luma；2) 计算 Target：用 luma_target 加 Scene Analyzer 修正得到 adjusted_target，再减 ADRC 修正得到 safe_target；3) 曝光调节：算 lux_index → 查 lux_to_exp 表 → 查曝光表 → 写 sensor 的 Coarse Time + Analog Gain，下一帧生效。",
+      "prompt": "用 3 句话简述 AE 算法的完整流程（PRD 第 1 题）。"
+    }
+  ],
+  "scope": "daily"
+}

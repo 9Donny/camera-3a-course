@@ -1,0 +1,118 @@
+{
+  "id": "day-16",
+  "week": 3,
+  "module": "M3",
+  "title": "曝光表深入：从 Day 5 到工程参数",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Day 5 复习 + 今天进入工程细节",
+      "type": "concept",
+      "content": "### Day 5 我们说过曝光表\n\n回到 Day 5：曝光表是 AE 的查找表，给定一个 lux_index（场景亮度）输出曝光时间 + ISO 配对。我们看过这张表的「策略」：\n\n```\nLux 14 → 1/2000s + ISO 100\nLux 12 → 1/500s  + ISO 100\nLux 10 → 1/125s  + ISO 100\nLux  8 → 1/30s   + ISO 100\nLux  6 → 1/30s   + ISO 400  ← 拐点\nLux  4 → 1/30s   + ISO 1600\nLux  2 → 1/15s   + ISO 3200\n```\n\n今天我们看**真实的高通曝光表**长什么样、Tuning 工程师怎么调它、和 sensor 寄存器具体怎么映射。\n\n### 真实曝光表的格式\n\nChromatix 里曝光表是一个 XML 配置，每行有这些字段：\n\n```xml\n<exposure_entry>\n  <lux_index>240</lux_index>\n  <exposure_time>20000</exposure_time>     <!-- 单位 us，20ms = 1/50s -->\n  <real_gain>2.5</real_gain>                <!-- 总 gain (sensor + isp) -->\n  <linecount>1500</linecount>               <!-- coarse integration time 行数 -->\n  <gain_index>15</gain_index>               <!-- analog gain 档位 -->\n  <digital_gain>1.0</digital_gain>          <!-- 一般为 1，超出 sensor 上限才>1 -->\n  <hdr_indoor_detection_off_ratio>1.0</hdr_indoor_detection_off_ratio>\n</exposure_entry>\n```\n\n一张完整曝光表通常有 **20-50 行**，覆盖 lux_index 从 0（极暗）到 350（极亮）的所有档位。\n\n### 三层映射\n\n你看到的曝光表是「**lux_index → 实际效果**」的映射，但实际上要经过三层：\n\n```\n第 1 层：用户拍照场景\n    亮度 BV ≈ 8 (室内)\n           ↓\n第 2 层：AE 算的 lux_index = 240（编码后的 BV）\n           ↓\n第 3 层：曝光表查表\n    lux_index 240 → exp_time 20000us + real_gain 2.5\n           ↓\n第 4 层：写到 sensor 寄存器\n    Coarse Integration Time = 1500 行\n    Analog Gain = 4.0x（通过 gain_index）\n    Digital Gain = 1.0\n```\n\n这中间的转换有几个**调教工程师必须懂的关键点**。",
+      "glossary": [
+        { "term": "Exposure Table", "zh": "曝光表", "explain": "AE 算法的核心查找表，把 lux_index 映射到 exp_time + gain。" },
+        { "term": "linecount", "zh": "曝光行数", "explain": "曝光表里的字段，等价于 Coarse Integration Time。Day 5 学过。" },
+        { "term": "gain_index", "zh": "增益档位索引", "explain": "曝光表里的 sensor analog gain 档位号，通过另一张表映射到具体倍数。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么不直接用 EV 而要 lux_index？", "a": "lux_index 是 0-350 的整数，方便查表；EV 是有正负的对数，不便。两者是线性等价关系。Day 17 详讲。" },
+          { "q": "曝光表行数有什么讲究？", "a": "20-30 行就够（每个 lux 跨度 10）。太少粒度粗，太多冗余。" },
+          { "q": "exposure_time 和 linecount 矛盾时听谁的？", "a": "linecount 优先（因为是 sensor 寄存器实际值）。exposure_time 字段更多是「人类可读」用途。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：相机 ISO 曝光时间 取舍", "search": "相机 ISO 曝光时间 关系" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "page": 15, "section": "3.1 调试曝光表" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "拐点（Knee Point）：曝光表的灵魂",
+      "type": "concept",
+      "content": "### 拐点是什么\n\nDay 5 我们说曝光表里有一个「拐点」 —— 在拐点之前 AE 是「曝光优先」（拉曝光时间不动 ISO），之后是「Gain 优先」（不动曝光时间拉 ISO）。\n\n拐点位置 = 曝光表的核心调教参数。\n\n### 为什么要有拐点\n\n两个选择都不能极端：\n\n**全程曝光优先**（一直拉曝光不拉 ISO）：\n- 暗光下曝光时间会到 1 秒甚至更长\n- 手抖糊片必然\n\n**全程 Gain 优先**（一直加 ISO 不加曝光）：\n- 噪点爆炸\n- 暗光下满屏雪花\n\n所以**两段策略各走一段，中间一个切换点（拐点）**。\n\n### 拐点位置怎么定\n\n两个考量：\n\n**1. 防手抖原则**：曝光时间不能超过「**手能稳得住**」的极限\n\n经验值：\n- 普通手机：1/30 秒（约 33 ms）\n- 带 OIS 光学防抖：1/8 秒（约 125 ms）\n- 带 EIS 电子防抖：1/15 秒\n\n所以**拐点对应的曝光时间通常是 1/30 秒**。Lux 表里对应 lux_index ≈ 200 左右（具体看 sensor 标定）。\n\n**2. 噪点容忍度**：拐点后开始拉 ISO，**ISO 上限**决定多暗的场景能拍\n\n常见上限：\n- iPhone：ISO 6400 左右\n- 旗舰安卓：ISO 12800-25600\n- 中端手机：ISO 3200-6400\n\nISO 越高 → 暗光成片越亮但噪点重 → **画质风格的取舍点**\n\n### 调教里的两个关键参数\n\nChromatix 曝光表里有两个最重要的调教维度：\n\n```xml\n<knee_point_lux>200</knee_point_lux>            <!-- 拐点位置 -->\n<max_iso_above_knee>12800</max_iso_above_knee>  <!-- 拐点后 ISO 上限 -->\n<min_exp_at_knee>33000</min_exp_at_knee>        <!-- 拐点处曝光时间 (us) -->\n```\n\n面试时你被问「你怎么调曝光表」，标准答法：\n\n> 调三个核心：1) 拐点位置（一般 lux 200 左右，对应 1/30 秒）；2) 拐点后 ISO 上限（决定暗光画质上限和噪点容忍）；3) 拐点处的曝光时间（防手抖前提下尽量长）。\n\n### Tuning 工程师的工作流\n\n```\n1. 在标准光源箱拍标准灰板，从亮到暗扫一遍\n2. 在每个 lux_index 测「画面亮度」和「噪点感」\n3. 调整曝光表行：让亮度收敛到目标 + 噪点可接受\n4. 重点关注**拐点附近**的过渡：是否平滑？有没有跳变？\n5. 真实场景验证（夜景、室内、户外）\n```\n\n### 一个真实例子\n\n用户报「**拍夜景时画面突然忽亮忽暗**」。\n\n排查：\n\n1. AE 在拐点附近震荡 → lux_index 在 200 上下跳\n2. 拐点附近的两行曝光配置差距过大 → 跳变明显\n3. 调：让拐点附近的两行**过渡更平滑**（曝光时间不要从 1/30 跳到 1/15，中间加个 1/22）\n\n这种调整叫「曝光表平滑化」。",
+      "glossary": [
+        { "term": "Knee Point", "zh": "拐点", "explain": "曝光表里从「曝光优先」切到「Gain 优先」的切换点。" },
+        { "term": "OIS", "zh": "光学防抖", "explain": "Optical Image Stabilization，镜头物理移动补偿手抖，让长曝光不糊。" },
+        { "term": "EIS", "zh": "电子防抖", "explain": "Electronic Image Stabilization，算法补偿手抖。多帧合成场景常用。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "拐点定得太低会怎样？", "a": "拐点过早（如 lux 250 就开始加 ISO）→ 中等亮度场景就开始噪点变多。亮度足够时不应该上 ISO。" },
+          { "q": "拐点定得太高会怎样？", "a": "拐点过晚（如 lux 100 才切换）→ 中等暗光场景曝光时间到了 1/15 甚至 1/8 → 手持必糊。" },
+          { "q": "OIS 怎么影响曝光表？", "a": "有 OIS 的手机可以把拐点定在 1/8 秒（更长曝光），ISO 上限相应可降，画质好。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：手机 OIS 防抖", "search": "手机 OIS 光学防抖 原理" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "page": 15, "section": "3.1 调试曝光表（拐点部分）" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "HDR sensor 的多曝光表",
+      "type": "concept",
+      "content": "### 普通 sensor vs HDR sensor\n\n之前我们说的曝光表是**普通 sensor 的单曝光表**：每帧一个曝光时间 + 一个 ISO。\n\n但现代旗舰用 **HDR sensor**（如索尼 IMX989、IMX800 系列），它能在**一帧内同时输出多种曝光**：\n\n- **长曝光**（拍暗部细节）\n- **短曝光**（拍亮部不过曝）\n- **超短曝光**（拍极强光）\n\n这种 sensor 配的曝光表是 **多份**：\n\n```\nlux_index = 240\n   ↓\n├─ Long Exposure 表 → linecount = 3000, gain = 4x\n├─ Short Exposure 表 → linecount = 500, gain = 2x\n└─ Super Short 表 → linecount = 100, gain = 1x\n```\n\nISP 在 BPS 段把这三帧**合成一帧**（HDR Multi-frame Merge），动态范围比单曝光大 2-4 EV。\n\n### 三种 HDR sensor 模式\n\n| 模式 | 缩写 | 怎么实现 |\n|---|---|---|\n| **Staggered HDR** | SHDR | 同一 sensor，不同行用不同曝光时间（DOL 数字行交错） |\n| **Multi-frame HDR** | MFHDR | 连续拍多帧，每帧不同曝光（最常见，普通 sensor 也能做） |\n| **3-EXP HDR** | — | 一帧出 3 个曝光（长/中/短），HDR sensor 硬件支持 |\n\nWeek 4 / Week 7 我们会详细讲这些。今天先记住：\n\n> **HDR sensor 的曝光表 = 多份**（每个曝光强度一份）。\n\n### Tuning 工程师的多表调教\n\n你将来做高端机调教，遇到的曝光表配置可能是：\n\n```\n/sensor/imx800/\n├── exposure_table_normal.xml     # 普通模式\n├── exposure_table_hdr_long.xml   # HDR 长曝光\n├── exposure_table_hdr_short.xml  # HDR 短曝光\n└── exposure_table_video_60fps.xml # 高帧率视频\n```\n\n每张表都要单独调拐点、ISO 上限。**至少调 3-4 倍工作量**。\n\n### 多曝光合成的物理原理\n\n用一张图说：\n\n```\n场景动态范围（14 EV）：\n   黑     暗      中亮     亮      高光     白\n   |------|--------|--------|--------|------|\n          ↑                          ↑\n          |                          |\n          短曝光 sensor 能记录这边    长曝光 sensor 能记录那边\n          \n     合成后：用长曝光的暗部 + 用短曝光的亮部 → 14 EV 全保\n```\n\nHDR sensor 通过这种「分工」突破单 sensor 的动态范围限制。\n\n### 妹妹笔记里的 «3-EXP HDR»\n\nPRD 你贴的妹妹笔记里有 「3-EXP HDR」相关内容。它就是这种 HDR 模式：一帧产 3 个曝光值。\n\n这是 **Week 7 的 Day 47-48** 详细学的内容，今天先**混个脸熟**：\n\n- 听到「3-EXP HDR」 = 3 倍曝光 sensor\n- 听到「MFHDR / SHDR」 = 多帧 / 交错 HDR\n- 这些都对应**多份曝光表**",
+      "glossary": [
+        { "term": "HDR Sensor", "zh": "高动态范围传感器", "explain": "能在一帧内输出多种曝光的 sensor，如索尼 IMX 系列的 DOL 模式。" },
+        { "term": "SHDR", "zh": "Staggered HDR", "explain": "交错 HDR，同一 sensor 不同行用不同曝光，硬件原生支持。" },
+        { "term": "MFHDR", "zh": "多帧 HDR", "explain": "Multi-frame HDR，连续拍多帧不同曝光合成。" },
+        { "term": "3-EXP HDR", "zh": "三曝光 HDR", "explain": "一帧出长/中/短三个曝光，HDR sensor 硬件特性。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么需要 HDR sensor 而不是软件 HDR？", "a": "软件 MFHDR 需要拍多帧，运动场景容易鬼影。HDR sensor 一帧搞定，无鬼影。" },
+          { "q": "HDR sensor 缺点？", "a": "贵、读出更慢、有时空间分辨率减半。" },
+          { "q": "Tuning 怎么决定用哪种 HDR？", "a": "看 sensor 规格（是否支持 SHDR/3-EXP）+ 用户场景需求（运动 vs 静态）。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：HDR sensor IMX800", "search": "HDR sensor IMX 工作原理" }
+        ],
+        "reads": [
+          { "title": "高通 3A 10 Deep Dive", "page": 278, "section": "3-Exp HDR Snapshot 章节" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "曝光表和 sensor 寄存器的精确映射",
+      "type": "concept",
+      "content": "### 我们已经知道的链路\n\nAE 算 exp_index → 查曝光表 → 拿到 linecount + gain_index → 写 sensor 寄存器 → 下一帧生效。\n\n今天补全 **gain_index 怎么转成具体的 Analog Gain 倍数**这一步。\n\n### Analog Gain 表\n\nsensor 的 Analog Gain 不是任意值，而是离散档位，由 sensor 出厂的另一张表决定：\n\n```xml\n<sensor_gain_table>\n  <gain_index>0</gain_index><real_gain>1.0</real_gain>\n  <gain_index>1</gain_index><real_gain>1.07</real_gain>\n  <gain_index>2</gain_index><real_gain>1.14</real_gain>\n  ...\n  <gain_index>15</gain_index><real_gain>4.0</real_gain>\n  ...\n  <gain_index>32</gain_index><real_gain>16.0</real_gain>  <!-- 上限 -->\n</sensor_gain_table>\n```\n\n每档间隔约 7%（即 sqrt(2) ≈ 1.07 的小步），从 1x 到 16x 共 32 档。\n\n所以曝光表里的 `gain_index = 15` 实际上对应 `real_gain = 4.0x`。\n\n### 为什么不直接写 gain 倍数\n\n硬件设计原因：sensor 寄存器只能写整数档位。**不存在「3.7x」这种连续值**。\n\nAE 算法可能想要 3.7x，但只能写 gain_index = 13（=3.5x）或 14（=3.75x），取最近的。\n\n这个**量化损失**通过 ISP 的 Digital Gain **补足**：\n\n```\n目标 gain = 3.7x\n   ↓\n找 gain_table 最近 → gain_index = 14 → real_gain = 3.75x\n   ↓\nDigital Gain = 3.7 / 3.75 = 0.987（小幅修正，几乎为 1）\n```\n\n### gain_index 量化的副作用\n\n暗光下 lux_index 平滑变化，AE 想让 gain 也平滑变 → 但 gain_index 是离散的 → 画面亮度可能**阶梯式跳变**。\n\n这就是为什么有些手机视频在光线变化时画面亮度会**「跳」一下**。\n\n解决：\n\n- ISP 的 Digital Gain 来「填缝」（让真实总 gain 平滑）\n- 或在 sensor 寄存器之间用「内插模式」（如果硬件支持）\n\n### 调教工程师的原则\n\n看到 sensor datasheet 的 gain table 时，关注：\n\n1. **总档位数**：32 / 64 档常见，越多越平滑\n2. **每档间隔**：1.07x（sqrt(2) 的 1/3）很常见\n3. **最大 gain**：决定 ISO 上限（real_gain 16 ≈ ISO 1600 的 sensor 部分；后面 Digital Gain 还能再翻倍）\n\n### 端到端流程总结\n\n现在你应该能完整答出 AE → sensor 的链路：\n\n```\n1. AE 算 exp_index = 240\n2. 查曝光表（ChromatixAEC.xml）\n   ├─ linecount = 1500\n   └─ gain_index = 15\n3. 查 sensor gain table（驱动 / sensor 配置）\n   └─ gain_index 15 → analog_gain = 4.0x\n4. 写 sensor 寄存器：\n   ├─ Coarse Integration Time = 1500\n   └─ Analog Gain = 4.0x（gain_index 15）\n5. 必要时 ISP 写 Digital Gain 补缝\n6. 下一帧 sensor 用新参数曝光\n```",
+      "glossary": [
+        { "term": "Sensor Gain Table", "zh": "传感器增益表", "explain": "sensor 出厂的离散档位表，把 gain_index 映射到具体倍数。" },
+        { "term": "Quantization", "zh": "量化", "explain": "把连续值（理想 gain）映射到离散值（gain_index）的过程，必然有误差。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "gain_table 是 Tuning 工程师调的吗？", "a": "不是。它由 sensor 出厂校准，写在驱动里。Tuning 工程师只调曝光表（怎么用这些档位）。" },
+          { "q": "Digital Gain 总是 1 吗？", "a": "大多数时候是 1（让 sensor 干主活）。只在量化补缝、Analog Gain 已满时才 >1。" },
+          { "q": "为什么 gain_table 间隔是 1.07？", "a": "1.07³ ≈ 1.225，1.07⁶ ≈ 1.5，1.07¹² ≈ 2.25。每 12 档 ≈ 翻倍 = 1 EV。匹配 ISO 标准。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：sensor 增益表 量化", "search": "图像传感器 增益 量化" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Sensor 配置和增益表章节" }
+        ]
+      }
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天深入的 4 件事\n\n1. **曝光表行格式**：lux_index → exp_time + linecount + gain_index + digital_gain\n2. **拐点 = 灵魂**：常见 lux 200 / exp_time 1/30s；防手抖原则决定位置；ISO 上限决定暗光画质\n3. **HDR sensor 多曝光表**：SHDR / MFHDR / 3-EXP HDR 各有曝光表\n4. **gain_index 映射**：离散档位（32 档），sensor gain table 决定，Digital Gain 补量化缝\n\n### 自我检查\n\n1. 曝光表里的 linecount 字段对应 sensor 的什么寄存器？\n2. 拐点位置一般定在 1/30 秒，为什么？OIS 怎么影响这个？\n3. HDR sensor 和普通 sensor 的曝光表有什么不同？\n4. AE 想要 gain = 3.7x，sensor gain_table 没这个值怎么办？\n5. 默写曝光表的关键字段名（至少 5 个）。\n\n### 笔记建议\n\n- 把曝光表行格式 XML 抄一份到笔记里\n- 把拐点的 3 个调教参数列出来：knee_point_lux / max_iso_above_knee / min_exp_at_knee\n- 思考：你妹妹调的 7450 平台是什么 sensor？它有 HDR 模式吗？\n\n### 明天预告\n\nDay 17：Lux Index 怎么算。这是 PRD 第 5 题。我们看真实公式：lux_index 怎么从 64×48 块统计 + 历史曝光参数 推导出来。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "page": 15, "section": "3.1 调试曝光表" },
+    { "source": "高通 3A 10 Deep Dive", "page": 278, "section": "3-Exp HDR" },
+    { "source": "维基百科 · Camera ISO speed", "url": "https://en.wikipedia.org/wiki/Film_speed" }
+  ],
+  "dailyQuizId": "daily-day-16"
+}

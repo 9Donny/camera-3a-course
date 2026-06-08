@@ -1,0 +1,123 @@
+{
+  "id": "day-15",
+  "week": 3,
+  "module": "M3",
+  "title": "AE 算法总览：64×48 数据块统计与中心测光",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "进 3A 主线：AE 是干什么的",
+      "type": "concept",
+      "content": "### 你已经摸到了 AE 的影子\n\n回想 Day 5 我们学过曝光表、Antibanding、曝光优先 vs 增益优先；Day 12 我们学过 safe_target 是 AE 算的目标亮度。这些都是 AE 算法的「碎片」。\n\n今天起我们 **正式进入 AE 主线**，把这些碎片串起来。\n\n### AE 是干什么的\n\nAE = **Auto Exposure**（自动曝光）。一句话定义：\n\n> AE 算法每帧（30 fps 的话每 1/30 秒一次）做一次决策，告诉 sensor「下一帧用多长曝光、多大 ISO」，让画面亮度合适。\n\nAE 是 3A 里**输出量最大**的算法。它要算的东西包括：\n\n1. **当前场景多亮**（lux_index）\n2. **目标亮度是多少**（safe_target）\n3. **该用多长曝光时间**（写入 sensor 的 Coarse Integration Time 寄存器）\n4. **该用多大 sensor 增益**（写入 Analog Gain 寄存器）\n5. **ISP Tone Mapping 该用什么参数**（safe_target / Dark Boost / ADRC 等都参考它）\n\n这些数值写到 sensor 和 ISP 后，下一帧的画面就按新参数拍出来。每秒 30 次。\n\n### AE 在 ISP 里的位置\n\nDay 8 我们说 ISP Pipeline 里有一步叫 **Bayer 域统计**（第 4 步）。这一步**不修改图像**，只是**算出当前帧的亮度直方图、各区域亮度等数据**，把这些「统计数据」输出给 AE 算法。\n\n```\n              ┌──> Bayer 域统计（不改图）─────> AE 算法\n              │                                      │\n              │                                      │ 决策出 sensor 寄存器值 + ISP 参数\n              │                                      ↓\n  RAW → OB → LSC → 统计 → Demosaic → ... → Tone Mapping → JPEG\n                                                       ↑\n                                                  也用 safe_target\n```\n\n注意 **AE 是「环路」**：\n\n```\n第 N 帧统计数据\n      ↓\n  AE 决策\n      ↓\n  写 sensor + ISP 参数\n      ↓\n第 N+1 帧按新参数拍\n      ↓\n再统计 → 再决策 → 再写...\n```\n\n所以 AE 不是「一次性算好」，而是**实时反馈控制系统**，类似空调温控器：测温 → 决策 → 制冷 → 再测温 → ...\n\n### PRD 第 1 题：AE 算法流程\n\n这是 PRD 收集的**第 1 题**，也是 60 天里**面试最常问**的问题之一：\n\n> AE 算法的完整流程是什么？\n\n标准答案分 3 步：\n\n1. **亮度获取**：图像经过 OB / LSC 后，分成 64×48 网格统计亮度\n2. **计算 Target**：用 luma target、直方图、bright region、dark region、extreme color 等 AE 信息统计模块进行调整分析，统计出最终的目标亮度（target）。基础亮度信息和目标亮度比较，决定是否收敛\n3. **曝光调节**：如果决定收敛，则经过曝光表进入 exp_index，把需要的曝光时间和 sensor gain 配置给 sensor，之后经过 gamma、TMC、LTM、GTM 做 ISP gain 补偿，最后实现照片的正确曝光；如果不收敛，则循环到 next AE index，继续获取亮度，直到完成正确曝光\n\n这一周（Week 3）我们就把这 3 步逐个拆开讲。\n\n### 本周路线图\n\n- **Day 15（今天）**：流程总览 + 64×48 统计 + 中心测光\n- **Day 16**：曝光表深入（接 Day 5）+ 拐点策略\n- **Day 17**：Lux Index 怎么算 + Exp Index 关系\n- **Day 18**：4 个 target + safe_target 三步推导（PRD 第 15 题）\n- **Day 19**：AE 收敛逻辑 + 抗带状深入\n- **Day 20**：Bright Region / Dark Region 测光（PRD 第 19 题）\n- **Day 21**：Week 3 总结 + 周考\n\n学完这一周，你能完整答出 PRD 5+ 道 AE 类面试题，是 Tuning 工程师的真正核心能力。",
+      "glossary": [
+        { "term": "AE", "zh": "自动曝光", "explain": "Auto Exposure，每帧决策曝光时间 + sensor 增益的算法。3A 之首。" },
+        { "term": "lux_index", "zh": "勒克斯指数", "explain": "高通 AE 系统中表示当前场景亮度的内部数值，等价于 Day 1 的 BV。" },
+        { "term": "safe_target", "zh": "安全目标亮度", "explain": "AE 算出的目标亮度，所有 ISP Tone Mapping 类模块都参考它（Day 12 已学）。" },
+        { "term": "exp_index", "zh": "曝光指数", "explain": "AE 选定的曝光档位，等价于 Day 1 的 EV，决定 sensor 寄存器值。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "什么是反馈控制？", "a": "测量 → 决策 → 执行 → 再测量 的循环。空调温控、巡航定速、AE 都属于。" },
+          { "q": "为什么 AE 不能一次算好就行？", "a": "因为场景在变（你转头、光线变了），sensor 必须实时跟上，不然画面亮度会跳变。" },
+          { "q": "什么是收敛？", "a": "AE 一系列调整后画面亮度稳定在目标附近，不再大幅震荡，叫收敛。Day 19 详讲。" },
+          { "q": "Bayer 统计为什么不影响图像？", "a": "它只读取像素值算出统计数据，不改写像素。和并行的 ISP 处理流是分开的。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：摄影 自动曝光 原理", "search": "摄影 自动曝光 原理" },
+          { "title": "B 站搜索：相机测光模式 评价测光", "search": "相机测光模式 评价测光" }
+        ],
+        "reads": [
+          { "title": "维基百科 · 自动曝光", "url": "https://en.wikipedia.org/wiki/Auto-exposure" },
+          { "title": "高通 3A 7.0 Tuning Guide", "url": "https://www.qualcomm.com/", "note": "AEC 章节是 60 天最大的部分" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "PRD 第 17 题：64×48 数据块统计",
+      "type": "concept",
+      "content": "### 不是逐像素，是逐网格\n\nAE 要测整张图的亮度，最朴素的办法是：把所有像素亮度加起来除以总数。\n\n问题：手机摄像头一帧有 1200 万像素以上。逐像素累加 30 次/秒计算量太大，**主控扛不住**。\n\n解决方案：**把图像分成网格，每格统计一个亮度值**。高通 ISP 用的是 **64×48 网格**：\n\n- **横向 64 格** × **纵向 48 格** = 3072 个统计块\n- 每格大小约 1200 万 / 3072 ≈ 4000 像素\n- 每格输出**1 个亮度值** + RGB 各通道值（给 AWB 用）\n\nAE 算法只需要处理 3072 个数字，**比 1200 万快 4000 倍**。\n\n### PRD 第 17 题标准答案\n\n面试问：「**高通 AE 分多少个数据块统计？怎么统计？**」\n\n标准答案：\n\n> 64×48 个统计数据块，通过中心测光模式统计。\n\n两个关键点：\n\n1. **网格大小：64×48 = 3072 块**\n2. **测光模式：中心测光**（下一节深入）\n\n### 每个统计块输出什么\n\n每个 64×48 块，硬件统计模块输出：\n\n| 字段 | 含义 |\n|---|---|\n| `Y_avg` | 该块平均亮度（0-255 / 0-1023）|\n| `R_avg, G_avg, B_avg` | 该块各通道平均值（给 AWB 用） |\n| `Y_max` | 该块最亮像素 |\n| `Y_min` | 该块最暗像素 |\n| `histogram` | 该块亮度直方图（少数高级模式） |\n\nAE 主要用 `Y_avg`，进阶分析时也用 `Y_max / Y_min`。\n\n### 计算时机\n\n这 3072 块统计**在 ISP 里硬件并行算出**，不占 CPU。一帧拍完几乎瞬间就有数据。\n\nAE 算法接收数据 → 综合分析 → 决策 → 写参数 → sensor 下一帧应用 → 完成一轮反馈。\n\n整个循环约 **33 ms（30 fps）** 内完成。\n\n### 你将来在文档里看到的相关参数\n\n- **`Stats Window`**：统计窗口（覆盖整张图还是只取中央矩形）\n- **`AEC ROI`**：感兴趣区域（比如人脸 + 触摸位置）\n- **`Stats Subsampling`**：是否对统计块二次采样（节省计算）\n\n这些都是基于 64×48 这套核心架构上的扩展。",
+      "glossary": [
+        { "term": "Bayer Statistics", "zh": "Bayer 域统计", "explain": "ISP 硬件模块，并行算出每个 64×48 块的亮度和 RGB 平均值。" },
+        { "term": "Stats Block", "zh": "统计块", "explain": "64×48 网格里的一个块，约 4000 像素，输出 1 个亮度值 + RGB 平均。" },
+        { "term": "AEC ROI", "zh": "AEC 感兴趣区域", "explain": "用户指定的特殊区域（如人脸、触摸点），AE 给它更高权重。Day 20 深入。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么是 64×48 而不是 60×40 或别的？", "a": "硬件设计选择。64×48 = 3072 块，是 2 的幂次的近似（64=2^6, 48=16×3），便于硬件并行。AWB Day 22 也用这个。" },
+          { "q": "网格分多少能影响什么？", "a": "网格越细：测光越准、ROI 控制越精细，但硬件成本高；网格太粗：ROI 边缘像「马赛克」。64×48 是工业平衡点。" },
+          { "q": "如果用户拍人脸时人脸正好跨多个网格怎么办？", "a": "AEC ROI 模块计算人脸覆盖了哪些网格、覆盖比例，然后给这些网格加权重。Day 20 详讲。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：相机 测光算法 直方图", "search": "相机 测光算法 直方图" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Bayer Statistics 模块" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "中心测光：3072 块怎么综合成一个亮度",
+      "type": "concept",
+      "content": "### 为什么不能简单平均\n\n你拍一张照：天空很亮（上半 1500 块亮度 200），人脸在下方（下半 1500 块亮度 80）。\n\n简单平均：(200+80)/2 = 140。AE 觉得「画面有点偏亮」，**压低曝光** → 人脸更暗了。\n\n这就是「**逆光人脸太黑**」的最朴素来源。简单平均**没有考虑哪些区域更重要**。\n\n### 测光模式：怎么综合\n\n相机界有 4 种经典测光模式（你单反相机里能切换）：\n\n| 模式 | 怎么算 | 适合场景 |\n|---|---|---|\n| **平均测光** | 全图等权重平均 | 只在均匀光场景下行 |\n| **中心测光** | 中间区域权重高，边缘低 | **手机默认** |\n| **点测光** | 只看一个小点（用户指定） | 专业摄影 |\n| **评价 / 矩阵测光** | 多区域智能加权（数码相机用）| 高端单反 |\n\n手机里 **AE 默认是「中心测光 + ROI 加权」** —— 也就是 PRD 第 17 题答案的后半句。\n\n### 中心测光的「权重表」\n\n中心测光的核心是一张 **64×48 的权重矩阵**。中间权重高、边缘权重低，类似这样（数字越大越重要）：\n\n```\n1 1 1 2 2 2 2 1 1 1\n1 2 2 3 3 3 3 2 2 1\n1 2 3 4 4 4 4 3 2 1\n2 3 4 5 6 6 5 4 3 2\n2 3 4 6 8 8 6 4 3 2  ← 越往中心权重越大\n2 3 4 6 8 8 6 4 3 2\n2 3 4 5 6 6 5 4 3 2\n1 2 3 4 4 4 4 3 2 1\n1 2 2 3 3 3 3 2 2 1\n1 1 1 2 2 2 2 1 1 1\n```\n\n（这是 10×10 示意；实际 64×48）\n\n最终亮度计算：\n\n```\nfinal_luma = Σ (Y_avg[i] × weight[i]) / Σ weight[i]\n```\n\n中心区域贡献度大 → **画面中心偏暗时**（比如逆光人脸），AE 会**优先**让中心变亮，即使天空过曝。\n\n### Tuning 工程师调什么\n\n这张权重表本身可以调。常见参数：\n\n- **CenterWeight**：最中心权重的最大值（比如 8）\n- **EdgeWeight**：最边缘权重（比如 1）\n- **CenterRadius**：高权重区域占图片的多大比例\n\n你妹妹笔记里看到 `Bias Weight Table` 这个词，就是这张表。\n\n### Touch ROI 加权（Day 20 详讲）\n\n用户在屏幕上点一下对焦时，那个位置会被标成 **Touch ROI**。AE 把那块的权重**临时加权**：\n\n```\nweight[touched_block] *= touch_boost  // 比如 ×3\n```\n\n人脸检测到的区域同理。这就是「点哪儿亮哪儿」效果的来源。\n\n### 一个面试题预演\n\n问：「**手机的默认测光模式是什么？为什么是这个？**」\n\n答：\n\n> 中心测光 + Touch ROI / Face ROI 加权。\n> \n> 因为日常拍照构图里，**用户关心的主体多数在画面中心或附近**（人像、风景中央、菜品中央）。中心测光让这些主体的曝光优先满足。结合人脸 / 触摸 ROI 加权，能进一步处理「主体不在画面中心」的情况。\n> \n> 平均测光在大动态范围场景（逆光、高光）会让主体过暗；点测光对小白用户太难用；评价测光需要复杂场景识别，移动端实现成本高。中心测光是工程平衡点。",
+      "glossary": [
+        { "term": "Center-weighted Metering", "zh": "中心测光", "explain": "测光时中心权重高、边缘权重低的算法，手机 AE 默认。" },
+        { "term": "Bias Weight Table", "zh": "测光权重表", "explain": "64×48 网格的权重矩阵，决定哪些区域更重要。" },
+        { "term": "Touch ROI", "zh": "触摸感兴趣区域", "explain": "用户点屏幕的位置，AE 给那块加权。" },
+        { "term": "Face ROI", "zh": "人脸感兴趣区域", "explain": "人脸检测识别出的人脸位置，AE 给那块加权。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "评价测光（Matrix）怎么实现？", "a": "靠多区域亮度+场景识别（识别出风景/人像/逆光/夜景），给每种场景一套权重表。手机偶尔做但成本高。" },
+          { "q": "为什么手机不让用户切换测光模式？", "a": "用户大多不懂；自动模式 + ROI 加权已经覆盖 95% 场景。专业模式可以暴露给摄影 app。" },
+          { "q": "中心测光会有缺点吗？", "a": "构图不在中心时（如人物在右下角）会失准。所以现代手机依靠 ROI（人脸/触摸）补救。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：测光模式 区别", "search": "测光模式 区别 中心 评价" }
+        ],
+        "reads": [
+          { "title": "维基百科 · 测光模式", "url": "https://en.wikipedia.org/wiki/Metering_mode" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "AE 的输出：写到 sensor 和 ISP 的什么参数",
+      "type": "concept",
+      "content": "### AE 决策完成后，要写哪些参数\n\nAE 算出 exp_index 和 ISO 后，要写到 sensor 和 ISP 的多个寄存器，让下一帧实际生效。\n\n**写到 Sensor 的**：\n\n| 寄存器 | Day 5 学过的 | 影响 |\n|---|---|---|\n| Coarse Integration Time | 曝光行数 | 实际曝光时间 |\n| Fine Integration Time | 行内微调 | 高精度曝光控制 |\n| Analog Gain | 模拟增益 | 真正的 ISO 提升 |\n| Frame Length Lines | FLL | 帧率控制 |\n\n**写到 ISP 的**：\n\n| 模块 | 参数 | 作用 |\n|---|---|---|\n| Tone Mapping | safe_target | Day 12 学过 |\n| Dark Boost | dark gain | 暗部强度 |\n| ADRC | drc gain | 动态压缩 |\n| Digital Gain | digital gain | 补足 sensor 没拉够的 |\n\n### 三个 Gain：Analog / Digital / ISP Gain\n\nDay 7 我们说过：ISO = Analog Gain + Digital Gain。今天再深入。\n\n**Analog Gain**（sensor 内部）：\n- 在 ADC 之前对模拟信号放大\n- **优先用**这个，因为不损失动态范围\n- sensor 硬件限制最大 16x（视 sensor 而定）\n\n**Digital Gain**（ISP 里）：\n- 在 ADC 之后对数字信号乘系数\n- **后备方案**，损失动态范围（高位丢失）\n- 用于 Analog Gain 已经满后还要更亮的情况\n\n**ISP Gain**（再后段的 Gamma / Tone Mapping 隐含的增益）：\n- 不是单独的乘法，而是非线性曲线整体把暗部「拉亮」\n- Day 11/12 学过\n\nAE 的策略：\n\n```\nif EV 还差不多：用 Analog Gain\nelse if Analog Gain 已满 + 还差一点：加 Digital Gain（小心）\nelse if 还差很多：让 Tone Mapping 出手（safe_target 设高）\n```\n\n### exp_index 怎么映射到这些参数\n\n你看到 AE 输出的就一个 exp_index 数值（比如 240）。它**通过曝光表（Day 16 详讲）**映射成具体的 sensor 寄存器值：\n\n```\nexp_index = 240\n     ↓ 查曝光表\n     ├─ Coarse Integration Time = 1500 行\n     ├─ Analog Gain = 4.0x\n     └─ Digital Gain = 1.0x（不动）\n```\n\n这就是 AE 决策到 sensor 配置的最后一步。\n\n### 整张地图\n\n```\n┌──── 第 N 帧 ────┐\n│ sensor 输出 RAW │\n└────┬────────────┘\n     ↓\n┌──── ISP 段（Day 8-13）────┐\n│  OB → LSC → Demosaic → ... │\n│        │                   │\n│        ↓                   │\n│  Bayer 域统计 → 64×48 块   │\n│        │                   │\n└────────┼───────────────────┘\n         ↓\n┌──── AE 算法（Week 3）────┐\n│  收 64×48 + 权重表        │\n│  → final_luma             │\n│  → lux_index              │\n│  → safe_target / target   │\n│  → exp_index              │\n│  → 拆 Coarse / Gain / DG  │\n└────────┬─────────────────┘\n         ↓ 写到 sensor + ISP 寄存器\n┌──── 第 N+1 帧 ────┐\n│ 用新参数拍新帧    │\n└───────────────────┘\n```",
+      "glossary": [
+        { "term": "Coarse Integration Time", "zh": "粗曝光行数", "explain": "sensor 寄存器，AE 输出主要写它。Day 5 学过。" },
+        { "term": "Analog Gain", "zh": "模拟增益", "explain": "ADC 之前的放大，对应「真正的 ISO」。优先级最高。" },
+        { "term": "Digital Gain", "zh": "数字增益", "explain": "ADC 之后的放大，会损失动态范围。AE 的备用工具。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么 Digital Gain 损失动态范围？", "a": "10-bit RAW 范围 0-1023。Digital Gain × 2 后变 0-2046，但实际超过 1023 的部分都被截断，等于压缩了亮部细节。" },
+          { "q": "Analog Gain 上限怎么定？", "a": "由 sensor 硬件决定。一般是 8x-16x。手机 sensor 规格表里有。" },
+          { "q": "为什么 AE 优先用曝光时间而不是 Gain？", "a": "Day 5 学过曝光优先策略：曝光时间增加 = 更多光子 = 噪点不增；Gain 增加 = 信号和噪声同步放大。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：CMOS sensor 增益 模拟增益 数字增益", "search": "CMOS sensor 模拟增益 数字增益 区别" }
+        ],
+        "reads": [
+          { "title": "维基百科 · 增益（电子学）", "url": "https://zh.wikipedia.org/wiki/%E5%A2%9E%E7%9B%8A" }
+        ]
+      }
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的地基\n\n1. **AE 是反馈控制系统**：30 fps 闭环 — 测亮度 → 决策 → 写参数 → 下一帧 → 再测\n2. **PRD 第 17 题**：64×48 数据块统计 + 中心测光模式\n3. **PRD 第 1 题（Step 1）**：亮度获取 — 经过 OB/LSC 后分 64×48 块统计\n4. **测光权重表**：中心权重高、边缘权重低；ROI 加权处理特殊场景\n5. **AE 输出**：写 sensor 寄存器（Coarse Time / Analog Gain）+ ISP 参数（safe_target / Dark Boost / ADRC）\n\n### 自我检查\n\n1. AE 一帧的反馈循环大概要多久完成？为什么是这个时间？\n2. 64×48 网格每个块输出哪些数据？\n3. 默写 PRD 第 17 题答案：高通 AE 多少数据块？什么测光模式？\n4. 为什么不能用平均测光？逆光场景下会出什么问题？\n5. AE 输出的 exp_index 怎么映射成具体的 sensor 寄存器值？\n\n### 笔记建议\n\n- 把 AE 反馈环画一遍：sensor → 统计 → AE → 写 → sensor\n- **PRD 第 17 题答案抄到 cheatsheet**\n- 思考：你拍逆光人像时，AE 是怎么决策让人脸更亮的？（提示：中心测光 + Face ROI 加权 + Tone Mapping safe_target）\n\n### 明天预告\n\nDay 16：曝光表深入。Day 5 提过曝光表是「不同 lux 下用什么曝光时间和 ISO」的查找表。明天看高通曝光表里的具体行格式、HDR sensor 的多曝光表、和 sensor 寄存器的映射。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "page": 14, "section": "2 AEC 调试章节开篇" },
+    { "source": "高通 3A 7.0 Tuning Guide", "page": 76, "section": "6.3 Lux 指数（明天深入）" },
+    { "source": "维基百科 · Auto-exposure", "url": "https://en.wikipedia.org/wiki/Auto-exposure" }
+  ],
+  "dailyQuizId": "daily-day-15"
+}
