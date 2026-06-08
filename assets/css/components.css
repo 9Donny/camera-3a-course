@@ -288,6 +288,13 @@
   cursor: pointer; padding: 0 4px; font-size: 12px; line-height: 1;
 }
 .dash-edit:hover { color: var(--accent-2); }
+.guest-tag {
+  display: inline-block; font-size: 10px; font-weight: 500;
+  background: rgba(245, 158, 11, 0.15); color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 1px 6px; border-radius: 10px; line-height: 1.3;
+  margin-left: 4px; cursor: help;
+}
 .dash-date { font-size: 11px; color: var(--text-muted); }
 .dash-encouragement {
   font-size: 13px; color: var(--accent-2); font-style: italic;

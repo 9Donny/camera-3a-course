@@ -10,9 +10,12 @@
 //   - 本地（localhost / LAN IP）→ 用 server.py 内置代理 /dav-proxy/
 //   - 公网（GitHub Pages 等）→ 用 Cloudflare Worker（在同步配置页填写 URL）
 
-import { storage } from "./storage.js";
+import { storage, isGuest } from "./storage.js";
 
 const PREFIX = "camera3a:";
+
+// 访客模式：所有同步操作 no-op，绝对不污染主人坚果云
+const GUEST_NOOP = isGuest();
 const CFG_KEY = "syncConfig";
 const META_KEY = "syncMeta"; // { lastSyncedAt, lastDevice, keyMtimes: { [key]: ms } }
 
@@ -93,6 +96,8 @@ function applyAll(obj) {
 // 公开 API ===================
 
 export const sync = {
+  isGuest: () => GUEST_NOOP,
+
   getConfig() {
     return storage.get(CFG_KEY, {
       enabled: false,
@@ -103,6 +108,7 @@ export const sync = {
   },
 
   setConfig(cfg) {
+    if (GUEST_NOOP) return; // 访客不允许保存同步配置
     storage.set(CFG_KEY, cfg);
   },
 
@@ -125,6 +131,7 @@ export const sync = {
 
   // 测试连接：尝试 PROPFIND 根目录，401 / 5xx → 失败
   async testConnection() {
+    if (GUEST_NOOP) throw new Error("访客模式不支持云同步");
     const cfg = this.getConfig();
     if (!cfg.email || !cfg.password) throw new Error("未配置邮箱或密码");
     const auth = "Basic " + btoa(`${cfg.email}:${cfg.password}`);
@@ -148,6 +155,7 @@ export const sync = {
 
   // 上传当前本地状态
   async push() {
+    if (GUEST_NOOP) return { uploadedKeys: 0, skipped: "guest" };
     const cfg = this.getConfig();
     if (!cfg.email || !cfg.password) throw new Error("未配置同步");
     const auth = "Basic " + btoa(`${cfg.email}:${cfg.password}`);
@@ -194,6 +202,7 @@ export const sync = {
   // 拉取远端 + 合并到本地
   // 合并规则：每个键比较 mtime，远端新就用远端，本地新就保留
   async pull() {
+    if (GUEST_NOOP) return { downloadedKeys: 0, skipped: "guest" };
     const cfg = this.getConfig();
     if (!cfg.email || !cfg.password) throw new Error("未配置同步");
     const auth = "Basic " + btoa(`${cfg.email}:${cfg.password}`);
@@ -254,6 +263,7 @@ export const sync = {
 
   // 完整 sync = 先确保目录 → pull 远端合并 → push 自己
   async syncNow() {
+    if (GUEST_NOOP) return { skipped: "guest", at: nowMs() };
     const cfg = this.getConfig();
     if (!cfg.email || !cfg.password) throw new Error("未配置同步");
     const auth = "Basic " + btoa(`${cfg.email}:${cfg.password}`);
@@ -267,6 +277,10 @@ export const sync = {
 
 // 钩子：劫持原 storage.set，写入时记录 mtime + 触发 debounce 同步
 export function installAutoSync(opts = {}) {
+  // 访客模式：完全不安装钩子，所有写入直接落盘，不会触发任何网络请求
+  if (GUEST_NOOP) {
+    return { resetAuthBlock: () => {} };
+  }
   const debounceMs = opts.debounceMs ?? 2000;
   let timer = null;
   let authBlocked = false; // 认证失败后熔断，防止反复 401 弹窗

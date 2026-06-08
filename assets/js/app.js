@@ -1,4 +1,4 @@
-import { storage } from "./storage.js";
+import { storage, isGuest } from "./storage.js";
 import { Progress } from "./progress.js";
 import { Router } from "./router.js";
 import { notes } from "./notes.js";
@@ -46,7 +46,7 @@ function renderDashboard() {
 
   dashboardEl.innerHTML = `
     <div class="dash-greet">
-      <div class="dash-name">你好，${escapeHTML(profile.getNickname())} <button class="dash-edit" title="改昵称">✎</button></div>
+      <div class="dash-name">你好，${escapeHTML(profile.getNickname())} <button class="dash-edit" title="改昵称">✎</button>${isGuest() ? ' <span class="guest-tag" title="数据仅存当前浏览器，不会同步">👤 访客模式</span>' : ''}</div>
       <div class="dash-date">${todayLabel()} · Day ${state.completedDays.length}/60 · 当前 Day ${day}</div>
     </div>
     <div class="dash-encouragement">${encouragement(state)}</div>
@@ -54,7 +54,7 @@ function renderDashboard() {
       <button class="dash-time" title="今日 ${formatDuration(todaySec())} · 累计 ${formatDuration(totalSec())} · 点击查看详情">⏱ ${formatDuration(todaySec())}</button>
       <span class="dash-streak" title="连续打卡天数">🔥 ${state.streak}</span>
       <span class="dash-checkin ${checkInClass}">${checkInLabel}</span>
-      <button class="dash-sync state-${syncState}" title="${syncStateTooltip()}">${syncStateIcon()}</button>
+      ${isGuest() ? '' : `<button class="dash-sync state-${syncState}" title="${syncStateTooltip()}">${syncStateIcon()}</button>`}
       <button class="dash-fx ${particles.getEnabled() ? 'on' : 'off'}" title="${particles.getEnabled() ? '关闭粒子特效' : '开启粒子特效'}">${particles.getEnabled() ? '✨' : '·'}</button>
     </div>
   `;
@@ -323,6 +323,7 @@ await loadSeedFlashcards();
 
 // 检测 URL 参数 ?syncconfig=BASE64：从 Mac 分享过来的配置 → 自动应用
 function tryApplySyncConfigFromURL() {
+  if (isGuest()) return false; // 访客模式不接受 syncconfig
   const params = new URLSearchParams(location.search);
   const enc = params.get("syncconfig");
   if (!enc) return false;
@@ -349,8 +350,8 @@ function tryApplySyncConfigFromURL() {
 const appliedFromURL = tryApplySyncConfigFromURL();
 
 // 全新设备 + 没配置 + 没用 URL 分享 → 自动跳到 #/sync 页让用户先配置
-// 不弹 confirm 不打扰；用户在同步页操作完成后会自然进入主界面
-if (wasFresh && !appliedFromURL && !sync.getConfig().email) {
+// 访客模式跳过（访客不需要同步）
+if (!isGuest() && wasFresh && !appliedFromURL && !sync.getConfig().email) {
   if (!location.hash || location.hash === "#/today" || location.hash === "#/") {
     location.hash = "#/sync";
   }
