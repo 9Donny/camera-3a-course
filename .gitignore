@@ -18,3 +18,6 @@ package-lock.json
 80-NK872-14SC_REV_K_Camera_3A_7_0_Tuning_Guide__Simplified_Chinese_.pdf
 80-PN984-22_REV_F_Qualcomm_3A_10_Deep_Dive.pdf
 preview-day-01.html
+
+# 自部署打包输出，不进 git
+dist/
