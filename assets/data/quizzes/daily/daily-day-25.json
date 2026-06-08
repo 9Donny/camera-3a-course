@@ -1,0 +1,54 @@
+{
+  "id": "daily-day-25",
+  "title": "Day 25 日测：Frame Analyzer + LLS",
+  "module": "M3",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "Frame Analyzer 的核心实现是什么？",
+      "options": [
+        "AI 检测异常",
+        "滑动窗口（10 帧）+ 加权平均 + 异常帧检测",
+        "PID 控制",
+        "卡尔曼滤波"
+      ],
+      "answer": "滑动窗口（10 帧）+ 加权平均 + 异常帧检测",
+      "explain": "保留过去 10 帧的 final_luma，加权平均得到稳定亮度，给后续 Analyzer 用。priority 30，不直接改 target 但稳定输入。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "LLS（Low Light Suppress）的核心机制是？",
+      "options": [
+        "降低 ISO",
+        "降低 target + suppress 其他「加亮型」Analyzer（Brighten / Dark Prevention）",
+        "关闭 ADRC",
+        "用更慢快门"
+      ],
+      "answer": "降低 target + suppress 其他「加亮型」Analyzer（Brighten / Dark Prevention）",
+      "explain": "极暗下不让 AE 拉过激（避免噪点爆炸）。两个动作：自身降 target + 让其他加亮型 Analyzer 不生效。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "Frame Analyzer 的 priority 是 30（很低）。它不直接改 target，但通过 ___ 端平滑让其他 Analyzer 决策更稳定",
+      "answer": ["输入", "输入端", "stats"],
+      "explain": "Frame Analyzer 在「64×48 块统计」的输入端做平滑，所有后续 Analyzer 用的都是平滑后的 stable_luma。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "10 个 Scene Analyzer 中 priority 最高的两个是 Saturation Prevention（90）和 ___（85）",
+      "answer": ["LLS", "LLS Low Light Suppress", "Low Light Suppress"],
+      "explain": "保护亮部细节（Saturation 90）+ 防暗光过激（LLS 85）是 AE 最优先级的两个保护机制。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "默写 10 个 Scene Analyzer 的名字（顺序不重要）。",
+      "referenceAnswer": "1) Brighten 提亮；2) Saturation Prevention 饱和保护；3) Dark Prevention 暗部保护；4) Extreme Color 极端色彩；5) Face 人脸；6) Touch 触摸；7) Saliency 显著性；8) Depth 深度；9) Frame Average 帧间平均；10) LLS 低光抑制。其中 Face / Touch / Saliency / Depth 是「ROI 类」直接修改权重表；其他 6 个是「factor 修正型」走 Decision Aggregator。"
+    }
+  ]
+}

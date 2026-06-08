@@ -1,0 +1,114 @@
+{
+  "id": "day-27",
+  "week": 4,
+  "module": "M3",
+  "title": "MFHDR / SHDR 选择策略 + 视频 HDR",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "三种 HDR 实现方式回顾",
+      "type": "concept",
+      "content": "### 横向对比\n\nDay 16 + 26 我们看过 3 种 HDR：\n\n| | MFHDR | SHDR | 3-EXP HDR |\n|---|---|---|---|\n| 全名 | Multi-frame HDR | Staggered HDR | 3-Exposure HDR |\n| 数据来源 | 多帧不同曝光 | 同 sensor 不同行不同曝光 | sensor 一帧 3 曝光 |\n| 时间 | 多帧累计 | 同帧（行交错） | 同帧（像素 / 行交错） |\n| sensor 要求 | 普通 sensor 即可 | sensor 支持 staggered 模式 | HDR sensor（贵） |\n| 鬼影风险 | 高（运动场景明显） | 低（同帧但仍有些时序差） | 极低 |\n| 分辨率 | 不损失 | 损失（行间分配）| 看实现方式（DOL 损失，QHDR 不损） |\n| 计算成本 | 中（合成几帧） | 中 | 高（专用 HDR Merge） |\n| 适用场景 | 静态拍照 | 短时摄像 | 视频 + 拍照通用 |\n| 哪些手机用 | 中端 | 中高端 | 旗舰 |\n\n### MFHDR 详解\n\n**Multi-frame HDR** = 「**拍多张合成一张**」。\n\n```\n用户按下拍照\n   ↓\n第 1 帧：曝光 1/30s（中曝光）\n第 2 帧：曝光 1/120s（短曝光）\n第 3 帧：曝光 1/8s（长曝光）\n   ↓\n主控 / NPU 合成：\n   - 暗部用长曝光\n   - 亮部用短曝光\n   - 中间用中曝光\n   ↓\n输出 1 张 HDR 图\n```\n\n时间：3 张拍下来约 100-300ms。\n\n**问题**：拍多帧期间用户**手抖**或**场景运动** → 3 帧对不上：\n\n- 用户手抖：图像偏移，需要图像配准（image alignment）\n- 物体移动：物体在不同帧位置不同，叠加出现「**鬼影**」\n\n解决方案：\n- 配准算法：把 3 帧对齐（手抖问题）\n- 鬼影检测：找到运动区域，**只用一个曝光**（牺牲那块的 HDR）\n\n这两个算法都很复杂，是手机摄影最难的工程问题之一。\n\n### SHDR 详解\n\n**Staggered HDR** = 「**同 sensor 不同行不同曝光**」。\n\n```\nsensor 输出（行交错）：\n  行 1: 长曝光 (30ms)\n  行 2: 短曝光 (5ms)\n  行 3: 长曝光\n  行 4: 短曝光\n  ...\n  \nISP 处理：\n  抽出长曝光行 → 子图 L\n  抽出短曝光行 → 子图 S\n  合成 L + S → HDR 图\n```\n\n**优点**：同帧拍的，时序一致 → 鬼影少。\n\n**缺点**：\n- 行间分配，**纵向分辨率减半**\n- 需要 sensor 支持 staggered 读出（中端 sensor 一般支持）\n\nSHDR 是 MFHDR 和 3-EXP HDR 之间的折中：成本中等，效果中等。\n\n### 选哪个的决策\n\n手机里的 HDR 选择逻辑（一般在 AE 决策时做）：\n\n```python\ndef select_hdr_mode(scene, sensor_caps, mode):\n    dynamic_range = estimate_dynamic_range(scene)\n    \n    if mode == 'video':\n        # 视频不能用 MFHDR（会丢帧）\n        if dynamic_range > 12 and sensor_caps.has_3exp_hdr:\n            return '3-EXP HDR'\n        if dynamic_range > 10 and sensor_caps.has_shdr:\n            return 'SHDR'\n        return None  # 视频不开 HDR\n    \n    if mode == 'photo':\n        if dynamic_range > 14 and sensor_caps.has_3exp_hdr:\n            return '3-EXP HDR'  # 旗舰首选\n        if dynamic_range > 10:\n            return 'MFHDR'  # 中端常用\n        return None  # 不需要 HDR\n```\n\n### 为什么视频不能用 MFHDR\n\n视频 30fps = 每帧 33ms，MFHDR 一次需要 100-300ms（3 帧）。**对不上**。\n\n如果视频用 MFHDR，每 100-300ms 才有一个 HDR 帧 → **5-10fps**，体验灾难。\n\n所以视频的 HDR 必须 sensor 内单帧搞定（SHDR / 3-EXP HDR）。\n\n### 数字记下来\n\n```\nMFHDR：拍照专用，3 帧合成 100-300ms，鬼影风险高\nSHDR：拍照 / 短视频，同帧但分辨率减半\n3-EXP HDR：拍照 / 视频通用，sensor 贵，效果最好\n```",
+      "glossary": [
+        { "term": "MFHDR", "zh": "Multi-frame HDR", "explain": "多帧合成 HDR，普通 sensor 也能做，主要用拍照。" },
+        { "term": "SHDR", "zh": "Staggered HDR", "explain": "sensor 不同行不同曝光的 HDR 实现，同帧但分辨率减半。" },
+        { "term": "Image Alignment", "zh": "图像配准", "explain": "MFHDR 时把多帧对齐的算法，处理手抖。" },
+        { "term": "鬼影", "zh": "Ghosting", "explain": "MFHDR 时运动物体在不同曝光帧位置不同，合成出现「**鬼**」。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "iPhone 用什么 HDR？", "a": "Smart HDR 是 MFHDR 的高级版本（融入 AI / 神经网络），加 ProRAW 模式（保留更多 RAW 信息延后合成）。" },
+          { "q": "为什么 MFHDR 拍多帧不掉帧？", "a": "拍照模式不是 30fps 视频，按下后可以连续拍 3 张（100-300ms），用户能接受。视频每帧都不能丢。" },
+          { "q": "鬼影检测算法准吗？", "a": "不完美。复杂场景（如树叶随风动）可能漏检 → 出现「**鬼影**」。但旗舰算法 95%+ 准确率。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：HDR 多帧合成", "search": "HDR 多帧合成 摄影" }
+        ],
+        "reads": [
+          { "title": "高通 3A 10 Deep Dive", "section": "MFHDR + SHDR + 3-EXP HDR 比较" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "视频 HDR 的特殊挑战",
+      "type": "concept",
+      "content": "### 视频 HDR vs 拍照 HDR\n\n视频 HDR 比拍照 HDR 难得多。原因：\n\n**1. 实时性**\n- 拍照可以等 100-300ms\n- 视频每帧 33ms，且是连续的\n\n**2. 流式处理**\n- 拍照：拍下来后可以慢慢合成\n- 视频：必须实时输出，没时间存盘后处理\n\n**3. 帧间一致性**\n- 拍照：单张图 OK 就行\n- 视频：相邻帧必须**亮度一致** + **色彩一致**，否则看起来「**画面抖**」\n\n**4. 录制模式**\n- 视频可能有 60fps / 120fps / 240fps 模式，HDR 必须跟得上\n\n### 视频 HDR 的两种主流方案\n\n**方案 A：3-EXP HDR + Per-frame 处理**\n\n旗舰机型用：\n\n```\nsensor 每帧输出 3 个曝光\n   ↓\nISP 实时合成（BPS 段 HDR Merge）\n   ↓\n标准视频 ISP 处理（CCM/Gamma/LTM）\n   ↓\n编码（H.264/H.265）输出\n```\n\n关键：**HDR Merge 必须 30fps 实时**，硬件加速。\n\n**方案 B：SHDR + Per-frame 处理**\n\n中端机型用：\n\n```\nsensor 每帧输出 staggered HDR（行交错）\n   ↓\nISP 抽出长 / 短帧 → 合成\n   ↓\n后续处理同上\n```\n\n效果比 3-EXP 略弱（分辨率减半），但成本低。\n\n### 帧间一致性问题\n\n这是视频 HDR 最大的挑战之一。\n\n**问题示例**：用户摇晃手机，画面突然变化：\n\n```\n第 N 帧（户外）：lux 240，HDR Merge 平衡（亮部短 + 暗部长）\n第 N+1 帧（转向暗处）：lux 200\n   ↓ AE 决策调整：\n第 N+2 帧：lux 200，曝光参数变了，HDR Merge 也变了\n   ↓\n用户看到：画面亮度跳了一下\n```\n\n解决：\n\n**a. AE 收敛限速**：之前 Day 19 学过，把 α 调小，让亮度变化更平滑\n**b. HDR Merge 参数渐变**：merge_threshold 等参数也跟随帧间变化平滑\n**c. ADRC 曲线时序平滑**：暗部 gain 也帧间渐变\n\n这一切都是为了让视频「**画面平滑**」。\n\n### 视频 HDR 标准\n\n手机视频常用 HDR 标准：\n\n- **HDR10**：开放标准，10-bit 色深，PQ 曲线，固定元数据\n- **HDR10+**：动态元数据（每帧不同），效果更好\n- **Dolby Vision**：杜比独占，12-bit 色深，每帧动态元数据\n- **HLG（Hybrid Log-Gamma）**：BBC + NHK 制定，向下兼容 SDR 显示，电视广播常用\n\n手机视频默认录 HDR10+ 或 HDR10。Dolby Vision 需要授权（贵）。\n\n### 调教视频 HDR\n\n```xml\n<video_hdr>\n  <enabled_modes>\n    <mode resolution=\"1080p\" fps=\"30\" hdr=\"3-EXP\"/>\n    <mode resolution=\"1080p\" fps=\"60\" hdr=\"SHDR\"/>     <!-- 60fps 帧率高，3-EXP 算不过来 -->\n    <mode resolution=\"4K\" fps=\"30\" hdr=\"3-EXP\"/>\n    <mode resolution=\"4K\" fps=\"60\" hdr=\"None\"/>         <!-- 4K60 太重，关 HDR -->\n  </enabled_modes>\n  <hdr_format>HDR10+</hdr_format>\n  <merge_smooth_factor>0.7</merge_smooth_factor>          <!-- 帧间平滑系数 -->\n  <ae_video_alpha>0.15</ae_video_alpha>                   <!-- AE 收敛慢 -->\n</video_hdr>\n```\n\n你妹妹做录像调教时，**视频专用配置**就是这种。\n\n### 一个常见 bug：视频里画面忽明忽暗\n\n用户报「**视频里画面亮度抖**」。\n\n排查：\n1. 看 AE 收敛参数：α 是否太大\n2. 看 HDR Merge 参数是否帧间稳定\n3. 看 ADRC 曲线是否帧间平滑\n4. 用 hist 分析：是单帧抖还是趋势抖\n\n常见解决：\n- **AE 收敛 α 0.3 → 0.15**\n- **HDR Merge 参数加平滑系数（merge_smooth_factor 0.7）**\n- **ADRC 曲线时序平滑**（避免 dark_gain 帧间跳变）\n\n这就是「**视频比拍照难调**」的原因。",
+      "glossary": [
+        { "term": "HDR10", "zh": "HDR10 标准", "explain": "开放 HDR 视频标准，10-bit 色深 + PQ 曲线 + 固定元数据。" },
+        { "term": "HDR10+", "zh": "HDR10 Plus", "explain": "HDR10 的增强版，每帧动态元数据。" },
+        { "term": "Dolby Vision", "zh": "杜比视界", "explain": "杜比的 HDR 标准，12-bit + 动态元数据，效果好但需要授权。" },
+        { "term": "PQ 曲线", "zh": "Perceptual Quantizer 曲线", "explain": "HDR10 / Dolby Vision 用的电光转换曲线，匹配人眼感知。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "录视频时 HDR 自动开启吗？", "a": "看相机 app 设置。多数手机有「视频 HDR」开关，开了就自动用支持的 HDR 模式。" },
+          { "q": "HDR10 和 4K 必须搭配吗？", "a": "不必。HDR10 是色彩标准，4K 是分辨率，独立。你能录 1080p HDR10 也能录 4K SDR。" },
+          { "q": "视频 HDR 录给谁看？", "a": "看 HDR 显示设备：iPhone 屏幕、HDR 电视、HDR 显示器都支持。普通屏幕看会自动 tonemapping 转 SDR。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：HDR 视频 标准", "search": "HDR10 HDR10+ Dolby Vision 区别" }
+        ],
+        "reads": [
+          { "title": "高通 3A 10 Deep Dive", "section": "Video HDR 章节" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Tone Mapping 在 HDR 视频里的作用",
+      "type": "concept",
+      "content": "### HDR 视频和 Tone Mapping\n\n你知道 Tone Mapping（GTM/LTM/TMC）的输出是 8-bit 显示。但 HDR 视频是 10-bit 输出，**不需要压缩到 8-bit**？\n\n这里有个**关键概念**：\n\n- **Tone Mapping** 是把高动态范围（如 14-bit）压到目标位深（8-bit SDR / 10-bit HDR）\n- **目标位深变了，Tone Mapping 还在做**，只是压缩比不同\n\n```\n14-bit RAW → 10-bit HDR：压缩 16 倍\n14-bit RAW → 8-bit SDR：压缩 64 倍\n```\n\nHDR 输出时压缩比小 → **保留更多动态范围** → 显示出来对比度高、亮部 / 暗部细节丰富。\n\n### HDR 视频里的 LTM\n\nLTM（局部色调映射）在 HDR 视频里更有用：\n\n- SDR 8-bit 已经压缩很狠，LTM 收益小\n- HDR 10-bit 压缩少，LTM 能发挥更精细的局部调整\n\n这就是为什么旗舰手机视频用 LTM（TMC 4.0）效果远超中端（TMC 3.0）的原因 —— 在 HDR 模式下差距放大。\n\n### Tone Mapping 标准\n\n不同 HDR 标准用不同 Tone Mapping 曲线：\n\n```\nSDR (8-bit)：sRGB Gamma 2.2\nHDR10 (10-bit)：PQ 曲线（SMPTE ST 2084）\nHDR10+ / Dolby Vision：动态元数据 PQ\nHLG：HLG 曲线（BBC 标准）\n```\n\nISP Tone Mapping 模块需要支持这些不同曲线。Tuning 工程师根据**输出模式**选不同的 LUT（查找表）。\n\n### Camera Tuning 的 HDR 流程\n\n你妹妹做 HDR 视频调教大致流程：\n\n```\nStep 1: 标定（标准光源 + 灰板）\n   - 测 sensor 在 HDR 模式下的响应\n   - 标定不同曝光档位的实际亮度\n\nStep 2: AE HDR 配置\n   - 多曝光表（长 / 中 / 短）\n   - HDR 启用阈值\n   - AE 帧间平滑参数\n\nStep 3: HDR Merge 配置\n   - merge_threshold（亮部用短、暗部用长）\n   - blend_width\n   - 鬼影检测策略\n\nStep 4: 后段调教\n   - ADRC 曲线（HDR 模式弱化，因为已经物理扩展）\n   - LTM/GTM 配置（按 HDR 标准选）\n   - Gamma 配置（PQ vs sRGB）\n\nStep 5: 真实场景验证\n   - 户外强阳光 + 阴影\n   - 室内逆光\n   - 夜景霓虹\n   - 运动场景（看鬼影）\n   - 不同帧率 / 分辨率组合\n\nStep 6: 客观指标\n   - 动态范围 EV 数\n   - 鬼影比例\n   - 帧间亮度抖动 SD\n```\n\n这是**3 个月才能调好**的流程。\n\n### 工程取舍：HDR vs 功耗\n\nHDR 视频特别费电（多曝光读出 + HDR Merge）。Tuning 工程师要权衡：\n\n```\nHDR Always On（永远开启）：\n  + 用户体验好\n  - 续航差，发热严重\n\nHDR Auto（自动判断）：\n  + 平衡\n  - 切换瞬间可能画面变化\n\nHDR On 用户开（手动）：\n  + 用户控制\n  - 用户可能忘开\n```\n\n现代手机大多用 Auto，但要做好「**HDR 切换平滑**」让用户感受不到。",
+      "glossary": [
+        { "term": "PQ Curve", "zh": "PQ 曲线", "explain": "HDR10 / Dolby Vision 的电光转换函数，匹配人眼对数感知。" },
+        { "term": "HLG", "zh": "Hybrid Log-Gamma", "explain": "BBC + NHK 制定的 HDR 标准，向下兼容 SDR。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么 HDR 视频文件大？", "a": "10-bit 比 8-bit 多 25% 数据，加 HDR 元数据。一般大 30-50%。" },
+          { "q": "HDR 视频在 SDR 屏上怎么看？", "a": "播放器自动 tonemapping 转 SDR。但效果不如原生 HDR。所以 HDR 视频在 SDR 屏上「看起来一般」是正常的。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：HDR 视频 调教", "search": "HDR 视频 拍摄 调教" }
+        ],
+        "reads": [
+          { "title": "维基百科 · HDR10", "url": "https://en.wikipedia.org/wiki/HDR10" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "AEC 进阶：双摄 / 多摄 AE 同步",
+      "type": "concept",
+      "content": "### 现代手机有多个摄像头\n\n2024 年的旗舰手机一般有 3-4 个主摄：\n- 主摄（1x）\n- 长焦（3x / 5x）\n- 超广角（0.5x）\n- 微距 / ToF\n\n用户在 app 里切换变焦倍数 → 切换不同摄像头。\n\n问题：**切换瞬间 AE 不一致** → 画面亮度跳变。\n\n### 多摄 AE 不一致的原因\n\n每个摄像头：\n- 有自己的 sensor（响应特性不同）\n- 有自己的 ISP 流水线（OB/LSC 不同）\n- 有自己的 AE 算法（独立运行）\n\n所以同一个场景，**主摄的 AE 决策和长焦的 AE 决策可能不同**：\n\n```\n主摄看到 lux=200，决策 1/60s + ISO 200\n长焦看到 lux=210（同场景，不同视野），决策 1/100s + ISO 100\n```\n\n用户从主摄切换到长焦：**亮度跳变**（曝光参数突然变了）。\n\n### 解决方案：AE 同步\n\n高通 ISP 提供「**多摄 AE 同步**」机制：\n\n```\n主摄运行 AE → 算出 lux + target\n   ↓ 同步给长焦 AE\n长焦 AE 不独立决策，而是「跟随主摄」\n   - 用主摄的 lux_index\n   - 用主摄的 target\n   - 略微微调（适配长焦 sensor 特性）\n```\n\n这样用户切换时**亮度连贯**。\n\n### 同步的具体实现\n\n```cpp\n// 主摄 AE\nclass MainAE : AE {\n    void update() {\n        // 正常 AE 流程\n        lux_index = compute_lux();\n        target = compute_target();\n        // ...\n        \n        // 把决策广播给其他 AE\n        notify_all_secondary_ae({lux_index, target, exp_index});\n    }\n}\n\n// 长焦 AE\nclass TeleAE : AE {\n    void update() {\n        // 收到主摄信号\n        if (got_main_ae_decision) {\n            // 用主摄的 lux 和 target\n            lux_index = main_lux + tele_lux_offset;\n            target = main_target;\n            \n            // 但 exp_index 用自己的曝光表（sensor 不同）\n            exp_index = lookup_my_table(lux_index);\n        }\n    }\n}\n```\n\n关键：**lux + target 同步**，**sensor 寄存器各自适配**。\n\n### 不只 AE，AWB 也要同步\n\n你想，从主摄切到长焦如果**白平衡突变**（颜色变了），用户也会感觉怪。\n\n所以 AE / AWB 都要同步。AF 不需要（因为切换镜头时本来就要重新对焦）。\n\n### 「**双摄一致性**」的工程难度\n\n这是手机摄影里**最难调**的项目之一：\n\n- 不同 sensor 的响应曲线不一样（同样 lux 输出 luma 不同）\n- 不同镜头的视场角不一样（看到的场景一部分）\n- 不同摄像头的色彩偏向不一样（CCM 标定不同）\n\n要让用户切换时「无感切换」 = 调教需要做：\n\n1. **多摄一致性标定**（在标准光源下测每个 sensor 的响应）\n2. **同步策略调教**（lux 偏移、target 偏移）\n3. **过渡平滑**（切换瞬间用补间帧而不是直接切）\n4. **色彩一致性**（每个 sensor 的 CCM 配套调）\n\n### 一个常见 bug\n\n用户报「**从主摄切到长焦画面突然变绿**」。\n\n排查：\n1. 不是 AE 问题（亮度一致）\n2. 不是 AF 问题（对焦正常）\n3. 是 AWB 问题：长焦 AWB 算出不同的色温（同场景，长焦看到的部分偏绿）\n4. 解决：长焦 AWB 跟随主摄（不独立决策）\n5. 或：增加主摄 → 长焦的色温过渡补间\n\n这是双摄一致性的典型问题。Week 5-6 学 AWB 时还会深入。\n\n### 三摄 / 四摄怎么办\n\n现代旗舰有 3-4 个摄像头。同步关系：\n\n```\n主摄（master） → 长焦（slave 1）\n                ↓\n             超广角（slave 2）\n                ↓\n             微距（slave 3）\n```\n\n所有副摄都跟主摄同步。**主摄是「唯一真理」**。\n\n用户从主摄切到长焦：长焦立即用主摄数据。从长焦切到主摄：主摄继续独立运行（已经在跑）。\n\n这种**主从架构**简化了同步逻辑。\n\n### 视频和拍照的同步差别\n\n- **拍照模式**：用户切换可以接受短暂闪烁（AE 重新跑）\n- **视频模式**：录像时切换必须**完全平滑**（不能闪烁）\n\n所以**视频模式**下的 AE 同步是真正的难点。",
+      "glossary": [
+        { "term": "Multi-camera AE Sync", "zh": "多摄 AE 同步", "explain": "副摄 AE 跟随主摄决策，避免切换时亮度跳变。" },
+        { "term": "Master / Slave", "zh": "主从", "explain": "多摄架构里主摄独立决策，副摄跟随的设计模式。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "iPhone 的多摄一致性为什么好？", "a": "工程投入大 + 苹果自家 sensor + 多年调教积累。配套硬件级别的相机 ISP 同步。" },
+          { "q": "副摄 AE 完全没用？", "a": "切换时用副摄的统计微调（适配视场差异）。**完全独立运行**只在副摄变成「主摄」时（用户长时间在长焦上拍）。" },
+          { "q": "ToF / 微距摄像头需要 AE 吗？", "a": "需要但很简单（多数时候用主摄数据驱动）。微距是辅助镜头，不是主成像。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Multi-camera AE / AWB" }
+        ]
+      }
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **3 种 HDR 实现**：MFHDR（多帧合成）/ SHDR（行交错）/ 3-EXP HDR（一帧 3 曝光），各有优劣\n2. **视频 HDR 不能用 MFHDR**：拍多帧需要 100ms+，视频 33ms 不允许\n3. **HDR 标准**：HDR10 / HDR10+ / Dolby Vision / HLG，对应不同 PQ 曲线\n4. **视频 HDR 三大挑战**：实时 + 流式 + 帧间一致性\n5. **多摄 AE 同步**：主从架构，副摄跟主摄，切换无感\n6. **双摄一致性是最难调的项目之一**：sensor / 镜头 / CCM 都要标定\n\n### 自我检查\n\n1. 默写 3 种 HDR 实现的对比表（数据来源 / 鬼影 / 分辨率 / 适用场景）。\n2. 为什么视频不能用 MFHDR？\n3. HDR10 vs Dolby Vision 的核心区别？\n4. 多摄 AE 同步的「主从」架构怎么工作？\n5. 用户报「主摄切长焦画面突变」，你怎么排查？\n\n### 笔记建议\n\n- 把 3 种 HDR 对比表抄到 cheat sheet\n- 整理多摄一致性涉及的 4 个层次（sensor / AE / AWB / CCM）\n- 想想你妹妹 7250 项目支不支持 3-EXP HDR（可能不支持，多用 MFHDR）\n\n### 明天预告\n\nDay 28：Week 4 总结 + 周考。把 Week 3 + 4 的 AE 完整内容串起来，用 PRD 全部 AE 类题（Q1-Q5/Q15/Q17-Q23）做综合复习 + 15 题周考。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 10 Deep Dive", "section": "MFHDR / SHDR / 3-EXP HDR + Multi-camera Sync" },
+    { "source": "维基百科 · HDR10", "url": "https://en.wikipedia.org/wiki/HDR10" }
+  ],
+  "dailyQuizId": "daily-day-27"
+}

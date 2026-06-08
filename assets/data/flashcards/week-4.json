@@ -1,0 +1,226 @@
+[
+  {
+    "id": "fc-w4-d22-1",
+    "front": "高通 AEC 共有几个 Scene Analyzer？列出名字",
+    "back": "10 个：1) Brighten 提亮 2) Saturation Prevention 饱和保护 3) Dark Prevention 暗部保护 4) Extreme Color 极端色彩 5) Face 人脸 6) Touch 触摸 7) Saliency 显著性 8) Depth 深度 9) Frame Average 帧间平均 10) LLS 低光抑制。",
+    "tags": ["Day 22", "Scene Analyzer", "总览"],
+    "srcDay": "day-22"
+  },
+  {
+    "id": "fc-w4-d22-2",
+    "front": "Decision Aggregator 怎么聚合多个 Scene Analyzer？",
+    "back": "1) 收集所有 active 的 Analyzer 输出（factor + offset + priority）2) 按 priority 排序取 top N（避免互相抵消）3) 用「几何加权」累乘：final_factor = Π factor_i^(p_i/sum_p)，sum_p = 各项 priority 之和。这种加权下高 priority 因子影响大但不会完全主导。",
+    "tags": ["Day 22", "聚合"],
+    "srcDay": "day-22"
+  },
+  {
+    "id": "fc-w4-d22-3",
+    "front": "Saturation Prevention vs Brighten 的 priority 差距？设计哲学？",
+    "back": "Saturation Prevention priority 90（最高），Brighten 50（中）。哲学：「保护 > 增强」。亮部一旦过曝（>255 截断）就不可恢复；暗部偏暗后期 ADRC 还能拉一些回来。所以宁可暗一点，不要过曝。苹果照片偏暗就是这种风格。",
+    "tags": ["Day 22", "priority", "哲学"],
+    "srcDay": "day-22"
+  },
+  {
+    "id": "fc-w4-d22-4",
+    "front": "Brighten Analyzer 的两个激活条件？",
+    "back": "1) dark_ratio > 0.5（一半以上块偏暗）；2) lux_index < 150（真的暗光场景）。两条件同时满足才激活。这两个条件防止「黑车在白天被加亮成灰车」（黑色物体也满足条件 1，但条件 2 是 lux 220 户外不会满足）。",
+    "tags": ["Day 22", "Brighten"],
+    "srcDay": "day-22"
+  },
+  {
+    "id": "fc-w4-d22-5",
+    "front": "PRD 第 18 / 23 题：Metering 由哪两个模块组成？",
+    "back": "1) AE 数据统计模块（sensor-independent）：64×48 + 中心测光 + ROI 加权 + Bright/Dark Region + 10 个 Scene Analyzer。决定 target。2) evtable 曝光表（sensor-dependent）：拐点 + HDR 多曝光表 + lux_to_exp 映射。决定 sensor 寄存器。设计理由：解耦让换 sensor 时只改 evtable，统计模块跨 sensor 通用。",
+    "tags": ["Day 22", "PRD-Q18", "PRD-Q23"],
+    "srcDay": "day-22"
+  },
+  {
+    "id": "fc-w4-d23-1",
+    "front": "Dark Prevention vs Saturation Prevention 的关系？",
+    "back": "镜像。Saturation Prevention 防亮部 = 255 截断；Dark Prevention 防暗部 = 0 截断。两者都防止信息不可逆丢失，方向相反。Saturation priority 90，Dark Prevention priority 70（保护亮部更优先，因为暗部 ADRC 还能救）。",
+    "tags": ["Day 23", "Dark Prevention"],
+    "srcDay": "day-23"
+  },
+  {
+    "id": "fc-w4-d23-2",
+    "front": "Extreme Color 的检测条件？",
+    "back": "max(R,G,B) / min(R,G,B) > 2.0 → 通道严重不平衡（如日落 R 远高于 B、绿草地 G 远高于 RB）。触发后做两件事：通知 AWB「这是色彩场景，少修 R」+ 让 AE 不强行加曝光（target_factor 降低）。",
+    "tags": ["Day 23", "Extreme Color"],
+    "srcDay": "day-23"
+  },
+  {
+    "id": "fc-w4-d23-3",
+    "front": "AE Assist Algorithms 是什么？包含哪几个？",
+    "back": "AE 辅助算法，不直接改 target 但帮 AE 稳定决策的模块。三个：1) Frame Average（多帧加权平均，让输入稳定）2) Convergence Speed Adjust（自适应 α）3) Stability Check（统计抖动检测）。三者协同让 AE 决策时序稳定。",
+    "tags": ["Day 23", "Assist"],
+    "srcDay": "day-23"
+  },
+  {
+    "id": "fc-w4-d23-4",
+    "front": "几何加权 vs 算术加权聚合，区别？",
+    "back": "几何加权 final = Π factor_i^(p_i/sum_p)：高 priority 影响大但不会完全主导，数值平稳。算术加权 final = Σ (p_i × factor_i) / sum_p：大 factor 容易主导（1.5+0.5 平均看似中性，但视觉上 1.5 影响更大）。AE 用几何加权更接近视觉感受。",
+    "tags": ["Day 23", "聚合"],
+    "srcDay": "day-23"
+  },
+  {
+    "id": "fc-w4-d24-1",
+    "front": "为什么 Face / Touch / Saliency / Depth 不通过 Scene Analyzer 聚合？",
+    "back": "「明确 > 推断」哲学：ROI 是用户明确指定（Touch）或 AI 检测到（Face/Saliency/Depth）的具体主体，比起其他 Analyzer 推断的修正更可靠。直接修改 64×48 权重表，不参与聚合，避免被其他 factor 稀释。",
+    "tags": ["Day 24", "ROI"],
+    "srcDay": "day-24"
+  },
+  {
+    "id": "fc-w4-d24-2",
+    "front": "PRD 第 21 题：Video 拍人脸偏亮怎么处理？",
+    "back": "原因：人脸 ROI 加权过强主导测光。4 种思路：1) 降低 video 模式 face_roi_weight（5.0 → 3.5）；2) 增强 Face Analyzer 过亮修正（factor 0.92 → 0.85）；3) 动态权重按人脸亮度自适应；4) video / photo 分开配置。实际工程：1+4 组合（video 模式专属配置）。",
+    "tags": ["Day 24", "PRD-Q21"],
+    "srcDay": "day-24"
+  },
+  {
+    "id": "fc-w4-d24-3",
+    "front": "4 类 ROI 的 priority / 权重排序？",
+    "back": "Touch（强制最高）> Face（5.0 weight）> Depth（约 60）> Saliency（约 50）。Touch 是用户明确意图所以最优先，Face 是关键主体语义，Saliency 是 AI 推断兜底。",
+    "tags": ["Day 24", "ROI", "priority"],
+    "srcDay": "day-24"
+  },
+  {
+    "id": "fc-w4-d24-4",
+    "front": "Touch ROI 的状态机？",
+    "back": "4 个状态：INACTIVE（无触摸）→ PRESSED（用户刚点，strength 1.0）→ HOLD（持续若干秒）→ FADEOUT（线性衰减到 0）→ INACTIVE。让用户感觉「点过的地方影响一会儿」，不会瞬间消失也不会永远生效。",
+    "tags": ["Day 24", "Touch ROI"],
+    "srcDay": "day-24"
+  },
+  {
+    "id": "fc-w4-d24-5",
+    "front": "Saliency 和 Face 的差别？",
+    "back": "Face：只检测人脸，输出 bounding box，模型小（~1MB），1-2ms。Saliency：检测任何「显眼」主体，输出热力图（每像素 0-1），模型大（~10MB），5-10ms。两者互补：有人脸用 Face（更准），没人脸用 Saliency（兜底）。Saliency 每 5 帧跑一次（成本高）。",
+    "tags": ["Day 24", "Saliency", "Face"],
+    "srcDay": "day-24"
+  },
+  {
+    "id": "fc-w4-d25-1",
+    "front": "Frame Analyzer 的实现？为什么 priority 这么低（30）？",
+    "back": "实现：滑动窗口（10 帧）保留过去帧的 luma，加权平均（近期权重大）得到 stable_luma。priority 低是因为它「不直接改 target」，而是给所有其他 Analyzer 提供稳定的输入。在「输入端」做平滑，让所有后续决策都更稳。",
+    "tags": ["Day 25", "Frame Analyzer"],
+    "srcDay": "day-25"
+  },
+  {
+    "id": "fc-w4-d25-2",
+    "front": "LLS（Low Light Suppress）的两个核心动作？",
+    "back": "1) 自身降低 target（防 AE 强求亮）；2) suppress 其他「加亮型」Analyzer（让 Brighten / Dark Prevention 不生效或弱生效）。激活条件：lux_index < 100。priority 85（次于 Saturation Prevention 的 90）。极暗下没 LLS → AE 拉到 ISO 12800 + Digital Gain 2x → 噪点雪花。",
+    "tags": ["Day 25", "LLS"],
+    "srcDay": "day-25"
+  },
+  {
+    "id": "fc-w4-d25-3",
+    "front": "10 个 Scene Analyzer 的 priority 排序？",
+    "back": "Saturation Prevention 90 > LLS 85 > Face 80 > Dark Prevention 70 > Extreme Color 60 / Depth 60 > Brighten 50 / Saliency 50 > Frame Average 30。Touch 是「强制」（直接修改权重不入聚合）。规律：保护型 > 主体型 > 增强型 > 输入端。",
+    "tags": ["Day 25", "priority"],
+    "srcDay": "day-25"
+  },
+  {
+    "id": "fc-w4-d25-4",
+    "front": "Tuning 工程师调 AEC 的总参数量级？",
+    "back": "约 200-400 个参数。曝光表 250+（多个 sensor + HDR 多份）；Bright/Dark Region 8；10 个 Scene Analyzer 每个 5-10 个 = 50-100；AE 收敛 + Antibanding 5-10。一个项目调 3-6 个月，要跑几百次「修改 → 测试 → 对比」循环。",
+    "tags": ["Day 25", "工作量"],
+    "srcDay": "day-25"
+  },
+  {
+    "id": "fc-w4-d26-1",
+    "front": "PRD 第 10 题：7250 用 TMC 几？区别？",
+    "back": "7250（SM7250 / 骁龙 765G 中端）用 TMC 3.0。区别：3.0 = GTM（全局色调映射，整图一条曲线）；4.0 = LTM（局部色调映射，按区域分块各自映射）。4.0 计算成本高 + tuning 工作量大，效果好；3.0 简单适合中端。旗舰 SM8350+ 用 4.0。",
+    "tags": ["Day 26", "PRD-Q10", "TMC"],
+    "srcDay": "day-26"
+  },
+  {
+    "id": "fc-w4-d26-2",
+    "front": "ADRC 曲线的形状？",
+    "back": "luma → gain 查找表。暗部高 gain（30 luma 处约 1.6x），中间渐降，亮部 = 1.0（不动）。曲线在 0-200 之间下降到 1.0 然后保持平直。不同 lux 用不同曲线（暗光更激进，亮光更弱）。Tuning 调暗部最大 gain + 过渡平滑度 + 拐点位置。",
+    "tags": ["Day 26", "ADRC"],
+    "srcDay": "day-26"
+  },
+  {
+    "id": "fc-w4-d26-3",
+    "front": "3-EXP HDR 的两种实现：DOL 和 QHDR？",
+    "back": "DOL（Digital Overlap）：每行像素逐行交错不同曝光 → 抽出长/中/短子图 → 纵向分辨率减半。QHDR（Quad HDR）：每个 Bayer 单元 4 像素用不同曝光 → 空间分辨率不减但色彩信息减半。两种都是 sensor 一帧 3 曝光，无运动鬼影。",
+    "tags": ["Day 26", "3-EXP HDR"],
+    "srcDay": "day-26"
+  },
+  {
+    "id": "fc-w4-d26-4",
+    "front": "ADRC 和 HDR 的层次关系？",
+    "back": "层次不同，协同工作。HDR 在 sensor 输入侧（多曝光帧），扩展物理动态范围 3-5 EV（真实增加）；ADRC 在 ISP 输出侧（数学拉暗部 gain），优化显示动态范围 1-2 EV。HDR 解决「sensor 一次看不全」，ADRC 解决「显示压缩到 8-bit 怎么不丢细节」。两者独立可用，旗舰场景两者都开。",
+    "tags": ["Day 26", "ADRC", "HDR"],
+    "srcDay": "day-26"
+  },
+  {
+    "id": "fc-w4-d27-1",
+    "front": "三种 HDR 实现方式对比？",
+    "back": "1) MFHDR（多帧 HDR）：拍多帧不同曝光合成，普通 sensor 即可，鬼影风险高，仅拍照（100-300ms）。2) SHDR（Staggered HDR）：sensor 行交错不同曝光，纵向分辨率减半，无鬼影，拍照+短视频。3) 3-EXP HDR：sensor 一帧 3 曝光，最优效果，sensor 贵，视频也能用。",
+    "tags": ["Day 27", "HDR 对比"],
+    "srcDay": "day-27"
+  },
+  {
+    "id": "fc-w4-d27-2",
+    "front": "为什么视频不能用 MFHDR？",
+    "back": "视频每帧 33ms（30fps），MFHDR 一次合成需要拍 3 帧 100-300ms 完全来不及。如果用 MFHDR 视频会变成 5-10fps（卡顿）。所以视频 HDR 必须 sensor 单帧搞定（SHDR / 3-EXP HDR）。",
+    "tags": ["Day 27", "视频 HDR"],
+    "srcDay": "day-27"
+  },
+  {
+    "id": "fc-w4-d27-3",
+    "front": "HDR 视频四大标准？",
+    "back": "1) HDR10：开放标准，10-bit + PQ 曲线 + 固定元数据；2) HDR10+：HDR10 增强版，每帧动态元数据；3) Dolby Vision：杜比独占，12-bit + 每帧动态元数据，需授权；4) HLG：BBC + NHK 制定，向下兼容 SDR，电视广播常用。手机默认录 HDR10/HDR10+。",
+    "tags": ["Day 27", "HDR 标准"],
+    "srcDay": "day-27"
+  },
+  {
+    "id": "fc-w4-d27-4",
+    "front": "多摄手机 AE 同步的「主从架构」？",
+    "back": "主摄独立运行 AE 决策；副摄（长焦/超广角/微距）跟随主摄：用主摄的 lux + target，但 sensor 寄存器各自适配（曝光表不同）。AE 和 AWB 都要同步（AF 不需要，因为换镜头本来就要重新对焦）。这就是切换镜头时画面平滑的来源。",
+    "tags": ["Day 27", "多摄同步"],
+    "srcDay": "day-27"
+  },
+  {
+    "id": "fc-w4-d27-5",
+    "front": "视频 HDR 三大挑战？",
+    "back": "1) 实时性：每帧 33ms 内完成 HDR 合成；2) 流式处理：必须实时输出，没时间存盘后处理；3) 帧间一致性：相邻帧亮度 / 色彩必须连贯，否则画面闪。解决：sensor 单帧 HDR + AE 帧间渐变（damping α=0.15）+ HDR Merge 参数渐变。",
+    "tags": ["Day 27", "视频 HDR"],
+    "srcDay": "day-27"
+  },
+  {
+    "id": "fc-w4-d28-1",
+    "front": "Week 3+4 学完能答几道 PRD 题？",
+    "back": "13 道（全部 AE 类）：Q1（流程）/ Q2（亮度获取）/ Q3（target）/ Q4（曝光调节）/ Q5（lux_index）/ Q10（TMC 3 vs 4）/ Q15（safe_target 三步）/ Q17（64×48 + 中心测光）/ Q18（Metering 两模块）/ Q19（曝光表调试）/ Q21（Video 人脸偏亮）/ Q22（flux）/ Q23（Metering 两模块）。剩下 10 道是 ISP/Flash/色彩，分布 Week 1-2 / 6-8。",
+    "tags": ["Day 28", "PRD"],
+    "srcDay": "day-28"
+  },
+  {
+    "id": "fc-w4-d28-2",
+    "front": "「关灯拍照雪花」怎么调？",
+    "back": "原因：极暗下 Brighten + Dark Prevention 互相加强，AE 拉 ISO 到极限。修正：1) 增强 LLS suppression_strength；2) 降低 ISO 上限（曝光表）；3) 加强降噪；4) 让用户开夜景模式（多帧合成救急）。LLS 就是设计来解决这种过激的。",
+    "tags": ["Day 28", "调教 cheat"],
+    "srcDay": "day-28"
+  },
+  {
+    "id": "fc-w4-d28-3",
+    "front": "「黑车拍出来灰」怎么调？",
+    "back": "原因：Brighten Analyzer 误判 —— 黑色物体让 dark_ratio > 50%，但场景实际是户外亮光。修正：1) 降低 Brighten 的 activation_lux_max（150 → 100）让中等亮度场景不启用；2) 检查 Dark Prevention 阈值；3) 关键：Brighten 必须配合 lux 判断（不能只看 dark_ratio）。",
+    "tags": ["Day 28", "调教 cheat"],
+    "srcDay": "day-28"
+  },
+  {
+    "id": "fc-w4-d28-4",
+    "front": "「日落变蓝紫色」怎么调？",
+    "back": "原因：AWB 把日落「校正」回中性白（错误）。修正：1) Extreme Color Analyzer 应该激活（R/B > 2）；2) 检查 Extreme Color 是否通知到 AWB；3) AWB 收到信号后应该减弱 R 通道修正；4) 考虑加 Scene Recognition（专门识别日落场景）。这是 AE/AWB 协同的典型问题。",
+    "tags": ["Day 28", "调教 cheat"],
+    "srcDay": "day-28"
+  },
+  {
+    "id": "fc-w4-d28-5",
+    "front": "Tuning 工程师的 1 次调试循环",
+    "back": "8 步：1) 复现 bug；2) 抓 AEC log 看每个字段（lux/face/target/factor 等）；3) 定位是哪个 Analyzer 问题（看 priority 和 active）；4) 查 cheat sheet 找参数；5) 改 Chromatix XML；6) 重新出图测试；7) 对比新旧 + 综合评估其他场景；8) 通过 → commit；否则回 4。一天 5-10 次循环，3 个月几百次。",
+    "tags": ["Day 28", "工作流"],
+    "srcDay": "day-28"
+  }
+]

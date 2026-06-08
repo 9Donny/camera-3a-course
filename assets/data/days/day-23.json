@@ -1,0 +1,106 @@
+{
+  "id": "day-23",
+  "week": 4,
+  "module": "M3",
+  "title": "Dark Prevention + Extreme Color 分析器",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Dark Prevention：防止暗部完全黑",
+      "type": "concept",
+      "content": "### Dark Prevention 是 Saturation Prevention 的「**镜像**」\n\nDay 22 我们学了 Saturation Prevention：防止亮部过曝（>255 截断）。\n\nDark Prevention 是它的「**镜像分析器**」：防止**暗部完全黑**（=0 截断）。\n\n```\n        Saturation Prevention\n           ↓\n直方图：  ▓ ▓▓▓ ▓▓▓▓ ▓▓▓ ▓ ░ ░ ░ ░ ░ ▓ ▓▓ ▓▓▓▓▓\n        0                                   255\n           ↑\n        Dark Prevention\n```\n\n两者都防止**信息丢失**，但保护方向相反。\n\n### 为什么暗部全黑也是问题\n\n直觉上：「黑色像素就是 0 没问题啊」。\n\n但实际上：**真实场景里的「暗黑」其实有微弱细节**。比如：\n- 黑色西装的纹理\n- 阴影里的物体轮廓\n- 暗夜里的远景\n\n如果 sensor 输出截断到 0 → 这些细节**不可逆丢失**。\n\nDark Prevention 检测「**直方图最低 5% 接近 0**」：\n\n```python\ndef dark_prevention(histogram):\n    very_dark = sum(histogram[0:5])  # 0-4 这些档位\n    very_dark_ratio = very_dark / 3072\n    \n    if very_dark_ratio > 0.10:\n        # 10% 以上块已经接近 0\n        return AnalyzerOutput(\n            active = True,\n            target_factor = 1.0 + dark_prevention_strength × very_dark_ratio,\n            target_offset = 0,\n            priority = 70\n        )\n    return AnalyzerOutput(active=False)\n```\n\n效果：暗部太多被截断 → 提高 target → AE 加曝光 → 让暗部抬一点点（从 0-5 移到 10-15，**保留细节**）。\n\n### 真实参数\n\n```xml\n<dark_prevention>\n  <enabled>true</enabled>\n  <dark_threshold>5</dark_threshold>             <!-- < 5 视为暗截断 -->\n  <activation_ratio>0.10</activation_ratio>      <!-- 10% 以上块超阈才启用 -->\n  <strength>0.20</strength>\n  <max_target_increase>0.20</max_target_increase> <!-- 最多提 20% target -->\n  <priority>70</priority>                        <!-- 中等优先级 -->\n</dark_prevention>\n```\n\n### Dark Prevention vs Brighten\n\n两者很像但不同：\n\n| | Brighten | Dark Prevention |\n|---|---|---|\n| 检测什么 | 整体偏暗（dark_ratio 高 + lux 低） | 极暗（最低 5% 占比高） |\n| 目的 | 让用户看清画面 | 保护暗部细节不丢失 |\n| priority | 50（中） | 70（中高） |\n| 作用区域 | 整体提亮 | 仅暗部抬一点 |\n\n**Brighten** 处理「画面整体看不清」。**Dark Prevention** 处理「暗部细节要保住」。两者**可以同时激活**：暗场景下 Brighten 加亮 + Dark Prevention 进一步保暗部细节。\n\n### Tuning 工程师怎么调\n\n场景 1：用户报「**夜景里黑色物体没层次**」\n→ 加大 Dark Prevention 的 strength（0.20 → 0.30）\n→ 暗部抬得更高，纹理更清晰\n→ 代价：噪点变多\n\n场景 2：用户报「**夜景天空噪点重**」\n→ Dark Prevention 太激进，天空（应该接近黑）被强行抬亮 → 噪点凸显\n→ 调低 strength，或调高 activation_ratio（0.10 → 0.15，更难触发）\n\n### 一个常见 bug 案例\n\n用户报「**关灯拍照画面雪花**」\n\n排查链路：\n1. 极暗场景（lux < 30）\n2. Brighten + Dark Prevention 双双激活\n3. AE 拉到极限（曝光时间 1/15 + ISO 12800）\n4. ISP 段 Digital Gain × 2.0 补足\n5. 各种放大叠加 → 噪点雪花\n\n修正方向：\n- 暗光下 Dark Prevention 不应该过强（暗部本就该暗）\n- 加 LLS（Low Light Suppress）分析器（Day 25）抑制 Brighten + Dark Prevention 的叠加\n- 这就是 LLS 的存在意义",
+      "glossary": [
+        { "term": "Dark Prevention", "zh": "暗部保护", "explain": "防止暗部像素 = 0 被截断（信息丢失）的 Scene Analyzer，与 Saturation Prevention 镜像。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "暗部为什么也算「过曝」？这不是术语反了吗？", "a": "「过曝」是术语习惯。Dark Prevention 处理的是「过暗截断」，意思一致 —— 像素值到达边界后信息丢失。" },
+          { "q": "拍纯黑物体怎么办？", "a": "看场景。如果场景**确实**应该有黑色物体（如黑车），Brighten + Dark Prevention 都该弱一些。这就是「黑车不黑」问题的根源。" },
+          { "q": "夜景模式和 Dark Prevention 是同一回事吗？", "a": "不是。夜景模式是上层算法（多帧合成 + AI 增强），Dark Prevention 只是 AE 内部一个分析器。但夜景模式开启时会调整 Dark Prevention 参数。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：摄影 暗部细节", "search": "摄影 暗部细节 阴影" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Dark Prevention" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Extreme Color 分析器：处理「极端色彩」场景",
+      "type": "concept",
+      "content": "### 什么是「极端色彩」\n\n大多数日常场景里 R / G / B 三通道**比较平衡**（白纸、人像、风景）。但有些场景 R/G/B **严重不平衡**：\n\n- **日落 / 日出**：整画面偏红橙\n- **绿色草地特写**：整画面偏绿\n- **蓝色海面**：整画面偏蓝\n- **红色霓虹背景**：整画面偏红\n\n这种场景的特点：**某个色彩通道的能量异常高**。\n\n### 为什么这是 AE 的问题\n\nDay 15 我们说 64×48 块统计输出的是 (Y, R, G, B) 平均值，AE 主要用 Y。但 Y 的计算是：\n\n```\nY = 0.30 × R + 0.59 × G + 0.11 × B\n```\n\n对于「**绿色草地特写**」，Y 值会偏低（草是绿但不亮）。问题：\n\n- AE 看到 Y 偏低 → 觉得「**画面偏暗**」 → 加曝光\n- 但实际上画面**色彩饱和**，不是亮度问题\n- 加曝光后**绿色更绿** → 草地饱和爆 → AWB 也跟着误判（以为光源偏绿）\n\n所以 AE 必须检测「**亮度偏低是色彩极端造成的，不是真的暗**」，**不要把曝光拉太高**。\n\n### 检测逻辑\n\n```python\ndef extreme_color(stats_64x48):\n    R_avg = mean(b.R for b in stats_64x48)\n    G_avg = mean(b.G for b in stats_64x48)\n    B_avg = mean(b.B for b in stats_64x48)\n    max_channel = max(R_avg, G_avg, B_avg)\n    min_channel = min(R_avg, G_avg, B_avg)\n    \n    color_ratio = max_channel / min_channel  # 不平衡度\n    \n    if color_ratio > 2.0:\n        # 某通道是另一通道的 2 倍以上 → 色彩极端\n        return AnalyzerOutput(\n            active = True,\n            target_factor = 1.0 - 0.10 × (color_ratio - 2.0),\n            target_offset = 0,\n            priority = 60\n        )\n    return AnalyzerOutput(active=False)\n```\n\n效果：检测到色彩极端 → 降低 target → AE 不强行加曝光 → 画面保持「该色彩饱和的样子」。\n\n### 真实参数\n\n```xml\n<extreme_color>\n  <enabled>true</enabled>\n  <activation_ratio>2.0</activation_ratio>          <!-- 通道比例 > 2 才启用 -->\n  <max_target_reduction>0.20</max_target_reduction>\n  <strength>0.10</strength>                         <!-- per ratio 单位的修正强度 -->\n  <priority>60</priority>\n</extreme_color>\n```\n\n### Extreme Color 怎么帮 AWB\n\nDay 22 我们提到 Extreme Color 「防止 AWB 误判」。怎么做到？\n\n**情况**：拍日落，整画面偏红 → AWB 看到「整画面 R 通道远高于 B」 → 怀疑「**这是不是钨丝灯下的白纸**」 → 把 R 通道增益降低 → 画面**变成蓝紫色**（错的）。\n\n**Extreme Color** 触发后会做两件事：\n\n1. **告诉 AWB 「这是色彩场景，不是白平衡问题」**：AWB 收到信号后**降低 R 通道修正强度**（不要把日落变蓝）\n2. **降低 AE 的 target_factor**：避免 AE 加曝光让画面更红\n\n两个动作让「**日落保持日落颜色**」。这是 AWB 和 AE 的协同工作机制（Week 5 学 AWB 时还会详讲）。\n\n### 实战：拍日落\n\n用 AE + AWB 视角分析「拍日落」全流程：\n\n```\n1. 64×48 统计：R 通道平均 200，G 100，B 60\n2. Extreme Color 检测：R/B = 3.33 > 2.0 → active=1, target_factor=0.87\n3. 给 AWB 发信号：「场景色彩极端，少修 R」\n4. AE 算 final_luma = 0.30×200 + 0.59×100 + 0.11×60 = 125\n5. lux_index 计算 → 假设 220（户外）\n6. luma_target 80\n7. Brighten Analyzer 不激活（已经亮）\n8. Saturation Prevention 也不激活（最高才 200）\n9. Extreme Color factor 0.87 → adjusted_target = 80 × 0.87 = 70\n10. AE 决策：current 125 > target 70，要降曝光（让画面平均亮度回到 70 区域）\n11. 写 sensor：曝光时间略减 + ISO 不变\n12. AWB 收到信号：R 通道修正只做一半（不全压回白）\n13. 最终画面：日落颜色饱和 + 不过曝 + 暖色调保留\n```\n\n用户拍出来：**漂亮的日落**。\n\n### 为什么 priority 60 而不是 90\n\nExtreme Color 不是「**保护**」（不像 Saturation Prevention），而是「**预警**」性质。所以 priority 中等。\n\n如果同时有 Saturation Prevention（priority 90）和 Extreme Color（60）冲突，Saturation 优先（毕竟过曝信息丢失更严重）。",
+      "glossary": [
+        { "term": "Extreme Color", "zh": "极端色彩", "explain": "Scene Analyzer 之一，检测画面 R/G/B 通道严重不平衡（如日落、纯绿草地），通知 AWB 不误判 + 让 AE 不强行加曝光。" },
+        { "term": "color_ratio", "zh": "通道比例", "explain": "max(R,G,B) / min(R,G,B)，反映色彩极端程度。常见 1.0-1.5（平衡），>2 算极端。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "Extreme Color 是 AE 还是 AWB 的？", "a": "在 AE 体系内（属于 Scene Analyzer），但**输出影响 AWB**。是两者协同工作的桥梁。" },
+          { "q": "拍红旗（纯红物体）会激活吗？", "a": "会。红旗占画面比例大时 R/G 比例可能 > 2，激活 Extreme Color，避免 AE 加曝光导致红旗过曝、AWB 把红旗染成粉色。" },
+          { "q": "怎么处理「应该是色彩极端」和「不应该是色彩极端」？", "a": "看上下文：日落 → 应该 / 钨丝灯下白墙 → 不应该。Extreme Color 只看局部 ratio，区分不了。所以要靠 AWB 的全局光源判断（Week 5）配合。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：日落 摄影 调教", "search": "日落 摄影 色彩调教" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Extreme Color Scene Analyzer" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "聚合多个分析器：实战练习",
+      "type": "example",
+      "content": "### 练习场景：复杂场景分析\n\n**场景 1：夜晚拍霓虹（已经聊过的）**\n\n```\nstats: 80% 块 luma<30, 20% 块 luma>220\nlux_index: 130\n\n激活的分析器：\n  Brighten:           dark_ratio=0.8 → factor 1.30, priority 50\n  Saturation Prev:    sat_ratio=0.20 → factor 0.75, priority 90  ← 最高\n  Dark Prevention:    very_dark=0.5 → factor 1.20, priority 70\n  Extreme Color:      不激活（色彩还算平衡）\n  Frame Average:      平滑作用，priority 30\n  其他:               不激活\n\n聚合（按 priority 排序，取前 3）：\n  1. Saturation Prev (90, factor 0.75)\n  2. Dark Prevention (70, factor 1.20)\n  3. Brighten (50, factor 1.30)\n\n累乘：0.75 × 1.20 × 1.30 = 1.17\n\nadjusted_target = 80 × 1.17 = 94\n```\n\n但这里有个问题：Saturation 想压低，Dark/Brighten 想拉高，**互相抵消**。最终 1.17 接近中性。\n\n实际工程更精细：聚合器会**按优先级排序，高优先级的因子权重更大**。例如用「**几何加权**」：\n\n```\nweighted_factor = factor_1^(p1/sum_p) × factor_2^(p2/sum_p) × factor_3^(p3/sum_p)\nsum_p = 90+70+50 = 210\nweighted_factor = 0.75^(90/210) × 1.20^(70/210) × 1.30^(50/210)\n               = 0.75^0.43 × 1.20^0.33 × 1.30^0.24\n               ≈ 0.886 × 1.062 × 1.066\n               ≈ 1.003\n```\n\n这种聚合下 final factor 接近 1.0，AE 不大动 target。**让 ADRC 处理动态范围**（最佳策略）。\n\n**场景 2：日出拍人脸（逆光 + 极端色彩）**\n\n```\nstats: 上半天空亮且偏红黄 (R 250, G 180, B 100)\n      下半人脸暗 (R 60, G 50, B 40)\n      平均 R/G/B = (155, 115, 70)\nlux_index: 250\n\n激活分析器：\n  Saturation Prev:    sat_ratio=0.15 → factor 0.85, priority 90\n  Extreme Color:      R/B = 2.21 → factor 0.92, priority 60\n  Face:               检测到人脸偏暗 → factor 1.10, priority 80\n  Brighten:           不激活（lux 250 高）\n\n聚合（用几何加权）：\n  权重之和：90+80+60 = 230\n  factor = 0.85^(90/230) × 1.10^(80/230) × 0.92^(60/230)\n         = 0.85^0.39 × 1.10^0.35 × 0.92^0.26\n         ≈ 0.937 × 1.034 × 0.978\n         ≈ 0.948\n\nadjusted_target = 80 × 0.948 = 76\n\n稍微降低 target，让画面整体不过曝（保护朝霞），但 Face 影响小被稀释了。\n```\n\n这个聚合结果其实**不理想**：人脸还是会偏暗。这就需要更精细的聚合策略 —— 比如：\n\n- **特殊处理 Face**：检测到 Face 时强制让 Face 优先（不被其他分析器稀释）\n- 或者 **Face 通过 ROI 加权机制**实现（不用 factor），从而绕过聚合冲突\n\n现代实现都用 Face ROI 直接加权 64×48（不和其他分析器混在一起），所以 Face 总能优先。\n\n### 设计哲学回顾\n\n1. **保护 > 增强**：Saturation Prevention / Dark Prevention 优先级高\n2. **明确 > 推断**：Face / Touch / Saliency 通过 ROI 加权（直接），不通过 factor 聚合\n3. **平衡 > 极端**：聚合用几何加权，避免互相抵消\n4. **可调 > 写死**：每个分析器的 priority、strength 都是 Tuning 参数\n\n### Tuning 工程师调聚合的方式\n\n你将来碰到「**某个场景效果不好**」，调试链路：\n\n1. 抓 log，看是哪几个 Analyzer active\n2. 看每个 Analyzer 输出的 factor / priority\n3. 看聚合后的 final_factor 是否合理\n4. 不合理 → 调有问题那个 Analyzer 的 strength / priority\n5. 真的逻辑不对 → 改聚合公式（罕见）",
+      "glossary": [
+        { "term": "几何加权", "zh": "Geometric Weighting", "explain": "用 factor^(weight/sum) 累乘的聚合策略，避免高 priority 完全主导。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "用算术加权可以吗？", "a": "可以但效果不好。算术加权下高 factor 容易主导（1.5 + 0.5 = 平均 1.0 看起来中性，但 1.5 的视觉影响远大于 0.5 的）。几何加权更接近视觉感受。" },
+          { "q": "Tuning 工程师真的写公式吗？", "a": "不写。聚合公式由高通固件提供。Tuning 只调参数（priority、strength、阈值）。但你需要懂公式才能预测调参的效果。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Decision Aggregator" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "AE Assist Algorithms：辅助算法层",
+      "type": "concept",
+      "content": "### 不只是 Scene Analyzer\n\nAE 内部除了 Scene Analyzer，还有一类叫「**AE Assist Algorithms**」（辅助算法）。它们不直接修正 target，而是**帮助 AE 做更稳定的决策**。\n\n### 三个主要的 Assist 算法\n\n**1. Frame Average（帧间平均）**\n\n本质是 Day 19 学过的 damping，但更精细。它把「过去 N 帧的统计**取加权平均**」，让 AE 不被单帧极端值干扰。\n\n```python\nweighted_stats = α × current_frame_stats + (1-α) × prev_frame_avg\nprev_frame_avg = weighted_stats  # 更新累积\n```\n\n效果：单帧偶发的「闪光灯」「快速移动物体」不会让 AE 大幅变化。\n\n**2. Convergence Speed Adjust（收敛速度调整）**\n\nDay 19 学过 α 是收敛速度参数。这个 Assist 模块根据**场景动态**调整 α：\n\n```python\nif lum_diff > big_threshold:\n    α = 0.5    # 偏差大，加快收敛\nelif lum_diff > medium_threshold:\n    α = 0.3    # 中等偏差\nelse:\n    α = 0.1    # 接近目标，减速避免抖\n```\n\n这就是「**自适应 damping**」。\n\n**3. Stability Check（稳定性检查）**\n\n看连续几帧的统计变化。如果**统计本身在抖**（用户拿不稳手机），AE 不该跟着抖。\n\n```python\nstats_variance = variance([stats[i].luma for i in last_5_frames])\nif stats_variance > threshold:\n    # 统计本身在抖\n    α *= 0.5  # 减半收敛速度，让 AE 更稳\n```\n\n这就是为什么手抖时画面亮度看起来反而更稳 —— AE 在 Stability Check 帮助下没乱跳。\n\n### 三个 Assist 模块在哪里\n\n```\n┌── 64×48 块统计（每帧）──┐\n└────────────┬───────────┘\n             ↓\n┌── Frame Average（多帧平滑）──┐\n└────────────┬─────────────────┘\n             ↓\n┌── Scene Analyzers（10 个）──┐\n└────────────┬───────────────┘\n             ↓\n┌── Decision Aggregator ──┐\n└────────────┬─────────────┘\n             ↓\n     adjusted_target\n             ↓\n┌── ADRC 修正 ──┐\n└──────┬────────┘\n       ↓\n   safe_target\n       ↓\n┌── Convergence Speed Adjust + Stability Check ──┐\n└──────┬───────────────────────────────────────────┘\n       ↓ damping\n   exp_smoothed → 写 sensor\n```\n\n### 为什么 AE 这么复杂\n\n看完今天，你应该感觉「**AE 真的不简单**」。原因：\n\n- 测光不只是平均，还有 Bright/Dark Region\n- target 不是定值，10 个 Scene Analyzer 修正\n- 决策不是直接，要聚合 + damping + 稳定性检查\n- 写 sensor 不是直接，要查表 + 量化补偿 + antibanding 吸附\n\n但这些**都是有道理的**：每一层都解决一个具体的工程问题。学了 Week 3 + Day 22-23，你已经知道这些层为什么存在。\n\n### Tuning 工程师的真实工作量\n\n你妹妹一个项目调 AEC 大概**调多少参数**？\n\n保守估计：\n- 曝光表（含 HDR）：~50 行配置，每行 5 字段 = 250 个数\n- Bright/Dark Region：4 个边界 + 4 个 weight = 8 个数\n- 10 个 Scene Analyzer：每个 5-10 个参数 = 50-100 个数\n- AE 收敛 + Antibanding：5-10 个数\n- 总计：约 400 个参数\n\n**调好这 400 个参数 = 一个 sensor 的 AEC tuning 完成**。一个项目大概 3-6 个月。\n\n这就是 Tuning 工程师的工作量量级。",
+      "glossary": [
+        { "term": "AE Assist Algorithms", "zh": "AE 辅助算法", "explain": "不直接改 target 但帮 AE 稳定决策的一族模块：Frame Average / Convergence Speed Adjust / Stability Check。" },
+        { "term": "Frame Average", "zh": "帧间平均", "explain": "Assist 算法之一，把过去 N 帧统计加权平均，避免 AE 被单帧极端值影响。" },
+        { "term": "Stability Check", "zh": "稳定性检查", "explain": "Assist 算法之一，检测统计本身的抖动，AE 据此减慢收敛速度。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "Frame Average 和 damping 是同一个东西吗？", "a": "不是。damping 在「target → exp_index」的转换上做平滑（减少 AE 决策的跳变）。Frame Average 在「64×48 块」的输入上做平滑（减少统计抖动）。两者层次不同，但合作让 AE 整体稳定。" },
+          { "q": "Stability Check 怎么知道是手抖还是场景真的变？", "a": "看 variance 来源：如果是「**整张图都在变**」 → 真场景；如果是「**统计 luma 在抖但其他指标稳定**」 → 手抖。这是经验判别，不完美但有效。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AE Assist Algorithms" }
+        ]
+      }
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **Dark Prevention**：保护暗部 = 0 截断（Saturation Prevention 的镜像），priority 70\n2. **Extreme Color**：检测 R/G/B 严重不平衡场景（日落 / 草地），通知 AWB 不误判 + AE 不加曝光\n3. **聚合多个分析器**：用几何加权 factor^(p/sum_p)，避免高 priority 完全主导\n4. **Face / Touch / Saliency 走 ROI 加权**，不混在 Scene Analyzer 聚合（避免被稀释）\n5. **AE Assist Algorithms**：Frame Average / Convergence Speed Adjust / Stability Check 让 AE 稳定\n6. **AE 复杂的原因**：每一层都解决一个具体工程问题（测光准 + 场景敏感 + 决策稳定 + 寄存器精确）\n\n### 自我检查\n\n1. Dark Prevention 检测什么？为什么暗部 = 0 也是问题？\n2. Extreme Color 怎么帮 AWB 不误判？\n3. 用「几何加权」聚合 3 个 factor 时公式是什么？\n4. Face 为什么不通过 Scene Analyzer 而通过 ROI 加权？\n5. Frame Average 和 damping 的层次区别是什么？\n\n### 笔记建议\n\n- 把今天学的 Dark Prevention / Extreme Color 加到 10 个 Scene Analyzer 表里\n- 想想日落场景下 AE 怎么决策（自己默写一遍流程）\n- 把 AE 的 4 层结构图画一张（统计层 + 加权层 + 分析层 + 收敛层）\n\n### 明天预告\n\nDay 24：Face Analyzer + Touch / Saliency / Depth 四个 ROI 类分析器。这是 PRD 第 21 题（Video 拍人脸偏亮）的关键。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Dark Prevention + Extreme Color" },
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "AE Assist Algorithms" }
+  ],
+  "dailyQuizId": "daily-day-23"
+}

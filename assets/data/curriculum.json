@@ -78,6 +78,13 @@
     { "id": "day-18", "week": 3, "module": "M3", "title": "Target 与 Safe Target：AE 目标亮度三步推导", "goal": "默写 PRD 第 15 题 safe_target 三步 + 4 个 target 关系" },
     { "id": "day-19", "week": 3, "module": "M3", "title": "AE 收敛逻辑与抗带状深入", "goal": "理解 damping + settle 机制 + antibanding 实现" },
     { "id": "day-20", "week": 3, "module": "M3", "title": "Bright/Dark Region 测光（PRD-Q19）", "goal": "答出 PRD 第 19 题展开版 + ROI 加权机制" },
-    { "id": "day-21", "week": 3, "module": "M3", "title": "Week 3 总结：AE 完整地图 + 面试题串讲", "goal": "完整画 AE 数据流图 + 5 道 PRD 题答案 + 周考" }
+    { "id": "day-21", "week": 3, "module": "M3", "title": "Week 3 总结：AE 完整地图 + 面试题串讲", "goal": "完整画 AE 数据流图 + 5 道 PRD 题答案 + 周考" },
+    { "id": "day-22", "week": 4, "module": "M3", "title": "Scene Analyzer 总览：10 个分析器与决策聚合", "goal": "看懂 10 个 Scene Analyzer 名字 + Brighten + Saturation Prevention + 答 PRD-Q18/Q23" },
+    { "id": "day-23", "week": 4, "module": "M3", "title": "Dark Prevention + Extreme Color 分析器", "goal": "理解暗部保护 + 极端色彩对 AWB 的协同 + AE Assist Algorithms" },
+    { "id": "day-24", "week": 4, "module": "M3", "title": "Face / Touch / Saliency / Depth 四类 ROI 分析器", "goal": "答 PRD-Q21（Video 拍人脸偏亮）+ 4 类 ROI 加权机制" },
+    { "id": "day-25", "week": 4, "module": "M3", "title": "Frame Analyzer + LLS（Low Light Suppress）", "goal": "理解滑动窗口稳定 + LLS 暗光抑制 + 10 Analyzer priority 排序" },
+    { "id": "day-26", "week": 4, "module": "M3", "title": "ADRC 深入 + 3-EXP HDR + TMC 3.0/4.0（PRD-Q10）", "goal": "答 PRD-Q10 TMC 版本区别 + ADRC 曲线 + 3-EXP HDR 实现" },
+    { "id": "day-27", "week": 4, "module": "M3", "title": "MFHDR / SHDR + 视频 HDR + 多摄同步", "goal": "三种 HDR 对比 + 视频 HDR 三大挑战 + 多摄主从架构" },
+    { "id": "day-28", "week": 4, "module": "M3", "title": "Week 4 总结：AEC 完整答辩 + 周考", "goal": "13 道 AE 类 PRD 题完整答案 + AEC 调教 cheat sheet + 周考" }
   ]
 }

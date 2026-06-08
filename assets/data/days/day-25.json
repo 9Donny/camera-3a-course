@@ -1,0 +1,89 @@
+{
+  "id": "day-25",
+  "week": 4,
+  "module": "M3",
+  "title": "Frame Analyzer + LLS（Low Light Suppress）",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Frame Analyzer：多帧时序稳定",
+      "type": "concept",
+      "content": "### 为什么需要时序分析\n\n之前学的 9 个 Scene Analyzer **都看单帧**：取当前帧的 64×48 + face / touch / saliency 等做决策。\n\n但**真实拍摄是连续的**：30fps 下每秒 30 帧。如果只看单帧，会有这些问题：\n\n**问题 1：场景突变**\n\n用户挥手让物体从画面中飞过：\n- 帧 N：飞过物体瞬间挡住测光区域\n- 帧 N+1：物体已经飞出，但 AE 已经被「**误测**」过了\n- AE 跟着挥手抖动\n\n**问题 2：偶发干扰**\n\n旁人闪了一下闪光灯：\n- 单帧 luma 突然变成 250\n- AE 误以为「画面太亮」，大幅压低曝光\n- 闪光灯结束后 AE 又得拉回来 → 画面震荡\n\n**问题 3：连续平稳变化**\n\n比如太阳从云后慢慢出来：\n- AE 应该跟随调整\n- 但每帧都重新决策 → 决策本身不稳\n\n**Frame Analyzer 解决这些**：把多帧的统计**纳入考虑**，让 AE 决策**更稳定**。\n\n### Frame Analyzer 实现\n\n核心是「**滑动窗口平均**」：\n\n```python\nclass FrameAnalyzer:\n    def __init__(self, window_size=10):\n        self.luma_history = []  # 过去 N 帧的 final_luma\n        self.window_size = window_size\n    \n    def analyze(self, current_luma):\n        self.luma_history.append(current_luma)\n        if len(self.luma_history) > self.window_size:\n            self.luma_history.pop(0)\n        \n        # 多帧加权平均（近期帧权重大）\n        weights = [i+1 for i in range(len(self.luma_history))]\n        weighted_avg = sum(l*w for l,w in zip(self.luma_history, weights)) / sum(weights)\n        \n        # 判断当前帧是不是「异常」\n        deviation = abs(current_luma - weighted_avg)\n        is_outlier = deviation > weighted_avg * 0.30\n        \n        return AnalyzerOutput(\n            active=True,\n            target_factor=1.0,\n            target_offset=0,\n            stable_luma=weighted_avg,  # 给后续模块用\n            is_outlier=is_outlier,\n            priority=30  # 低（不直接修正 target）\n        )\n```\n\n### Frame Analyzer 的两个用法\n\n**用法 1：滤波代替单帧统计**\n\n后续 Analyzer 不用 `current_luma` 而用 `stable_luma`。这样所有 Analyzer 都基于「**近期稳定亮度**」决策：\n\n```python\nfor analyzer in scene_analyzers:\n    output = analyzer.analyze(stable_luma)  # 替代 current_luma\n```\n\n**用法 2：异常帧检测**\n\n```python\nif is_outlier:\n    # 当前帧异常，跳过这帧的 AE 决策（保持上一帧参数）\n    skip_this_frame = True\n```\n\n这种「**跳帧策略**」让单帧异常不影响 AE。\n\n### 真实参数\n\n```xml\n<frame_analyzer>\n  <enabled>true</enabled>\n  <window_size>10</window_size>                          <!-- 10 帧滑动窗口 -->\n  <weight_decay>0.9</weight_decay>                       <!-- 老帧权重衰减 -->\n  <outlier_threshold>0.30</outlier_threshold>             <!-- 偏离 30% 算异常 -->\n  <skip_on_outlier>true</skip_on_outlier>                <!-- 异常帧是否跳过 AE 决策 -->\n  <priority>30</priority>                                <!-- 低优先级 -->\n</frame_analyzer>\n```\n\n### 这就是 Day 23 提到的 AE Assist Algorithms 之一\n\nFrame Analyzer 实际上是 AE Assist Algorithms 里的「Frame Average」。它**不直接修正 target**（priority 30 很低），但**重塑了所有 Analyzer 的输入**，效果是巨大的。\n\n### Window size 怎么选\n\n- **window=5**：响应快但抗干扰弱（单帧异常仍会影响）\n- **window=10**：平衡（默认）\n- **window=20**：抗干扰强但响应慢（场景变化时 AE 滞后）\n- **window=30**：录像专用（更稳）\n\n场景区分配置：\n```xml\n<frame_analyzer_photo>\n  <window_size>10</window_size>\n</frame_analyzer_photo>\n<frame_analyzer_video>\n  <window_size>20</window_size>     <!-- 录像更稳 -->\n</frame_analyzer_video>\n```",
+      "glossary": [
+        { "term": "Frame Analyzer", "zh": "帧间分析器", "explain": "Scene Analyzer 之一，把多帧统计取加权平均，让 AE 决策更稳定。" },
+        { "term": "Outlier", "zh": "异常值", "explain": "明显偏离平均的帧，Frame Analyzer 检测出来后可以让 AE 跳过这帧。" },
+        { "term": "Sliding Window", "zh": "滑动窗口", "explain": "保留最近 N 帧的数据，新帧加入旧帧丢出的数据结构。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "Frame Analyzer 和 damping 重复吗？", "a": "不重复。Frame Analyzer 在「输入端」平滑（让 64×48 块统计变稳）；damping 在「输出端」平滑（让 exp_index 变化变缓）。两者协同。" },
+          { "q": "异常帧检测会漏检吗？", "a": "会。比如真的场景变了 30% 以上（如开灯），Frame Analyzer 会以为是异常 → 跳过 → 滞后。所以异常阈值不能太严。" },
+          { "q": "Window 太大会有什么问题？", "a": "AE 反应慢。用户从户外走进室内，AE 要等 20 帧才能感受到亮度变化，体验是「**画面慢慢暗下来**」（虽然渐变好看，但效率低）。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：滑动窗口 算法", "search": "滑动窗口 算法 时序" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Frame Analyzer" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "LLS（Low Light Suppress）：极暗下抑制其他分析器",
+      "type": "concept",
+      "content": "### LLS 解决什么问题\n\n回到 Day 23 提的「**关灯拍照画面雪花**」问题：\n\n```\n极暗场景（lux < 30）：\n  Brighten Analyzer → 想加亮（factor 1.40）\n  Dark Prevention → 想抬暗部（factor 1.20）\n  Saturation Prevention → 不激活\n  Face Analyzer → 找不到人脸\n  ...\n  \n聚合后 factor ≈ 1.30+\nadjusted_target → 80 × 1.3 = 104\n  \n→ AE 加曝光 → ISO 拉到 12800 → Digital Gain × 2.0 → 噪点雪花\n```\n\n问题：在**极暗场景下**，几个 Analyzer 同时**互相加强**，AE 拉到极限，噪点爆炸。\n\n用户想要的：「**画面虽然暗，但不要那么噪**」。\n\n→ 极暗场景下应该**抑制**其他 Analyzer，让 AE「**保守一些**」（接受画面偏暗，换取低噪）。\n\n这就是 LLS 的功能。\n\n### LLS = Low Light Suppress\n\n```python\ndef lls_analyzer(lux_index, current_luma, history):\n    if lux_index > 100:\n        return AnalyzerOutput(active=False)  # 不在低光，不工作\n    \n    # 极低光场景\n    suppression_factor = (100 - lux_index) / 100  # lux 0 时 factor=1, lux 100 时 factor=0\n    \n    return AnalyzerOutput(\n        active=True,\n        target_factor=1.0 - 0.30 * suppression_factor,  # 主动压低 target\n        # 关键：suppress_other_analyzers=True 让聚合器忽略其他 Brighten/Dark Prevention\n        suppress_others=True,\n        suppress_list=['Brighten', 'DarkPrevention'],\n        priority=85  # 高优先级\n    )\n```\n\n两个机制叠加：\n1. **自身降低 target**（让 AE 不强行加亮）\n2. **suppress 其他几个加亮型 Analyzer**（不让它们一起拉）\n\n### LLS 的真实参数\n\n```xml\n<lls_analyzer>\n  <enabled>true</enabled>\n  <activation_lux_max>100</activation_lux_max>\n  <suppression_strength>0.30</suppression_strength>\n  <suppress_brighten>true</suppress_brighten>\n  <suppress_dark_prevention>true</suppress_dark_prevention>\n  <suppress_face_underexposure>true</suppress_face_underexposure>  <!-- 暗光人脸不强行加亮 -->\n  <priority>85</priority>\n</lls_analyzer>\n```\n\n### LLS 后的画面效果\n\n场景：lux 30，用户拍黑暗中的物体。\n\n**没有 LLS**：\n- 画面被强行加亮到「明亮」效果\n- ISO 12800 + Digital Gain ×2 → 噪点重\n- 用户感觉「画面亮但糊」\n\n**有 LLS**：\n- 画面保持暗（adjusted_target 降到 60）\n- ISO 6400（够用就行）\n- 噪点适度\n- 用户感觉「**画面暗但干净**」\n\n这就是 LLS 的工程哲学：**接受场景的真实样子，不强行改变**。\n\n### LLS vs 夜景模式\n\nLLS 是 AE 的内部机制，让暗光下「**不强行加亮 + 接受暗**」。但用户实际拍照时，会主动开「**夜景模式**」（多帧合成 + AI 增强）让画面亮起来。\n\n两者关系：\n- **预览模式**：LLS 起作用，画面看起来「真实地暗」\n- **按下拍照**：进入夜景模式，多帧合成 + AI → 画面变亮但低噪\n\n你看到的「**预览暗 + 出片亮**」就是这种切换。\n\n### LLS 的边界 case\n\n场景：用户开了夜景模式但不希望预览那么暗。怎么办？\n\nTuning：让**预览模式下的 LLS 弱一些**（保留一定加亮），让用户能「**看到**」拍什么。但还是不能太亮（否则等夜景模式合成完，对比预期反差）。\n\n这是工程上的细节平衡。\n\n### LLS 调教 cheat\n\n```\n核心参数：\n  - activation_lux_max（默认 100；夜景模式可降到 50）\n  - suppression_strength（0.20-0.40）\n  - 哪些 Analyzer 被 suppress（一般 Brighten + Dark Prevention）\n\n模式区分：\n  - 普通拍照预览：LLS 较强（让用户看到真实暗光）\n  - 夜景模式预览：LLS 中等（让预览亮一些）\n  - 录像：LLS 较强（避免噪点拉满）\n```",
+      "glossary": [
+        { "term": "LLS", "zh": "Low Light Suppress（低光抑制）", "explain": "极暗场景下抑制其他「加亮型」Analyzer，避免 AE 拉过激造成噪点爆炸。" },
+        { "term": "Suppress", "zh": "抑制", "explain": "LLS 的核心动作：让其他 Analyzer 不生效或弱化生效。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "LLS 关掉会怎样？", "a": "Brighten + Dark Prevention 全力工作 → 极暗场景画面看起来不那么暗，但噪点重。中端机型有时关 LLS 让画面「看起来更亮」（虽然糊）。" },
+          { "q": "LLS 和 ADRC 关系？", "a": "ADRC 在 ISP 段拉暗部，对 AE 阶段无关。LLS 让 AE 不强求亮 → ADRC 输入暗 → ADRC 拉暗部增益。两者协同：AE 保守 + ISP 救场。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：手机暗光画质", "search": "手机 暗光 拍照 噪点" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "LLS" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "10 个 Scene Analyzer 完整地图",
+      "type": "concept",
+      "content": "### 终于学完了 10 个\n\n经过 Day 22-25，10 个 Scene Analyzer 都看过。这一节把它们汇总到一张表，**面试前一天复习用**。\n\n### 10 个 Analyzer 完整对比表\n\n| 分析器 | 检测条件 | 修正方向 | priority | 特点 | 学到这天 |\n|---|---|---|---|---|---|\n| **Brighten** | dark_ratio>50% + lux<150 | 加亮（×1.10-1.30）| 50 | 暗场景的「主动加亮」| Day 22 |\n| **Saturation Prevention** | 直方图>250 占比>5% | 降亮（×0.75-0.95）| **90** 最高 | 防过曝信息丢失 | Day 22 |\n| **Dark Prevention** | 直方图<5 占比>10% | 提亮（×1.10-1.20）| 70 | 防暗截断 | Day 23 |\n| **Extreme Color** | max(R,G,B)/min>2.0 | 降亮（×0.85-0.95）| 60 | 通知 AWB 不误判 | Day 23 |\n| **Face** | 人脸检测有结果 | ±0.10-0.15 | 80 | ROI 加权 + 修正 | Day 24 |\n| **Touch** | 用户点屏幕 | 强 ROI 加权 | **强制** | 用户主动指定 | Day 24 |\n| **Saliency** | 主体显著性 > 0.30 | 软 ROI 加权 | 50 | AI 通用主体识别 | Day 24 |\n| **Depth** | 双摄 / ToF | 前景 ROI 加权 | 60 | 物理距离前景识别 | Day 24 |\n| **Frame Average** | 始终（输入端平滑）| 不直接改 target | 30 | 滑动窗口稳定输入 | Day 25 |\n| **LLS** | lux < 100 | 降亮 + suppress 其他 | 85 | 暗光场景的全局 suppress | Day 25 |\n\n### 几个工程哲学\n\n看完整张表，你能总结这些设计原则：\n\n1. **保护 > 增强**：Saturation Prevention（90）+ LLS（85）+ Face（80）+ Dark Prevention（70）的优先级都 ≥ Brighten（50）\n2. **明确 > 推断**：Touch（强制）> Face（80）> Saliency（50）。用户主动 > AI 检测人脸 > AI 推断主体\n3. **平衡 > 极端**：Frame Average（30）作为「定海神针」，让其他 Analyzer 的输入稳定\n4. **场景敏感**：LLS（暗光专用）/ Brighten（lux<150 才激活）等都按场景启用\n\n### 决策聚合的完整流程\n\n```\n┌── 64×48 块统计 ──┐\n└─────┬─────────┘\n      ↓\n┌── Frame Average（始终）──┐\n└─────┬───────────────────┘\n      ↓ stable_64x48\n┌── 中心测光权重表 ──┐\n└─────┬─────────────┘\n      ↓\n┌── 4 个 ROI 直接加权 ──┐\n│  Face / Touch /        │\n│  Saliency / Depth       │\n└─────┬───────────────────┘\n      ↓ weighted_64x48 → final_luma\n┌── 6 个 Scene Analyzer 聚合 ──┐\n│  Brighten / Saturation /       │\n│  Dark Prev / Extreme /         │\n│  Face Analyzer / LLS           │\n│  → 几何加权 factor              │\n└─────┬─────────────────────────┘\n      ↓\nadjusted_target = luma_target × final_factor\n      ↓\nADRC 修正 → safe_target\n      ↓\nAE Assist (damping + settle) → exp_index\n      ↓\n查曝光表 → 写 sensor\n```\n\n### Tuning 工程师的实际工作量\n\n10 个 Analyzer × 每个 5-10 个参数 = **50-100 个 AEC 参数**。加上前面学的曝光表 + Bright/Dark Region + 收敛参数，**总计 200-400 个 AEC tuning 参数**。\n\n这就是「**3-6 个月调一个项目的 AEC**」的真实工作量。\n\n### 你现在的水平\n\n做完 Week 4 前 4 天，你已经能：\n\n- ✅ 列出 10 个 Scene Analyzer 名字 + 检测条件 + 修正方向\n- ✅ 答出 PRD 第 18 / 21 / 23 题\n- ✅ 看懂任何 AEC tuning 文档的 Scene Analyzer 章节\n- ✅ 用 AE 视角分析任何场景的决策链路\n- ✅ 理解为什么 AE 要这么复杂（每层都解决具体问题）\n\n后面 Day 26-28 学剩下的 ADRC 深入 + HDR + 双摄 AEC，是 Week 4 的「**进阶**」。",
+      "glossary": [],
+      "extras": {
+        "faq": [
+          { "q": "我能记住 10 个吗？", "a": "不需要全记。记住 priority 排序（Saturation > LLS > Face > Dark Prev > Touch 强制 > Brighten / Saliency / Depth / Extreme / Frame）+ 4 类 ROI（Face / Touch / Saliency / Depth）。其他靠这张表查。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Scene Analyzer 整章节 + Decision Aggregator" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "调教 cheat sheet：什么场景调什么参数",
+      "type": "example",
+      "content": "### 这一节是「快速查表」\n\n你将来碰到具体调教需求时，可以快速定位「**调哪个 Analyzer 的哪个参数**」。\n\n### 用户报告 → 调什么参数\n\n**「夜景太暗看不清」**\n→ 增大 Brighten Analyzer 的 strength\n→ 或减弱 LLS 的 suppression_strength\n→ 注意权衡：噪点可能变多\n\n**「夜景过曝、亮部白成一片」**\n→ 减弱 Brighten Analyzer\n→ 或增强 Saturation Prevention\n→ 检查 ADRC 是否过激\n\n**「黑色物体（黑车）拍出来灰」**\n→ 降低 Brighten 的 activation_lux_max（不让中等亮度场景启用）\n→ 检查 Dark Prevention 阈值（不要太敏感）\n\n**「逆光人脸黑」**\n→ 增大 face_roi_weight\n→ 增强 Face Analyzer 的 underexposure_factor\n→ 配合 ADRC 拉暗部\n\n**「Video 拍人脸偏亮」（PRD-Q21）**\n→ 减弱 video 模式下的 face_roi_weight\n→ 增强 Face Analyzer 的 overexposure_factor\n→ 或专门做 video 模式的 face 配置\n\n**「雪景灰蒙蒙」**\n→ 减弱 Bright Region 的 bright_weight（Day 20）\n→ 减弱 Saturation Prevention 的 strength（Day 22）\n→ 加 Bright Scene Recognition（专门为雪景调亮）\n\n**「日落变蓝紫色」**\n→ Extreme Color Analyzer 没生效或 strength 太弱\n→ 或 AWB 没收到 Extreme Color 信号\n→ 检查两者的协同配置\n\n**「单帧 AE 跳变厉害（画面闪）」**\n→ 增大 Frame Analyzer 的 window_size\n→ 增大 damping 的 α（让 AE 决策更平滑）\n\n**「拍人物时背景过暗」（动态范围不够）**\n→ 这不是 AE 问题，是 ADRC 问题（Day 26 学）\n→ 增强 ADRC 的 dark_boost_gain\n\n**「关灯拍照雪花一片」**\n→ 增强 LLS 的 suppression_strength\n→ 调低 ISO 上限（曝光表）\n→ 用户可能需要开夜景模式（多帧合成）\n\n### 反向思路：参数 → 影响\n\n你将来看 Tuning 文档某个参数时，能快速知道它做什么：\n\n| 参数 | 影响 |\n|---|---|\n| `face_roi_weight` | 越大人脸越亮（暗光下尤其明显） |\n| `face_underexposure_factor` | 大于 1 时人脸偏暗会被加亮 |\n| `lls_suppression_strength` | 越大暗光画面越「真实暗」 |\n| `brighten_strength` | 越大暗场景越积极加亮 |\n| `saturation_prevention_strength` | 越大亮部越保守 |\n| `frame_window_size` | 越大 AE 越稳但响应慢 |\n| `face_roi_weight` (video) | 录像专用，避免人脸过亮 |\n| `extreme_color_strength` | 越大特殊色彩场景越「真实饱和」 |\n\n### 职业建议\n\n这张 cheat 是 Tuning 工程师的「**面试通行证**」。\n\n面试官问「你怎么调这个 bug」，你能答出**具体哪个参数**就脱颖而出。比泛泛而谈「我会调 AEC 参数」强 100 倍。\n\n### 真实工作流（你妹妹的日常）\n\n```\n步骤 1：用户 / QA 反馈 bug（如「人脸偏亮」）\n步骤 2：抓 log，看 AE 各参数（lux/face_luma/target/factor）\n步骤 3：定位到具体 Analyzer（如 Face Analyzer 修正不够）\n步骤 4：改 Chromatix XML（如 face_overexposure_factor 0.92 → 0.85）\n步骤 5：重新出图测试\n步骤 6：对比新旧效果（人脸亮度是否回到目标）\n步骤 7：综合评估（其他场景是否被影响）\n步骤 8：通过 → 提 commit；否则回到步骤 4\n```\n\n这个循环你妹妹一天可能跑 5-10 次。3 个月调一个项目，跑了几百次。\n\n做完 Week 4 后，**你能自己跑这个循环**了 —— 这是 Tuning 工程师的核心能力。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **Frame Analyzer**：滑动窗口（10 帧）+ 异常帧检测，让 AE 决策时序稳定\n2. **LLS（Low Light Suppress）**：极暗场景（lux<100）下抑制 Brighten / Dark Prevention，避免 AE 拉过激\n3. **10 个 Scene Analyzer 完整地图**：6 个 factor 修正型 + 4 个 ROI 加权型\n4. **决策聚合的设计哲学**：保护 > 增强 / 明确 > 推断 / 平衡 > 极端 / 场景敏感\n5. **Tuning cheat sheet**：用户报告 → 调哪个参数，是 Tuning 工程师的核心能力\n\n### 自我检查\n\n1. Frame Analyzer 检测异常帧的逻辑是什么？为什么 priority 这么低？\n2. LLS 在极暗场景下做哪两件事？为什么需要 suppress 其他 Analyzer？\n3. 默写 10 个 Scene Analyzer 的名字和 priority 排序。\n4. 用户报告「Video 拍人脸偏亮」（PRD-Q21），你怎么调？\n5. 为什么 4 个 ROI 不通过 Scene Analyzer 聚合？\n\n### 笔记建议\n\n- 把 10 个 Scene Analyzer 的对比表抄到笔记里（这周最重要的一张表）\n- 把「调教 cheat sheet」抄一份，面试前过一遍\n- 想想你妹妹日常工作的每一步是怎么对应到本周内容的\n\n### 明天预告\n\nDay 26：ADRC 深入 + 3-EXP HDR（PRD-Q10）。Day 12 我们讲过 ADRC 基础（暗部加 gain），明天看 ADRC 的完整曲线 + TMC 4.0 vs 3.0 的差别 + 3-EXP HDR sensor 怎么工作。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Frame Analyzer + LLS + Scene Analyzer 总章节" }
+  ],
+  "dailyQuizId": "daily-day-25"
+}

@@ -1,0 +1,54 @@
+{
+  "id": "daily-day-27",
+  "title": "Day 27 日测：MFHDR / SHDR + 视频 HDR + 多摄同步",
+  "module": "M3",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "为什么视频不能用 MFHDR？",
+      "options": [
+        "MFHDR 不支持视频",
+        "MFHDR 拍多帧需要 100-300ms，视频每帧只有 33ms（30fps），无法实时",
+        "MFHDR 画质不够好",
+        "MFHDR 不支持高分辨率"
+      ],
+      "answer": "MFHDR 拍多帧需要 100-300ms，视频每帧只有 33ms（30fps），无法实时",
+      "explain": "视频每帧 33ms（30fps），MFHDR 一次合成需要拍 3 帧 100-300ms，根本来不及。视频必须 sensor 单帧搞定（SHDR / 3-EXP HDR）。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "SHDR（Staggered HDR）和 3-EXP HDR 的关键区别？",
+      "options": [
+        "SHDR 不损失分辨率，3-EXP 损失",
+        "SHDR 行交错（纵向分辨率减半），3-EXP 是 sensor 一帧 3 曝光（看实现可能不损失）",
+        "SHDR 计算成本高，3-EXP 低",
+        "两者完全一样"
+      ],
+      "answer": "SHDR 行交错（纵向分辨率减半），3-EXP 是 sensor 一帧 3 曝光（看实现可能不损失）",
+      "explain": "SHDR 是隔行交错曝光所以纵向分辨率减半；3-EXP HDR 看实现：DOL 也减半，QHDR 不减但色彩信息减。两者都是同帧（无鬼影），但实现成本和效果略不同。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "多摄手机的 AE 同步采用「___」架构：主摄独立决策，副摄跟随",
+      "answer": ["主从", "Master/Slave", "master-slave"],
+      "explain": "主摄是「唯一真理」，副摄用主摄的 lux/target，但 sensor 寄存器各自适配（不同 sensor 特性）。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "HDR10 / HDR10+ / Dolby Vision 三种标准里，元数据是「每帧动态」的有 ___ 种",
+      "answer": ["2", "两", "两种"],
+      "explain": "HDR10 是固定元数据；HDR10+ 和 Dolby Vision 都是每帧动态元数据。Dolby Vision 多了 12-bit 色深 + 授权门槛。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "用户报「主摄切超广角时画面色彩突然变绿」，你怎么排查？",
+      "referenceAnswer": "1) 这不是 AE 问题（亮度可能没变），是 AWB / 色彩问题；2) 检查 AWB 多摄同步：超广角是否独立决策，没拿主摄的 AWB 参数；3) 检查多摄 CCM 标定：每个 sensor 出厂特性不同，CCM 矩阵应该已校准让色彩一致；超广角偏绿可能是它的 CCM 参数错了；4) 真实排查：抓 log 看主摄和超广角各自的 AWB gain 和 CCM 矩阵；5) 解决方向：让超广角 AWB 跟随主摄（不独立）+ 重新校 CCM。这是「双摄一致性」的典型问题，本质是 AE/AWB/CCM 都需要联动。"
+    }
+  ]
+}

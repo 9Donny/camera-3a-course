@@ -1,0 +1,49 @@
+{
+  "id": "daily-day-22",
+  "title": "Day 22 日测：Scene Analyzer 总览 + Brighten + Saturation Prevention",
+  "module": "M3",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "高通 AEC 共有几个 Scene Analyzer？",
+      "options": ["5 个", "10 个", "15 个", "可配置数量"],
+      "answer": "10 个",
+      "explain": "Brighten / Saturation Prev / Dark Prev / Extreme Color / Face / Touch / Saliency / Depth / Frame Average / LLS。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "Saturation Prevention 的 priority 是 90，Brighten 是 50。这个设计反映什么哲学？",
+      "options": [
+        "Saturation 比 Brighten 复杂",
+        "保护亮部细节优先于增强暗部（信息丢失不可逆）",
+        "随便设的",
+        "硬件限制"
+      ],
+      "answer": "保护亮部细节优先于增强暗部（信息丢失不可逆）",
+      "explain": "亮部一旦过曝（>255 截断）就不可恢复；暗部偏暗后期还能拉。设计哲学是「保护 > 增强」。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "PRD 第 18 / 23 题答案：Metering 由 ___ 和 evtable（曝光表）两个模块组成",
+      "answer": ["AE 数据统计模块", "AE数据统计模块", "AE statistics", "AE 统计模块"],
+      "explain": "Metering = AE 数据统计模块（决定 target）+ evtable（决定 sensor 寄存器）。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "Brighten Analyzer 的两个激活条件：dark_ratio > 阈值（如 50%）+ lux_index < ___",
+      "answer": ["150", "100", "150 左右", "暗光阈值"],
+      "explain": "暗块多 + 真的暗光 → Brighten 才激活，避免「黑车在白天被加亮成灰车」。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "用户报「夜景里黑色物体没层次」，你怎么调？",
+      "referenceAnswer": "1) 增强 Dark Prevention 的 strength（0.20 → 0.30），让暗部抬一点保留纹理；2) 检查 ADRC 曲线在暗部的 gain 是否够（暗部 gain 提到 1.5+）；3) 注意权衡 —— 提暗部会带噪点，需要降噪同步加强；4) 真实排查需要先抓 log 看是 Dark Prevention 不够还是 ADRC 不够。"
+    }
+  ]
+}

@@ -309,7 +309,7 @@ const wasFresh = isFreshDevice();
 // 启动时加载所有可用的 Week 种子卡片（已存在的卡片不会被覆盖学习状态）
 async function loadSeedFlashcards() {
   // 后续添加 week-N 直接加进 weeks 数组
-  const weeks = ["week-1", "week-2", "week-3"];
+  const weeks = ["week-1", "week-2", "week-3", "week-4"];
   for (const w of weeks) {
     try {
       const res = await fetch(`./assets/data/flashcards/${w}.json`);

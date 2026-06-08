@@ -1,0 +1,49 @@
+{
+  "id": "daily-day-23",
+  "title": "Day 23 日测：Dark Prevention + Extreme Color",
+  "module": "M3",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "Dark Prevention 是哪个 Analyzer 的「镜像」？",
+      "options": ["Brighten", "Saturation Prevention", "Face", "Frame Average"],
+      "answer": "Saturation Prevention",
+      "explain": "Saturation Prevention 防亮部 = 255 截断；Dark Prevention 防暗部 = 0 截断。两者都防止信息丢失，方向相反。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "Extreme Color 的检测条件是什么？",
+      "options": [
+        "色温偏离日光 6500K",
+        "max(R,G,B) / min(R,G,B) > 2.0",
+        "亮度偏离 luma_target 30%",
+        "AWB 增益过高"
+      ],
+      "answer": "max(R,G,B) / min(R,G,B) > 2.0",
+      "explain": "通道严重不平衡（如日落 R 远高于 B）→ 触发 Extreme Color → 通知 AWB 不修过头 + AE 不强行加曝光。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "Extreme Color 触发后会通知 ___ 模块「这是色彩场景，不是白平衡问题」",
+      "answer": ["AWB", "白平衡", "AWB 自动白平衡"],
+      "explain": "如果不通知 AWB，AWB 会把日落「校正」成蓝紫色（错的）。Extreme Color + AWB 协同保留日落颜色。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "Frame Average / Convergence Speed Adjust / Stability Check 这三个统称为 AE ___ Algorithms",
+      "answer": ["Assist", "辅助"],
+      "explain": "AE Assist Algorithms = 不直接改 target，但帮 AE 稳定决策的辅助模块。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "用「几何加权」聚合 3 个 Scene Analyzer 时，公式是什么？为什么不用算术加权？",
+      "referenceAnswer": "几何加权：final_factor = factor_1^(p1/sum_p) × factor_2^(p2/sum_p) × factor_3^(p3/sum_p)，其中 sum_p = p1+p2+p3。这种加权下 priority 高的因子影响大但不会完全主导（即使 priority 200 也不会完全压住 priority 100）。算术加权（按 priority 加权平均后乘）会让大 factor 主导（1.5 + 0.5 = 平均 1.0 看起来中性，但 1.5 的视觉影响远大于 0.5）。几何加权更接近视觉感受，且数值平稳。"
+    }
+  ]
+}

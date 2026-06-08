@@ -1,0 +1,54 @@
+{
+  "id": "daily-day-26",
+  "title": "Day 26 日测：ADRC 深入 + 3-EXP HDR + TMC（PRD-Q10）",
+  "module": "M3",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "PRD 第 10 题：7250 平台用 TMC 几？4.0 vs 3.0 的核心区别？",
+      "options": [
+        "TMC 4.0 / 区别是位深",
+        "TMC 3.0 / 3.0 是 GTM（全局曲线），4.0 是 LTM（局部分块曲线）",
+        "TMC 5.0 / 区别是性能",
+        "TMC 2.0 / 区别是颜色处理"
+      ],
+      "answer": "TMC 3.0 / 3.0 是 GTM（全局曲线），4.0 是 LTM（局部分块曲线）",
+      "explain": "PRD 第 10 题答案。7250 (SM7250 / 骁龙 765G) 中端用 TMC 3.0；旗舰 SM8350+ 用 TMC 4.0。差距在 GTM vs LTM、计算成本、tuning 工作量。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "ADRC 曲线的形状一般是？",
+      "options": [
+        "线性单调上升",
+        "暗部高 gain（1.5-1.8）/ 亮部 = 1（不动）的下降曲线",
+        "正弦曲线",
+        "随机查表"
+      ],
+      "answer": "暗部高 gain（1.5-1.8）/ 亮部 = 1（不动）的下降曲线",
+      "explain": "ADRC 只拉暗部，不动亮部。luma 0-50 加最大 gain，luma 200+ gain=1.0。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "3-EXP HDR 的 sensor 一帧输出 ___ 个不同曝光",
+      "answer": ["3", "三", "三个"],
+      "explain": "长 + 中 + 短曝光，BPS 段 HDR Merge 合成单 HDR 帧。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "DOL（Digital Overlap）和 QHDR 是 3-EXP HDR 的两种实现方式，区别在哪个维度？",
+      "answer": ["分辨率", "空间分辨率", "纵向分辨率"],
+      "explain": "DOL 行交错（纵向分辨率减），QHDR 像素内交错（空间不减但色彩信息减）。两种取舍。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "ADRC 和 HDR 的层次关系是什么？两者会重复吗？",
+      "referenceAnswer": "不重复，是协同关系。HDR 在 sensor 层（一帧 3 曝光或多帧合成），扩展物理动态范围（3-5 EV 真增加）；ADRC 在 ISP 后段（数学拉暗部 gain），优化显示动态范围（1-2 EV 视觉增加）。先 HDR 解决「sensor 一次看不全」，再 ADRC 解决「显示压缩到 8-bit 后亮度分布」。两者层次不同：HDR 在 sensor 输入侧、ADRC 在显示输出侧。HDR 关闭时 ADRC 仍工作；ADRC 关闭时 HDR 仍能给出宽动态原始数据。"
+    }
+  ]
+}

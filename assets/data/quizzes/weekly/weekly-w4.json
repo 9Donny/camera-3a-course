@@ -1,0 +1,171 @@
+{
+  "id": "weekly-w4",
+  "title": "Week 4 周考：AEC 第二阶段综合（10 个 Scene Analyzer + HDR + 多摄）",
+  "module": "M3",
+  "scope": "weekly",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "高通 AEC 共有几个 Scene Analyzer？哪个 priority 最高？",
+      "options": [
+        "5 个 / Face 最高",
+        "10 个 / Saturation Prevention 最高（90）",
+        "8 个 / Brighten 最高",
+        "12 个 / Touch 最高"
+      ],
+      "answer": "10 个 / Saturation Prevention 最高（90）",
+      "explain": "10 个 Analyzer。Saturation Prevention priority 90（保护亮部不过曝最优先）。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "PRD 第 10 题：7250 平台用 TMC 几？区别是什么？",
+      "options": [
+        "TMC 3.0 / GTM 全局曲线 vs TMC 4.0 LTM 局部曲线",
+        "TMC 4.0 / 性能更好",
+        "TMC 5.0 / 最新",
+        "都一样"
+      ],
+      "answer": "TMC 3.0 / GTM 全局曲线 vs TMC 4.0 LTM 局部曲线",
+      "explain": "7250 中端 SoC 用 TMC 3.0。3.0 是 GTM（全局），4.0 是 LTM（局部分块）。4.0 计算成本高 + tuning 工作量大但效果好。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "Touch ROI / Face ROI / Saliency ROI / Depth ROI 这 4 类为什么不通过 Scene Analyzer 聚合？",
+      "options": [
+        "性能问题",
+        "「明确 > 推断」哲学：避免被其他 Analyzer 稀释",
+        "硬件不支持",
+        "代码懒得写"
+      ],
+      "answer": "「明确 > 推断」哲学：避免被其他 Analyzer 稀释",
+      "explain": "ROI 是用户/AI 明确指定的主体，比起其他推断式 Analyzer 更可靠。直接修改 64×48 权重表，不参与聚合。"
+    },
+    {
+      "id": "q4",
+      "type": "choice",
+      "prompt": "PRD 第 21 题：Video 拍人脸偏亮的处理思路？",
+      "options": [
+        "增大 face_roi_weight",
+        "降低 video 模式 face_roi_weight + 增强 Face Analyzer 过亮修正",
+        "关闭 Face Detection",
+        "切换到拍照模式"
+      ],
+      "answer": "降低 video 模式 face_roi_weight + 增强 Face Analyzer 过亮修正",
+      "explain": "video 模式下 Face ROI 不能太强，否则人脸主导导致整体过曝。专门 video 配置 + Face Analyzer 过亮修正双管齐下。"
+    },
+    {
+      "id": "q5",
+      "type": "choice",
+      "prompt": "为什么视频不能用 MFHDR？",
+      "options": [
+        "MFHDR 不支持视频",
+        "MFHDR 拍多帧需要 100-300ms，视频每帧只有 33ms（30fps），无法实时",
+        "MFHDR 画质不够好",
+        "MFHDR 不支持高分辨率"
+      ],
+      "answer": "MFHDR 拍多帧需要 100-300ms，视频每帧只有 33ms（30fps），无法实时",
+      "explain": "视频每帧 33ms（30fps）。MFHDR 一次合成需要 100-300ms 拍多帧，根本来不及。视频必须 sensor 单帧搞定（SHDR / 3-EXP HDR）。"
+    },
+    {
+      "id": "q6",
+      "type": "choice",
+      "prompt": "Brighten Analyzer 的两个激活条件？",
+      "options": [
+        "dark_ratio > 0.5 + 总有效",
+        "dark_ratio > 0.5 + lux_index < 150",
+        "总是激活",
+        "用户手动开"
+      ],
+      "answer": "dark_ratio > 0.5 + lux_index < 150",
+      "explain": "暗块比例高 + 真的暗光 → Brighten 才激活。避免「黑车在白天被加亮成灰车」。"
+    },
+    {
+      "id": "q7",
+      "type": "choice",
+      "prompt": "ADRC 和 HDR 的关系？",
+      "options": [
+        "完全相同的功能",
+        "重复，二选一",
+        "层次不同：HDR 在 sensor 层扩展物理动态范围，ADRC 在显示层优化",
+        "ADRC 是 HDR 的子集"
+      ],
+      "answer": "层次不同：HDR 在 sensor 层扩展物理动态范围，ADRC 在显示层优化",
+      "explain": "HDR 输入侧（sensor 多曝光），ADRC 输出侧（ISP 数学拉暗部 gain）。两者协同：HDR 解决看不全，ADRC 解决怎么显示。"
+    },
+    {
+      "id": "q8",
+      "type": "choice",
+      "prompt": "LLS（Low Light Suppress）的两个核心动作？",
+      "options": [
+        "降低 ISO + 增加曝光时间",
+        "自身降低 target + suppress 其他「加亮型」Analyzer（Brighten / Dark Prevention）",
+        "关闭 AE",
+        "切到夜景模式"
+      ],
+      "answer": "自身降低 target + suppress 其他「加亮型」Analyzer（Brighten / Dark Prevention）",
+      "explain": "极暗下不让 AE 拉过激（避免噪点爆炸）。两动作：自降 target + 让其他加亮型 Analyzer 不生效。"
+    },
+    {
+      "id": "q9",
+      "type": "choice",
+      "prompt": "多摄手机 AE 同步采用什么架构？",
+      "options": [
+        "P2P 平等",
+        "主从（Master/Slave）：主摄独立决策，副摄跟随",
+        "共享同一份 64×48 块",
+        "完全独立运行"
+      ],
+      "answer": "主从（Master/Slave）：主摄独立决策，副摄跟随",
+      "explain": "主摄是「唯一真理」，副摄用主摄的 lux/target，sensor 寄存器各自适配。AE/AWB 都要同步。"
+    },
+    {
+      "id": "q10",
+      "type": "choice",
+      "prompt": "用户拍日落，AE/AWB 应该怎么协同避免「日落变蓝紫色」？",
+      "options": [
+        "关闭 AWB",
+        "Extreme Color Analyzer 检测色彩极端，通知 AWB 不修过头 + 通知 AE 不强行加曝光",
+        "增加色彩饱和度",
+        "用 RAW 模式"
+      ],
+      "answer": "Extreme Color Analyzer 检测色彩极端，通知 AWB 不修过头 + 通知 AE 不强行加曝光",
+      "explain": "Extreme Color 是 AE+AWB 协同的桥梁。看到 R/G/B 严重不平衡（>2.0）→ 通知 AWB「这是色彩场景」+ AE 降 target。"
+    },
+    {
+      "id": "q11",
+      "type": "fill",
+      "prompt": "PRD 第 18 / 23 题：Metering 由 ___ 和 evtable（曝光表）两个模块组成",
+      "answer": ["AE 数据统计模块", "AE数据统计模块", "AE 统计模块"],
+      "explain": "Metering = AE 数据统计模块（决定 target）+ evtable（决定 sensor 寄存器）。"
+    },
+    {
+      "id": "q12",
+      "type": "fill",
+      "prompt": "10 个 Scene Analyzer 中，「ROI 类」直接改权重的有 ___ 个",
+      "answer": ["4", "四", "四个"],
+      "explain": "Face / Touch / Saliency / Depth = 4 个。其他 6 个走 Decision Aggregator。"
+    },
+    {
+      "id": "q13",
+      "type": "fill",
+      "prompt": "3-EXP HDR 的两种实现方式 DOL 和 ___，区别在分辨率",
+      "answer": ["QHDR", "Quad HDR", "QHDR (Quad HDR)"],
+      "explain": "DOL 行交错（纵向减半），QHDR 像素内交错（空间不减但色彩信息减）。"
+    },
+    {
+      "id": "q14",
+      "type": "short",
+      "prompt": "默写 PRD 第 10 题答案：TMC 3.0 vs 4.0 的核心区别。",
+      "referenceAnswer": "7250 平台用 TMC 3.0。和 4.0 区别：1) 3.0 是 GTM（全局色调映射），整图共用一条曲线；4.0 是 LTM（局部色调映射），按区域分块各自映射。2) 4.0 优势：动态范围处理更精细，暗部 / 亮部分别处理。3) 4.0 劣势：计算成本高、tuning 工作量大、需要 NPU 协助。4) 3.0 计算简单，适合中端机型；4.0 旗舰才有。具体平台版本可能因 BSP 而异，建议 verify 一下。"
+    },
+    {
+      "id": "q15",
+      "type": "short",
+      "prompt": "完整描述「拍逆光人像」场景的 AE 决策链路（从 64×48 块到写 sensor）。",
+      "referenceAnswer": "1) Bayer 64×48 块统计：上半天空亮(230)下半人脸暗(50)；2) Frame Average 平滑（避免单帧极端）；3) Face Detection → Face ROI 加权人脸块 ×5.0 → final_luma 偏向人脸 ~65；4) lux_index 公式算出 ~220；5) luma_target 按 lux 查表得 80；6) Scene Analyzer 聚合：Face Analyzer 检测人脸偏暗 factor 1.10 + Saturation Prevention 检测亮部接近过曝 factor 0.90 + Brighten 不激活；7) 几何加权 → adjusted_target ≈ 84；8) ADRC 修正 → safe_target ≈ 78；9) AE 决策：current 65 < target 78，加曝光；10) damping α=0.3 渐进收敛 10-20 帧；11) 写 sensor 寄存器 + 给 ISP 后段 lux_index/safe_target；12) ISP 段 ADRC 给暗部加 gain + LTM 局部精细；13) 最终用户看到人脸亮 + 天空保细节。整个流程串起 Week 3 + 4 的所有内容。"
+    }
+  ]
+}

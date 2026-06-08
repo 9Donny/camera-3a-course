@@ -1,0 +1,115 @@
+{
+  "id": "day-24",
+  "week": 4,
+  "module": "M3",
+  "title": "Face / Touch / Saliency / Depth 四类 ROI 分析器",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Face Analyzer：人脸优先曝光",
+      "type": "concept",
+      "content": "### 人脸是手机摄影最重要的主体\n\n手机用户**80% 的拍照场景都包含人脸**（自拍、人像、合影、视频通话）。所以「**人脸正确曝光**」是手机摄影最优先的目标。\n\nFace Analyzer 就负责这件事。\n\n### Face Analyzer 的工作流\n\n```\n┌── 人脸检测器（NPU 跑 AI 模型）──┐\n│  输入：完整画面                  │\n│  输出：[(x, y, w, h, conf), ...]  │\n│         多个人脸的 bounding box    │\n└──────────┬─────────────────────┘\n           ↓\n┌── Face Analyzer ────────┐\n│  1. 选主人脸（最大 / 最近）│\n│  2. 主人脸映射到 64×48 网格 │\n│  3. 那块的权重 ×5.0       │\n│  4. 看那块平均亮度          │\n│  5. 判断是否需要修正 target  │\n└──────────┬─────────────────┘\n           ↓\n     adjusted_target 修正\n```\n\n### 人脸检测器\n\n手机里跑的人脸检测一般是**轻量化的 CNN 模型**（如 MobileNet 改的 single-stage 检测器），跑在 NPU 或 DSP 上：\n\n- 输入：1080P 画面（缩小到 320×240）\n- 输出：bounding box 列表（每个含位置 + 置信度）\n- 速度：每帧约 1-2 ms（NPU）\n- 精度：日常场景 95%+ 准确率\n\n现代旗舰还会做：**人脸属性识别**（性别、年龄、肤色、眼镜）+ 关键点（眼鼻嘴）。这些**也用在 AE / AWB 调教**：\n\n- 关键点 → 知道脸的具体区域（眼睛 vs 额头），分别测光\n- 肤色 → 调 CCM 让肤色更准（暗肤 / 亮肤区别处理）\n\n### Face ROI 加权（已 Day 20 提过）\n\n```python\ndef apply_face_roi(weight_table, faces):\n    if not faces:\n        return weight_table\n    \n    # 多人脸时选最大那张\n    main_face = max(faces, key=lambda f: f.w * f.h)\n    \n    # 屏幕坐标 → 64×48 网格\n    bx_min = int(main_face.x / screen_w * 64)\n    bx_max = int((main_face.x + main_face.w) / screen_w * 64)\n    by_min = int(main_face.y / screen_h * 48)\n    by_max = int((main_face.y + main_face.h) / screen_h * 48)\n    \n    for by in range(by_min, by_max):\n        for bx in range(bx_min, bx_max):\n            weight_table[by][bx] *= 5.0\n    \n    return weight_table\n```\n\n### Face Analyzer 的修正逻辑\n\nROI 加权后 final_luma 已经偏向人脸。但还不够 —— Face Analyzer 还会**单独看人脸亮度**判断是否需要进一步修正：\n\n```python\nface_avg_luma = mean(weight_table block luma in face_box)\n\nif face_avg_luma < luma_target × 0.6:\n    # 人脸明显偏暗\n    return AnalyzerOutput(\n        active=True,\n        target_factor=1.15,  # 整体加亮\n        priority=80\n    )\nelif face_avg_luma > luma_target × 1.3:\n    # 人脸明显偏亮（PRD 第 21 题：拍人脸偏亮）\n    return AnalyzerOutput(\n        active=True,\n        target_factor=0.92,\n        priority=80\n    )\nreturn AnalyzerOutput(active=False)\n```\n\n关键阈值：\n- `0.6` = 检测人脸亮度偏离 target 40% 以上才修正\n- `1.3` = 反方向同理\n\n### PRD 第 21 题：Video 拍人脸偏亮\n\nPRD 第 21 题原文：\n\n> 录视频时拍人脸偏亮，怎么处理？\n\n这是 Face Analyzer 误判常见 bug。可能原因：\n\n1. **人脸 ROI 加权过强**（5.0 太大），人脸成为决定主导的区域 → AE 拉曝光让人脸到 target 80\n2. **背景偏暗**，人脸相对很亮，但 ROI 加权后主导 → AE 误以为「整体应该亮」\n3. **face_avg_luma > 1.3 × target 的修正没生效**（可能 strength 太小）\n\n解决方案：\n\n```\n方案 a：降低 face_roi_weight（5.0 → 3.5）\n  优点：人脸不主导\n  缺点：暗脸场景下人脸又黑了\n\n方案 b：增强 Face Analyzer 的「过亮修正」（factor 0.92 → 0.85）\n  优点：人脸过亮时 AE 主动压\n  缺点：normal 场景可能压过\n\n方案 c：动态 ROI 权重（按人脸大小 / 亮度自适应）\n  优点：复杂场景下都对\n  缺点：实现复杂\n\n方案 d：Video 模式下用更稳的策略（减弱 Face 影响）\n  优点：录像不抖\n  缺点：暗光人脸偏暗\n```\n\n实际工程解决：**video 模式用方案 a + d**（弱 Face ROI + 减弱 Face Analyzer）。这就是为什么 video 录像时人脸亮度比拍照「保守」一些。\n\n### Tuning 工程师的 Face 调教 cheat sheet\n\n```\n核心参数：\n  - face_roi_weight (3-7)\n  - face_min_size_ratio (0.05-0.10)\n  - face_max_count (1-5)\n  - face_underexposure_factor (1.10-1.20)  # 暗脸提亮\n  - face_overexposure_factor (0.85-0.95)   # 亮脸压暗\n  - face_priority (60-90)\n\n模式区分：\n  - photo_mode: 强 Face ROI + 强 Analyzer\n  - video_mode: 弱 Face ROI + 中等 Analyzer  ← PRD-Q21 的关键\n  - selfie_mode: 极强 Face ROI（自拍主体一定是脸）\n```",
+      "glossary": [
+        { "term": "Face Analyzer", "zh": "人脸分析器", "explain": "AE 内 Scene Analyzer 之一，专门处理人脸 ROI 和人脸亮度修正。" },
+        { "term": "Face Detection", "zh": "人脸检测", "explain": "NPU/DSP 跑的轻量 CNN，每帧输出人脸 bounding box。" },
+        { "term": "Face Attributes", "zh": "人脸属性", "explain": "高级人脸算法的输出：性别、年龄、肤色、关键点。用于精细化 AE/AWB 调教。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么 Face ROI 是矩形而不是按人脸轮廓？", "a": "工程简化。轮廓需要语义分割（更慢），矩形 box 已经足够 ROI 加权用。" },
+          { "q": "多人脸时为什么选最大那张？", "a": "最大 = 最近 = 主体。如果选多张平等加权，远处路人会干扰。如果选「画面中央」也不行（用户可能拍非中央的主体）。最大是稳定策略。" },
+          { "q": "侧脸 / 戴口罩的脸怎么办？", "a": "现代检测算法支持侧脸和遮挡（训练数据有）。但置信度（conf）会降低，可能阈值过滤掉。所以人脸戴口罩有时检测不到。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：人脸检测 算法", "search": "人脸检测 mtcnn yolo 原理" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Face Scene Analyzer" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Touch ROI：用户的「眼睛」",
+      "type": "concept",
+      "content": "### Touch ROI 的特殊地位\n\nFace ROI 是 AI 推断的，可能误判。Touch ROI 是**用户主动指定**的，**绝对优先级**。\n\n用户在屏幕上点一下：\n- 我想看清这里 → AE 把这里曝光做对\n- 我想对焦这里 → AF 把这里对焦做对\n- 我想白平衡基于这里 → AWB 用这块统计\n\n3A 三个算法**都用 Touch ROI**。\n\n### Touch ROI 的生命周期\n\n```\n用户点屏幕 (x, y)\n     ↓\n创建 Touch ROI（位置 + 半径 + 强度）\n     ↓\nAE/AF/AWB 都收到这个 ROI\n     ↓\nROI 持续若干秒（typical 3-5 秒）\n     ↓\n超时或用户重新构图 → ROI 消失\n     ↓\n回到默认中心测光\n```\n\n大多数手机的 Touch ROI **不立即消失**，而是有「**遗忘机制**」（fadeout），让用户感觉「**点过的地方影响一会儿**」。\n\n### Touch ROI 实现\n\nDay 20 已经讲过坐标映射 + 高斯加权。今天补充几个工程细节：\n\n**a. Touch ROI 的状态机**\n\n```cpp\nenum TouchROIState {\n  INACTIVE,      // 没有触摸\n  PRESSED,       // 用户刚点（影响最强）\n  HOLD,          // 持续一段时间\n  FADEOUT,       // 渐弱（线性衰减）\n};\n\nstruct TouchROI {\n  TouchROIState state;\n  float x, y;\n  uint64_t pressed_time;\n  float current_strength;  // 0-1，渐弱时下降\n};\n```\n\n时间线：\n```\n0ms   PRESSED  (strength = 1.0)\n100ms HOLD     (strength = 1.0)\n3000ms HOLD    (strength = 1.0)\n3500ms FADEOUT (strength = 0.7)\n4000ms FADEOUT (strength = 0.4)\n4500ms FADEOUT (strength = 0.0) → INACTIVE\n```\n\n**b. 用户重新点击会重置**\n\n用户再次点屏幕 → 状态回到 PRESSED + 新位置。\n\n**c. 防误触**\n\n用户拍照时手指不小心碰到屏幕边缘 → 不触发 Touch ROI。算法判别：\n\n- 触摸时长 > 阈值（避免短促误触）\n- 触摸位置不在 UI 控件区域\n- 触摸不是滑动（手指移动距离 < 阈值）\n\n这些都是 UI 层面的过滤，AE 收到的只是「真正的 Touch」事件。\n\n### Touch ROI 的不同模式\n\n手机相机有几种 Touch 模式：\n\n| 模式 | 含义 |\n|---|---|\n| **AE Lock** | 点了之后 AE 锁定那个位置的曝光不再变 |\n| **AF Lock** | 点了之后 AF 锁定那个位置不再追焦 |\n| **AE+AF Lock** | 点了之后 AE 和 AF 都锁定 |\n| **Spot Metering** | 临时切到点测光（不只加权） |\n| **AE Tracking** | AE 跟随触摸点（如果点了人脸，跟着脸移动） |\n\n大多数手机默认是「**点击对焦 + AE 加权**」（PRESSED 期间 AE 优先那块），不锁定。专业模式才提供 Lock。\n\n### Touch ROI 的 priority\n\n按 Day 23 提到的「明确 > 推断」原则，Touch ROI **直接修改权重表**（不通过 Scene Analyzer 聚合）。所以严格说没有 priority 数值，**永远生效**（PRESSED 状态下）。\n\n### 实战：用户点了人脸\n\n场景：屏幕上有 2 个人脸，用户点了右边那个。\n\n```\nFace Detection 输出 2 张脸\nFace Analyzer 默认选「**最大**」 = 左边那张（左边占大）\n但 Touch ROI 在右边\n\nAE 处理：\n  Touch ROI 加权右边的 64×48 块（×3.0）\n  Face ROI 默认会加权左边（×5.0），但 Touch 强制压制\n  最终：Touch + 右脸 ROI 一起加权右脸\n        左脸 ROI 减弱或不加（因为用户没选）\n  → AE 优先曝光右边那个人\n```\n\n实现细节：当 Touch 在某张脸内时，把那张脸视为 main_face（覆盖默认的「最大」选择）。这样 ROI 不冲突。",
+      "glossary": [
+        { "term": "Touch ROI", "zh": "触摸感兴趣区域", "explain": "用户在屏幕上点击的位置，AE/AF/AWB 都用，绝对优先级。" },
+        { "term": "AE Lock", "zh": "曝光锁定", "explain": "Touch 之后冻结当前曝光参数不再调，专业模式常用。" },
+        { "term": "AE Tracking", "zh": "AE 跟随", "explain": "Touch 点选了主体后，AE 跟随主体移动调整测光。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么 Touch 不立即消失？", "a": "用户体验。点完后镜头还会动一下（手抖），如果 Touch 立刻消失 ROI 就跟着丢，画面闪。FadeOut 让过渡平滑。" },
+          { "q": "Touch ROI 和 Face ROI 同时存在怎么办？", "a": "看 Touch 在不在某个 Face 内：在 → 视为指定那张脸（合并）；不在 → Touch 优先（用户明确不要那张脸）。" },
+          { "q": "Touch ROI 影响 AWB 吗？", "a": "影响。AWB 也会优先用 Touch 那块的 RGB 统计。这就是「点白纸校准白平衡」原理。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：手机 点击对焦", "search": "手机 点击对焦 测光 区别" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Touch ROI" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Saliency Analyzer：AI 显著性",
+      "type": "concept",
+      "content": "### Saliency 是什么\n\n**Saliency**（显著性）= 图像里「**最吸引注意力**」的区域。\n\n人眼看一张照片时**自然会聚焦到某个主体**（孩子的脸、动物、车），即使没人告诉你「这是主体」。Saliency 算法模仿这种能力：用 AI 模型自动识别「**主体在哪**」。\n\n### 为什么需要 Saliency\n\nFace Detection 只能识别人脸。但用户拍：\n\n- 宠物（狗 / 猫 / 鸟）\n- 物品（食物 / 商品）\n- 风景里的具体物体（一朵花 / 一辆车）\n\n这些场景**没有人脸**，但 Saliency 能识别「主体」并优先曝光。\n\n### Saliency 算法实现\n\n```\n┌── 输入画面（缩小）──┐\n└──────┬─────────────┘\n       ↓\n┌── 特征提取（CNN）──┐\n│  亮度对比 + 颜色对比 │\n│  + 边缘 + 运动        │\n└──────┬───────────────┘\n       ↓\n┌── Saliency Map（热力图）──┐\n│  每像素一个 0-1 的「显眼度」│\n└──────┬──────────────────┘\n       ↓\n转 64×48 块均值\n       ↓\n┌── Saliency Analyzer ──┐\n│  每块乘以 (1 + s × boost)│\n└────────────────────────┘\n```\n\n现代 Saliency 模型（如基于 U-Net 的 saliency detection）准确率很高，**用户拍主体几乎都能找对**。\n\n### Saliency 用在什么地方\n\n3A 三个算法都用：\n\n- **AE**：主体亮度优先\n- **AF**：主体对焦（Saliency AF，Week 7 学）\n- **AWB**：主体周围像素更可信\n\n这是 AI 摄影最核心的「自动主体识别」能力。\n\n### Saliency vs Face\n\n| | Face Detection | Saliency Detection |\n|---|---|---|\n| 检测什么 | 只检测人脸 | 任何「显眼」的主体 |\n| 输出 | bounding box | 热力图（每像素一个值） |\n| 模型大小 | 小（~1MB） | 大（~10MB） |\n| 速度 | 1-2ms | 5-10ms |\n| 精度 | 高 | 中等 |\n\n两者**互补使用**：\n- 有人脸时用 Face（更准）\n- 没人脸时用 Saliency（兜底）\n- 都有时用 Face（脸优先于物体）\n\n### Saliency 加权机制\n\n和 Face / Touch 不一样，Saliency 是**热力图**（不是矩形 box），加权时**逐块按热力值**：\n\n```python\ndef apply_saliency(weight_table, saliency_map):\n    saliency_64x48 = downsample(saliency_map, 64, 48)  # 0-1 之间\n    \n    for by in range(48):\n        for bx in range(64):\n            s = saliency_64x48[by][bx]\n            weight_table[by][bx] *= (1 + s × saliency_boost)\n    \n    return weight_table\n```\n\n`saliency_boost` 常见 1.0-3.0。比如 boost=2.0：\n- 主体（s=1.0）权重 ×3\n- 中间（s=0.5）权重 ×2\n- 背景（s=0.1）权重 ×1.1\n- 完全不显眼（s=0）权重 ×1（不变）\n\n这种**软加权**比 Face/Touch 的硬矩形 box 更平滑。\n\n### Tuning 工程师怎么调 Saliency\n\n```xml\n<saliency_analyzer>\n  <enabled>true</enabled>\n  <model_path>/etc/camera/saliency_model.bin</model_path>\n  <update_freq>5</update_freq>                      <!-- 每 5 帧跑一次（节省 NPU） -->\n  <saliency_boost>2.0</saliency_boost>\n  <min_saliency_threshold>0.30</min_saliency_threshold>  <!-- 太弱的主体不算 -->\n  <fallback_to_center>true</fallback_to_center>     <!-- 没主体时回到中心测光 -->\n</saliency_analyzer>\n```\n\n关键考虑：\n- **update_freq**：Saliency 模型重，每帧跑费 NPU。每 5 帧一次足够（场景变化不快）\n- **fallback_to_center**：模型置信度低 / 没找到明显主体时退回中心测光（不强行用错的主体）",
+      "glossary": [
+        { "term": "Saliency", "zh": "显著性", "explain": "图像里最吸引注意的区域。AI 模型可以输出每像素的 saliency 值（0-1）。" },
+        { "term": "Saliency Map", "zh": "显著性热力图", "explain": "Saliency 模型的输出，跟原图同尺寸，每像素一个 0-1 值。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "Saliency 和 Object Detection（物体检测）一样吗？", "a": "不一样。Object Detection 输出「这是猫 / 这是车」的语义 + box；Saliency 只输出「这块吸引注意」的程度，不知道是什么。Saliency 简单 + 通用。" },
+          { "q": "为什么不每帧都跑 Saliency？", "a": "成本。Saliency 模型大、费电、占 NPU。Camera 还要并行跑 Face / 可能其他 AI 模型，资源紧张。每 5 帧足够。" },
+          { "q": "Saliency 会被错误吸引吗？", "a": "会。比如背景里有色彩鲜艳的广告牌，Saliency 可能误以为是主体。所以现代手机会**多模态融合**（Saliency + Face + 用户 Touch 历史）。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：显著性检测 saliency", "search": "图像显著性 saliency detection" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Saliency Scene Analyzer" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "Depth Analyzer：基于深度的前景优先",
+      "type": "concept",
+      "content": "### Depth 是什么\n\n**Depth**（深度）= 画面里每个像素「**距离镜头多远**」。这是手机有「双摄 / 三摄 / ToF」之后才有的能力。\n\n手机怎么算 Depth：\n\n**方法 1：双摄视差**\n\n两个镜头拍同一场景的两张图（位置略有差），用算法找匹配点 + 算视差 → 反推深度。原理跟人眼立体视觉一样。\n\n**方法 2：ToF（Time of Flight）**\n\n红外发射 + 接收，测量光往返时间 → 直接算距离。手机 ToF 模块精度厘米级。\n\n**方法 3：单摄 AI 深度**\n\n用大模型从单张图估深度。精度低但便宜。\n\n输出：**Depth Map**（深度图），跟画面同尺寸，每像素一个深度值（米单位 / 0-255 编码）。\n\n### Depth 用在哪里\n\n手机上 Depth 主要用：\n\n1. **人像模式背景虚化**：前景人物清晰，背景按深度模糊\n2. **AR 应用**：知道物体多远才能放虚拟物体\n3. **3A 调教**：知道哪些是「前景主体」哪些是「背景」\n\n### Depth Analyzer 怎么工作\n\n```python\ndef depth_analyzer(stats_64x48, depth_map):\n    depth_64x48 = downsample(depth_map, 64, 48)\n    \n    # 找前景（深度小的块）\n    median_depth = median(depth_64x48)\n    foreground_mask = depth_64x48 < median_depth × 0.7\n    \n    # 给前景块加权\n    for by in range(48):\n        for bx in range(64):\n            if foreground_mask[by][bx]:\n                weight_table[by][bx] *= 2.5\n    \n    return weight_table\n```\n\n效果：拍人像时人物离镜头近 → 深度小 → 加权 → AE 优先曝光人物。\n\n### Depth vs Saliency\n\n两者都识别「主体」，但视角不同：\n\n| | Depth | Saliency |\n|---|---|---|\n| 依据 | 物理距离 | 视觉显眼度 |\n| 准确性 | 高（物理） | 中（推断） |\n| 误判 | 主体不在前景时（如远景人像） | 颜色鲜艳但不重要的物体 |\n| 硬件 | 需要双摄 / ToF | 单摄即可 |\n\n现代旗舰用「**Depth + Saliency 融合**」：\n- 双方都说同一区域是主体 → 高置信度\n- 双方说不同区域 → 取交集或保守处理\n- 只一个有信号 → 用那个但置信度低\n\n### 真实场景例子\n\n场景：拍一个站在远处的人像（远景人物）。\n\n- **Saliency** 检测到「人」是主体（视觉显眼） → 加权人那块\n- **Depth** 看到人比背景近一点（不是最前景） → Depth 加权弱\n- 两者一致（都识别人）→ 加权成功\n\n场景：拍近处的栏杆透过去拍远处的人。\n\n- **Depth** 把栏杆当前景 → 加权栏杆（错的）\n- **Saliency** 把人当主体 → 加权人\n- 两者**不一致**\n- 决策：**用 Saliency**（用户语义意图更重要）+ Depth 低置信度时降权\n\n### Tuning 工程师调 Depth\n\n```xml\n<depth_analyzer>\n  <enabled>true</enabled>\n  <require_dual_camera>true</require_dual_camera>      <!-- 单摄机型禁用 -->\n  <foreground_depth_ratio>0.7</foreground_depth_ratio>  <!-- 中位数 × 0.7 以下视为前景 -->\n  <foreground_boost>2.5</foreground_boost>\n  <confidence_threshold>0.7</confidence_threshold>      <!-- 深度图置信度低时不用 -->\n  <fusion_with_saliency>true</fusion_with_saliency>     <!-- 与 Saliency 融合 -->\n</depth_analyzer>\n```\n\n### 单摄机型怎么办\n\n中低端手机只有一个摄像头，没有 Depth 信息：\n\n- 禁用 Depth Analyzer（require_dual_camera=true）\n- 用 Saliency 兜底（虽然精度低）\n- 或用单摄 AI Depth 模型（精度更低）\n\n这就是为什么旗舰机型「**人像模式**」效果好（双摄 + Depth + Saliency 联合），中端机型「**人像模式**」一般（只 Saliency）。\n\n### 4 类 ROI 总结\n\nDay 24 学的 4 个 ROI 类分析器：\n\n| 分析器 | 来源 | 加权方式 | priority | 适用 |\n|---|---|---|---|---|\n| **Face** | NPU 人脸检测 | 矩形 box | 80 | 任何有人脸场景 |\n| **Touch** | 用户屏幕点击 | 高斯衰减 | 最高（强制） | 用户主动指定 |\n| **Saliency** | NPU 显著性模型 | 热力图软加权 | 50 | 通用主体识别 |\n| **Depth** | 双摄 / ToF | 深度阈值二值化 | 60 | 双摄机型，前景突出 |\n\n这 4 类都不通过 Scene Analyzer 聚合（**直接修改 ROI 权重表**），避免被其他 Analyzer 稀释。",
+      "glossary": [
+        { "term": "Depth", "zh": "深度", "explain": "画面里每像素到镜头的距离。手机靠双摄 / ToF / AI 计算。" },
+        { "term": "Depth Map", "zh": "深度图", "explain": "和原图同尺寸，每像素一个深度值。Depth Analyzer 的输入。" },
+        { "term": "ToF", "zh": "Time of Flight", "explain": "红外发射 + 接收测距技术，手机里的 ToF 模块毫米级精度。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "ToF 精度比双摄高吗？", "a": "近距离 ToF 高（厘米级 vs 双摄分米级），远距离差不多。但 ToF 在强光下信号弱（红外被日光淹没）。" },
+          { "q": "为什么单摄 AI Depth 精度低？", "a": "因为没有视差信息，模型只能从「图像本身的近大远小、阴影、纹理」推断，精度有限。但好过完全没有。" },
+          { "q": "Depth Analyzer 影响人像模式吗？", "a": "不直接。人像虚化是 ISP 后段的算法（基于 depth_map），但 Depth Analyzer 影响的是 AE 决策（让主体曝光对）。两者是独立模块用同一份 depth 数据。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：手机 双摄 深度", "search": "手机 双摄 深度 视差" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Depth Scene Analyzer" }
+        ]
+      }
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **Face Analyzer**：80% 的拍摄场景含人脸 → AE 最重要的语义优先级；ROI 加权（5.0）+ Face Analyzer 修正双重保护\n2. **PRD 第 21 题**：Video 拍人脸偏亮的 4 种解决方案（弱 ROI / 强过亮修正 / 动态权重 / video 模式专属配置）\n3. **Touch ROI**：用户主动指定，绝对优先级；状态机 PRESSED → HOLD → FADEOUT；3A 都用\n4. **Saliency Analyzer**：AI 模型识别主体（覆盖非人脸场景）；输出热力图软加权；每 5 帧跑一次\n5. **Depth Analyzer**：基于双摄 / ToF / AI Depth；区分前景背景；与 Saliency 融合\n6. **4 类 ROI 不走 Scene Analyzer 聚合**：直接修改权重表，避免被其他 Analyzer 稀释\n\n### 自我检查\n\n1. Face Analyzer 怎么处理多人脸场景？\n2. PRD 第 21 题：录视频拍人脸偏亮，给出 2-3 个解决思路。\n3. Touch ROI 的状态机有哪几个状态？\n4. Saliency vs Face 的差别在哪？什么场景下需要 Saliency？\n5. Depth Analyzer 在单摄机型上怎么处理？\n\n### 笔记建议\n\n- 把 4 类 ROI 整理成对比表（来源 / 加权方式 / priority）\n- 把 PRD 第 21 题答案抄到 cheat sheet\n- 想想你妹妹 7450 项目的人像模式可能用了 4 类 ROI 中的哪几个\n\n### 明天预告\n\nDay 25：Frame Analyzer + LLS（Low Light Suppress）。Frame 处理「**多帧时序稳定性**」（避免单帧极端值），LLS 处理「极暗场景下其他分析器都激活的混乱情况」。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Face / Touch / Saliency / Depth Scene Analyzer" }
+  ],
+  "dailyQuizId": "daily-day-24"
+}

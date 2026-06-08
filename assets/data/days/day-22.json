@@ -1,0 +1,113 @@
+{
+  "id": "day-22",
+  "week": 4,
+  "module": "M3",
+  "title": "Scene Analyzer 总览：10 个分析器与决策聚合",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Scene Analyzer 是 AE 的「眼睛」",
+      "type": "concept",
+      "content": "### 上一周的回顾\n\nWeek 3 我们学了 AE 的「**主干**」：64×48 → final_luma → lux_index → target → exp_index → 写 sensor。\n\n但有一个地方留了「黑箱」：**adjusted_target 怎么从 luma_target 加修正得来**。我们说过有 10 个 Scene Analyzer 共同贡献，本周就把这 10 个分析器拆开。\n\n### Scene Analyzer 的角色\n\nAE 看 64×48 块统计是「看像素」，但**像素本身不告诉你「这是什么场景」**。Scene Analyzer 就是把像素**翻译成场景语义**：\n\n```\n3072 块 (Y, R, G, B) → Scene Analyzer → 「这是一张逆光人脸」/「这是雪景」/「这是夜景霓虹」\n```\n\n知道场景之后，AE 才能**因场景而异**调 target。\n\n### 10 个 Scene Analyzer 列表\n\nPRD 第 18 / 23 题问 Metering 的实现，里面 AE 数据统计模块就是 Scene Analyzer 的集合。10 个分析器：\n\n| 分析器 | 检测什么 | 修正方向 |\n|---|---|---|\n| **Brighten** | 大量像素偏暗（如夜景） | 提 target / 加亮 |\n| **Saturation Prevention** | 直方图最高 5% 接近 255 | 降 target / 防过曝 |\n| **Dark Prevention** | 直方图最低 5% 接近 0 | 提 target / 提暗部 |\n| **Extreme Color** | 像素 R/G/B 通道严重不平衡（红日 / 绿草地） | 防止 AWB 误判 |\n| **Face** | 人脸检测有结果 | 优先脸部曝光 |\n| **Touch** | 用户触摸了屏幕 | 优先触摸点 |\n| **Saliency** | AI 显著性检测的主体 | 优先主体 |\n| **Depth** | 双摄 / ToF 算的深度（哪些是前景哪些是背景） | 前景优先 |\n| **Frame Average** | 多帧平均稳定性 | 平滑收敛 |\n| **Low Light Suppress (LLS)** | 极暗场景（lux < 60） | 降 target，防噪点 |\n\n这 10 个**几乎覆盖**所有手机摄影场景。\n\n### 每个分析器的输出\n\n每个 Scene Analyzer 输出**统一格式**：\n\n```cpp\nstruct AnalyzerOutput {\n  bool active;          // 这个分析器对当前场景适用吗\n  float target_factor;   // adjusted_target 的乘数（>1 提，<1 降）\n  float target_offset;   // adjusted_target 的偏移（直接加减）\n  int   priority;        // 0-100，决策聚合器用\n};\n```\n\n比如 Face Analyzer 的输出：\n\n```\nactive = true（检测到人脸）\ntarget_factor = 1.10（人脸偏暗 → 加 10%）\ntarget_offset = 0（不需要偏移）\npriority = 80（高优先级）\n```\n\n### 决策聚合器（Decision Aggregator）\n\n10 个分析器的输出合在一起 → AE 的 `adjusted_target`：\n\n```python\nactive_outputs = [a.output for a in analyzers if a.output.active]\n\n# 按优先级排序\nactive_outputs.sort(key=lambda o: -o.priority)\n\n# 取前 N 个（一般 3-5 个）\ntop = active_outputs[:5]\n\nfinal_factor = product(o.target_factor for o in top)\nfinal_offset = sum(o.target_offset for o in top)\n\nadjusted_target = luma_target × final_factor + final_offset\n```\n\n注意：\n- **不是所有都参与**，按 priority 取 top N（避免互相抵消）\n- factor 累乘、offset 累加（不同语义）\n- 同优先级的几个可能**冲突**（Face 想加亮，Saturation 想降），决策聚合器有具体策略\n\n### 「Decision Aggregator 」的设计原则\n\nQualcomm 7.0 文档里聚合器的设计原则：\n\n1. **保护 > 增强**：Saturation Prevention（防过曝）优先级 > Brighten（加亮）\n2. **主体 > 场景**：Face / Touch ROI 优先级 > 整体 Region\n3. **连续 > 突发**：Frame Average 让单帧极端值被抑制\n\n这些原则在 Tuning 文档里通过 priority 数值体现。",
+      "glossary": [
+        { "term": "Scene Analyzer", "zh": "场景分析器", "explain": "AE 内部的一系列模块，从 64×48 统计中识别场景特征，输出 target 修正建议。共 10 个。" },
+        { "term": "Decision Aggregator", "zh": "决策聚合器", "explain": "把 10 个 Scene Analyzer 的输出综合，得出最终 target 修正系数。" },
+        { "term": "Priority", "zh": "优先级", "explain": "Scene Analyzer 输出里的 0-100 数值，决定聚合时谁先生效。Saturation Prevention 高、Frame 低。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么不直接让 AE 用一个大模型？", "a": "10 个分析器模块化，便于调试（出问题知道哪个误判）+ 可独立调参 + Tuning 时可禁用某些。大模型黑箱难调。" },
+          { "q": "10 个会不会太多？", "a": "不多。每个负责不同场景特征，覆盖度好。每个分析器代码量不大（几百行），调起来分工清晰。" },
+          { "q": "Scene Analyzer 都跑在 ISP 里吗？", "a": "Brighten/Region/Frame 这些跑在 ISP 固件；Face/Saliency/Depth 跑在主控 CPU 或 NPU（用 AI 模型）。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：手机 AI 摄影 场景识别", "search": "手机 AI 摄影 场景识别 智慧调教" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "page": 18, "section": "Scene Analyzer 章节群" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Brighten Analyzer：暗场景加亮",
+      "type": "concept",
+      "content": "### Brighten 分析器做什么\n\n**Brighten Analyzer** 检测「**画面整体偏暗**」的场景，比如：\n\n- 夜景（lux < 100）\n- 室内昏暗\n- 拍黑色物体（黑车 / 黑衣）\n\n这些场景下，64×48 块**多数 luma 都低**，简单中心测光会让 AE「老实地按 luma_target 80 工作」 → 但暗场景实际上**应该让 AE 适当**「**激进加亮**」 → 用户想看到画面而不是黑乎乎。\n\n### 检测逻辑\n\n```python\ndef brighten_analyzer(stats_64x48):\n    dark_blocks = [b for b in stats_64x48 if b.luma < 50]\n    dark_ratio = len(dark_blocks) / 3072\n    \n    if dark_ratio > 0.5 and lux_index < 150:\n        # 一半以上的块都很暗 + 整体亮度档位也低\n        return AnalyzerOutput(\n            active = True,\n            target_factor = 1.0 + brighten_strength × dark_ratio,\n            target_offset = 0,\n            priority = 50\n        )\n    return AnalyzerOutput(active=False)\n```\n\nbrighten_strength 是 Tuning 参数，常见 0.2-0.4。\n\n### 真实参数\n\nChromatix 里的 Brighten 配置：\n\n```xml\n<brighten_analyzer>\n  <enabled>true</enabled>\n  <activation_dark_ratio>0.5</activation_dark_ratio>      <!-- 暗块比例阈值 -->\n  <activation_lux_max>150</activation_lux_max>            <!-- 只在暗光场景生效 -->\n  <strength_table>\n    <entry lux=\"50\" strength=\"0.40\"/>      <!-- 极暗：强加亮 -->\n    <entry lux=\"100\" strength=\"0.25\"/>\n    <entry lux=\"150\" strength=\"0.15\"/>     <!-- 临界 -->\n  </strength_table>\n  <max_target_factor>1.30</max_target_factor>             <!-- 上限 30% 加亮 -->\n  <priority>50</priority>\n</brighten_analyzer>\n```\n\n两个**重要边界**：\n- `activation_lux_max`：超过这个 lux 就**不启用**（亮场景不需要加亮）\n- `max_target_factor`：上限保护，避免一直拉亮过度\n\n### Tuning 工程师怎么调\n\n场景 1：用户报「**夜景太暗看不清**」\n→ 调 `strength` 增大（让 Brighten 加亮更激进）\n→ 但代价：噪点变多（因为 AE 上 ISO 上去）\n\n场景 2：用户报「**夜景过曝、亮部都白了**」\n→ 调 `strength` 减小，或 `max_target_factor` 降到 1.20\n→ 让 Brighten 不要那么激进\n\n场景 3：用户报「**黑色物体（如黑车）拍出来灰蒙蒙**」\n→ Brighten 误把「黑色物体的画面」当「暗光场景」\n→ 降低 `activation_dark_ratio` 阈值（比如从 0.5 提到 0.7，更难触发）\n→ 或加场景判别逻辑（看 lux_index 是不是真的暗，不是只看 dark_ratio）\n\n### 「黑车不黑」是经典 bug\n\n这是个**很常见的工程问题**。直觉上 AE 看到「画面 60% 是暗块」 → 自动加亮 → 黑车被加亮成「灰车」。\n\n用户角度：「**我拍的是黑车，怎么变灰了？**」\n\n排查思路：\n1. 看抓 log，brighten_analyzer 是否 active=1\n2. 看 dark_ratio 是多少（应该真的高，因为黑车）\n3. 但 lux_index 是多少？如果 lux 220（户外白天）但还是触发了 Brighten → 说明 activation_lux_max 设太高\n4. 调到 150（只暗光下激活）\n5. 再测：黑车在户外不会被加亮 → 黑车保持黑\n\n这是**真实工程教训**：分析器都要**配套场景判断**（不只看局部特征，还看 lux_index 主线）。",
+      "glossary": [
+        { "term": "Brighten Analyzer", "zh": "提亮分析器", "explain": "检测画面偏暗时让 AE 加 target 的分析器，应对夜景 / 室内昏暗等场景。" },
+        { "term": "activation_lux_max", "zh": "激活 lux 上限", "explain": "Brighten 只在 lux < 这个值才启用，避免亮场景误触发。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "Brighten 和 Dark Region 测光的区别？", "a": "Dark Region（Day 20）只看「画面有多大比例是暗块」并修正 target。Brighten 进一步看 lux 低且暗块多 → 主动「加亮」（不是单纯保护）。前者更被动，后者更激进。" },
+          { "q": "为什么 strength 按 lux 分段？", "a": "lux 50 极暗 → 需要强加亮（×1.40）；lux 150 临界 → 弱加亮（×1.15）。否则边界场景会过曝或欠曝。" },
+          { "q": "苹果 / 三星会用 Brighten 吗？", "a": "用，但风格不同。苹果偏保守（弱 strength），三星偏激进（强 strength）。这就是「**苹果照片偏暗**」「**三星照片通透**」的来源之一。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：手机夜景模式 算法", "search": "手机 夜景模式 算法 暗光" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Brighten Scene Analyzer" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Saturation Prevention：防止过曝",
+      "type": "concept",
+      "content": "### 为什么需要饱和保护\n\n**Saturation Prevention** = 「防止亮部过曝（饱和）」。\n\n8-bit 图像最大像素值 255。如果 sensor 输出的亮度超过 255 → 被截断成 255 → **亮部信息丢失**（白成一片）。\n\n这种丢失**不可逆**：照片拍出来后无论怎么后期都救不回来（因为信息已经丢了）。\n\n→ AE 必须**事先防范**：在 sensor 实际输出之前预判会不会过曝，提前压低 target。\n\n### 检测逻辑\n\nSaturation Prevention 看**直方图最高那 5%**：\n\n```python\ndef saturation_prevention(histogram):\n    # histogram[i] = i 这个亮度档位有多少块\n    # 看从 250-255 的块占比\n    saturation_blocks = sum(histogram[250:256])\n    saturation_ratio = saturation_blocks / 3072\n    \n    if saturation_ratio > 0.05:\n        # 5% 以上的块已经接近 255（即过曝）\n        return AnalyzerOutput(\n            active = True,\n            target_factor = 1.0 - saturation_strength × saturation_ratio,\n            target_offset = 0,\n            priority = 90  # 高优先级，保护亮部\n        )\n    return AnalyzerOutput(active=False)\n```\n\n比如雪景：天空+雪面占 60% 都接近 255 → saturation_ratio = 0.6 → target_factor 大幅压低 → AE 拉低曝光 → 雪面恢复 220-240 范围（保留细节）。\n\n### 真实参数\n\n```xml\n<saturation_prevention>\n  <enabled>true</enabled>\n  <saturation_threshold>250</saturation_threshold>     <!-- >250 视为饱和 -->\n  <activation_ratio>0.05</activation_ratio>            <!-- 5% 以上块饱和才启用 -->\n  <strength>0.30</strength>                            <!-- 修正强度 -->\n  <max_target_reduction>0.25</max_target_reduction>    <!-- 最多压低 25% target -->\n  <priority>90</priority>                              <!-- 高于 Brighten -->\n</saturation_prevention>\n```\n\n### priority 90 vs Brighten 50\n\n注意 Saturation Prevention 的 priority = 90 > Brighten 的 50。\n\n意思：**当画面又暗又有亮部过曝（如夜景里有强霓虹）**：\n\n- Brighten 想说「加亮」（target_factor = 1.30）\n- Saturation Prevention 想说「降低」（target_factor = 0.70）\n\n两者冲突时，**Saturation Prevention 赢**（priority 高）。\n\n这是工程哲学：「**保护亮部细节 > 加亮暗部**」。原因：\n\n1. 亮部细节一旦过曝**无法恢复**\n2. 暗部偏暗后期/ADRC 还能拉一些回来\n\n苹果的「**苹果照片暗**」也是这种哲学的体现：宁可暗也不过曝。\n\n### 一个实战例子\n\n场景：用户晚上拍霓虹招牌（已经讨论过的）。\n\n- Brighten Analyzer：dark_ratio = 0.8 → 想加亮 1.30x\n- Saturation Prevention：saturation_ratio = 0.15 → 想降低 0.85x\n\n聚合器：Saturation Prevention priority=90 > Brighten priority=50 → **取 Saturation Prevention**。\n\n最终 target_factor = 0.85，AE 不强行加亮 → 霓虹清晰、背景靠 ADRC 拉一点点。这就是「**霓虹清晰 + 背景能见**」的来源。\n\n注意聚合不是「**取一个**」那么简单，实际工程中可能会**两者都生效但权重不同**：\n\n```python\n# 简化版聚合\nfinal_factor = (1 - saturation_priority_weight) × brighten_factor + \\\n               saturation_priority_weight × saturation_factor\n# saturation_priority_weight = 0.7（priority 90 / 90+50 ≈ 0.64，近似）\nfinal_factor = 0.3 × 1.30 + 0.7 × 0.85 = 0.39 + 0.595 = 0.985 ≈ 1.0（中性）\n```\n\n实际效果：AE 既不强行加亮也不强行压低，**保持现状**。这是最安全的策略。\n\n### Tuning 工程师怎么调\n\n场景：用户报「**雪景灰蒙蒙**」\n→ Saturation Prevention 太激进，把雪面（应该 220-240）压到了 180\n→ 调 `activation_ratio` 阈值上调（0.05 → 0.10），让小面积亮部不触发\n→ 或调 `max_target_reduction` 上限（0.25 → 0.15），防止过度压低\n\n这就是 Day 20 的「雪景灰」**另一个视角**的解决方案。",
+      "glossary": [
+        { "term": "Saturation Prevention", "zh": "饱和保护", "explain": "防止亮部像素超过 255 被截断（信息不可逆丢失）的 Scene Analyzer。" },
+        { "term": "饱和", "zh": "Saturation", "explain": "图像处理里指像素亮度达到最大值（如 255）被截断的现象。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么 saturation 阈值不是 255 而是 250？", "a": "留 5 个档位余量。如果等到 255 才触发，已经过曝了。在 250 触发提前预防。" },
+          { "q": "亮部过曝靠 ADRC 不能救吗？", "a": "ADRC 只能压「**还有信息**的亮部」。已经截断到 255 的像素**没有信息**可压。所以 AE 阶段保护是必须的。" },
+          { "q": "苹果的 ProRAW 怎么解决？", "a": "用更高位深（10-12 bit）拍摄 + 不应用 Saturation Prevention 的标准压缩。亮部信息更多，后期能拉回。但文件大、对比度低。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：摄影 高光保护", "search": "摄影 高光保护 暗部" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Saturation Prevention" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "PRD 第 18 / 23 题：Metering 怎么实现",
+      "type": "concept",
+      "content": "### PRD 第 18 / 23 题原文\n\n> Metering 怎么实现，分哪两个模块？\n\n这两道题（18 和 23）问的是**同一件事**，答案：\n\n> **Metering = AE 数据统计模块 + evtable（曝光表）**。\n\n两者协作完成「**测光决策**」。\n\n### 1) AE 数据统计模块\n\n包含：\n\n```\nAE 数据统计模块\n├── Bayer 域统计（64×48 块） ← Day 15\n├── 中心测光权重表 ← Day 15\n├── ROI 加权（Touch / Face / Saliency） ← Day 20 / 24\n├── Bright/Dark Region 测光 ← Day 20\n└── 10 个 Scene Analyzer ← Week 4\n    ├── Brighten\n    ├── Saturation Prevention\n    ├── Dark Prevention\n    ├── Extreme Color\n    ├── Face\n    ├── Touch\n    ├── Saliency\n    ├── Depth\n    ├── Frame Average\n    └── LLS\n```\n\n这一切**输入是 64×48 块统计**，**输出是 adjusted_target**（场景敏感的目标亮度）。\n\n### 2) evtable（曝光表）\n\nDay 5 / 16 学过，**输入是 lux_index**，**输出是 sensor 寄存器配置**（Coarse Time + Analog Gain）。\n\n```\nevtable\n├── 主曝光表（普通 sensor）\n├── 拐点配置（曝光优先 vs Gain 优先）\n├── HDR 多曝光表（长 / 短 / 超短）\n└── lux_to_exp 映射桥\n```\n\n### Metering 的总流程\n\n```\n          ┌──── AE 数据统计模块 ────┐\nsensor → 64×48 → 加权 → ROI → Region → 10 Analyzer → adjusted_target\n  │\n  └──── lux_index 算 ──────┐\n                            ↓\n         ┌──── evtable ────┐\n         lux_index → exp_index → linecount + gain_index\n                            ↓\n                        写 sensor\n```\n\n两个模块**分工**：\n- 统计模块负责「**目标在哪**」（怎么定 target）\n- 曝光表负责「**怎么走过去**」（怎么映射到 sensor 寄存器）\n\n### 面试官的「**深入版**」追问\n\n如果面试官问「**为什么要分这两个模块？合在一起不行吗？**」，标准答案：\n\n> 分开是工程上的解耦。\n> \n> 1. **统计模块** 是 sensor-independent（不依赖具体 sensor）：64×48 块 + 加权 + Scene Analyzer 的逻辑对所有 sensor 都一样。\n> 2. **evtable** 是 sensor-dependent（依赖具体 sensor）：每个 sensor 出厂特性不同，曝光表是 sensor 的「身份证」。\n> \n> 解耦后，换 sensor 只需要重写 evtable，统计模块保持不变。这是 Tuning 工作流的关键。也方便不同 sensor 的「**风格统一**」（公司决定 luma_target 80 → 所有 sensor 都按这个走）。\n\n### Cheat Sheet 角度看 Metering\n\nPRD 第 18 / 23 题面试时建议的答法：\n\n> Metering 由两个模块组成：\n> \n> 1. **AE 数据统计模块**：包括 64×48 块统计、中心测光、ROI 加权（Touch/Face/Saliency）、Bright/Dark Region、10 个 Scene Analyzer（Brighten / Saturation Prevention / Dark Prevention / Extreme Color / Face / Touch / Saliency / Depth / Frame / LLS）。输入 sensor 像素，输出 adjusted_target / safe_target。\n> \n> 2. **evtable（曝光表）**：包括主曝光表、拐点配置、HDR 多曝光表、lux_to_exp 映射桥。输入 lux_index，输出 sensor 寄存器配置（Coarse Integration Time + Analog Gain + Digital Gain）。\n> \n> 两者协作：统计模块决定目标亮度，曝光表决定怎么把 sensor 调到那个目标。设计上解耦：统计模块跨 sensor 通用，曝光表 sensor 专属。",
+      "glossary": [
+        { "term": "Metering", "zh": "测光", "explain": "AE 收集统计 + 加权 + 决策的整个过程，由 AE 数据统计模块 + 曝光表两部分组成。" },
+        { "term": "AE 数据统计模块", "zh": "AE Statistics Module", "explain": "Metering 的「目标决策」部分。所有从 64×48 像素到 adjusted_target 的逻辑都在这里。" },
+        { "term": "evtable", "zh": "Exposure Table", "explain": "Metering 的「sensor 配置」部分。把 lux_index 映射到具体 sensor 寄存器值。" },
+        { "term": "sensor-independent", "zh": "无关 sensor 的", "explain": "统计模块跨 sensor 通用，不需要为每个 sensor 重写。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "PRD 18 / 23 题答案两者一样吗？", "a": "本质一样（都是 Metering 两模块），但具体提问角度可能略不同。建议两道题用同一份答案，加些场景细节。" },
+          { "q": "evtable 里能不能加 Scene Analyzer？", "a": "不行（设计违和）。evtable 只有「lux_index → sensor 寄存器」的纯映射逻辑。Scene Analyzer 的 target 修正在统计模块完成后才进 evtable。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Metering 章节集合" }
+        ]
+      }
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **Scene Analyzer 是 AE 的「眼睛」**：把像素翻译成场景语义，10 个分析器各司其职\n2. **决策聚合器**：按 priority 取 top-N，factor 累乘 / offset 累加，得出 adjusted_target\n3. **Brighten Analyzer**：暗场景加亮（dark_ratio 高 + lux 低 → target_factor > 1）\n4. **Saturation Prevention**：亮部超过 250 占比 5%+ → 降 target，priority 90 高于 Brighten\n5. **PRD 第 18 / 23 题答案**：Metering 由 AE 数据统计模块 + evtable 两部分组成\n6. **「保护 > 增强」哲学**：Saturation Prevention 优先级 > Brighten，宁可暗不过曝\n\n### 自我检查\n\n1. 列出 10 个 Scene Analyzer 的名字和它们检测什么场景。\n2. Brighten Analyzer 的两个激活条件是什么？\n3. 为什么 Saturation Prevention 的 priority 比 Brighten 高？设计哲学是什么？\n4. 默写 PRD 第 18 / 23 题答案：Metering 由哪两个模块组成？分别做什么？\n5. 「黑车拍出来灰」是什么 Scene Analyzer 误判？怎么修？\n\n### 笔记建议\n\n- 把 10 个 Scene Analyzer 列成表（名字 / 检测什么 / priority）\n- 把 PRD 第 18 / 23 题答案抄到 cheat sheet\n- 想想你妹妹 7450 项目用了这 10 个里的哪几个\n\n### 明天预告\n\nDay 23：Dark Prevention + Extreme Color 分析器。Day 22 学的 Brighten 处理「暗块多」，Dark Prevention 处理「**最暗的暗块到 0**」（防纯黑）。Extreme Color 处理「**画面色彩极端**」（比如全红日 / 全绿草），防止 AWB 误判。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "page": 18, "section": "Scene Analyzer 章节集合" },
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Brighten + Saturation Prevention" }
+  ],
+  "dailyQuizId": "daily-day-22"
+}

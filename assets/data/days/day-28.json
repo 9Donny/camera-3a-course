@@ -1,0 +1,70 @@
+{
+  "id": "day-28",
+  "week": 4,
+  "module": "M3",
+  "title": "Week 4 总结：AEC 完整答辩 + 周考",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Week 4 学了什么",
+      "type": "concept",
+      "content": "### 一周回顾\n\n| Day | 主题 | PRD 题 |\n|---|---|---|\n| Day 22 | Scene Analyzer 总览 + Brighten + Saturation Prevention | Q18/Q23 |\n| Day 23 | Dark Prevention + Extreme Color | — |\n| Day 24 | Face / Touch / Saliency / Depth 四类 ROI | Q21 |\n| Day 25 | Frame Analyzer + LLS | — |\n| Day 26 | ADRC 深入 + 3-EXP HDR + TMC 3.0 vs 4.0 | Q10 |\n| Day 27 | MFHDR / SHDR + 视频 HDR + 多摄同步 | — |\n\n### Week 4 完整内容地图\n\n```\n┌── 10 个 Scene Analyzer ──────────────┐\n│ Brighten                              │\n│ Saturation Prevention（priority 90）  │\n│ Dark Prevention                       │\n│ Extreme Color                         │\n│ Face                                  │\n│ Touch (强制)                          │\n│ Saliency                              │\n│ Depth                                 │\n│ Frame Average                         │\n│ LLS（priority 85，suppress 其他）      │\n└──────────┬───────────────────────────┘\n           ↓\n┌── Decision Aggregator ──────────────┐\n│ priority 排序 + 几何加权              │\n│ 4 个 ROI 直接修改 weight，不入聚合    │\n└──────────┬───────────────────────────┘\n           ↓\n      adjusted_target\n           ↓\n┌── HDR 决策 ─────────────────────────┐\n│ 场景动态范围 > 阈值 → 启用 HDR        │\n│ 模式选择：3-EXP / SHDR / MFHDR        │\n└──────────┬───────────────────────────┘\n           ↓\n┌── ADRC 曲线 ────────────────────────┐\n│ luma → gain 查找表（暗高亮低）         │\n│ TMC 3.0 (GTM) vs 4.0 (LTM)            │\n└──────────┬───────────────────────────┘\n           ↓\n      safe_target\n           ↓\n┌── 多摄同步 ─────────────────────────┐\n│ 主从架构，副摄跟主摄                   │\n│ AE / AWB 都要同步                     │\n└──────────┬───────────────────────────┘\n           ↓\n     最终 sensor + ISP 配置\n```\n\n### Week 3 + 4 一起 = 完整 AEC\n\nWeek 3 是 AEC 的「**主干**」（数据流 + lux + target + 收敛），Week 4 是 AEC 的「**枝叶**」（Scene Analyzer + HDR + 多摄）。\n\n两周加起来 = 高通 AEC 体系的**完整图谱**。\n\n### 你能答的所有 PRD AE 题\n\n截止 Day 28，你能答出 PRD 的 23 道题中的 AE 类题：\n\n| PRD 题号 | 题目 | 在哪天学 |\n|---|---|---|\n| Q1 | AE 算法流程 | Day 15 |\n| Q2 | 亮度获取 | Day 15 |\n| Q3 | 计算 Target | Day 18 |\n| Q4 | 曝光调节 | Day 16 / 17 |\n| Q5 | lux_index 公式 | Day 17 |\n| Q10 | TMC 4.0 vs 3.0 | Day 26 |\n| Q15 | safe_target 三步推导 | Day 18 |\n| Q17 | 64×48 + 中心测光 | Day 15 |\n| Q18 | Metering 两模块 | Day 22 |\n| Q19 | 高通曝光表怎么调试 | Day 20 |\n| Q21 | Video 拍人脸偏亮 | Day 24 |\n| Q22 | flux 越大越暗 | Day 6 |\n| Q23 | Metering 两模块 | Day 22 |\n\n**13 道 AE 类题**全部能答。这是 60 天里**最大的成就**。\n\n剩下 10 道（Q6/Q7/Q8/Q9/Q11/Q12/Q13/Q14/Q16/Q20）是 ISP / Flash / 色彩 类题，分布在 Week 1-2、Week 6-8。",
+      "glossary": [],
+      "extras": {
+        "faq": [
+          { "q": "学完 Week 4 我已经是 Tuning 工程师了吗？", "a": "理论上能答面试题。实操还要 6-12 个月真实项目经验。但你已经能看懂 80% 的 tuning 文档，听懂团队讨论的技术词。" },
+          { "q": "AEC 真的就这么多吗？", "a": "Week 3 + 4 大约是高通 AEC 文档的 70% 内容。剩下 30% 是工程细节（log 字段、调试工具、特定 sensor），靠真实项目积累。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "回顾 Week 3+4 所有 references" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "13 道 AE 类 PRD 题完整答案",
+      "type": "concept",
+      "content": "### 这一节就是 cheat sheet\n\n面试前一天打印这一节，反复背诵。\n\n### Q1：AE 算法的完整流程\n\n> 三步：\n> \n> 1. **亮度获取**：图像经过 OB / LSC 后，分成 64×48 网格统计亮度（每块 (Y, R, G, B)），AE 通过中心测光权重表 + ROI 加权（Touch/Face/Saliency），算出 final_luma。\n> 2. **计算 Target**：用 luma_target（按 lux 查表，常见 80）作基础，叠加 face / dark region / bright region / saturation prevention 等 Scene Analyzer 修正，得到 adjusted_target；再减去 ADRC 引入的额外亮度提升估计，得到 safe_target。\n> 3. **曝光调节**：safe_target 与 final_luma 比对 → 算 lux_index（公式 = 基准 + log2 曝光偏差 + log2 亮度偏差）→ 通过 lux_to_exp 映射查 exp_index → 查曝光表得 linecount + gain_index → 写 sensor 的 Coarse Time + Analog Gain 寄存器，下一帧生效。\n\n### Q2：怎么获取亮度信息\n\n> 通过 ISP 的 Bayer 域统计模块。图像经 OB（黑电平校正）+ LSC（暗角补偿）后，分成 64×48 = 3072 个网格块。每块输出 (Y, R, G, B) 平均值（Y 给 AE，RGB 给 AWB）。AE 算法用中心测光权重表 + ROI 加权（Touch / Face / Saliency / Depth）算出 final_luma。\n\n### Q3：计算 Target\n\n> 见 Q15 详细答案（safe_target 三步推导）。\n\n### Q4：曝光调节\n\n> 1. AE 算 lux_index → 查 lux_to_exp 表得 exp_index\n> 2. 查曝光表（按 sensor 标定，含拐点）→ 拿 linecount + gain_index + digital_gain\n> 3. gain_index → 查 sensor gain table → 实际 analog_gain（如 gain_index=15 → 4.0x）\n> 4. 写 sensor 寄存器：Coarse Integration Time（曝光行数）+ Analog Gain（增益档位）\n> 5. 必要时 ISP 写 Digital Gain 补足量化损失或超 sensor 上限\n> 6. Antibanding 检查：曝光时间吸附到 50/60Hz 整数倍，gain 补偿\n> 7. damping 平滑：α × 新值 + (1-α) × 旧值\n> 8. 下一帧 sensor 用新参数曝光\n\n### Q5：lux_index 怎么算\n\n> 公式：\n> \n> ```\n> lux_index = stats_target_lux_index\n>           + dec_const_aec_log2 × log2(real_gain × exp_time / target_real_gain × target_exp_time)\n>           + dec_const_lum_log2 × log2(target_lum / current_lum)\n> ```\n> \n> 三项：1) 基准（sensor 标定时的目标 lux）；2) 曝光偏差对数（实际 vs 目标曝光参数）；3) 亮度偏差对数（实际 vs 目标 luma）。\n\n### Q10：TMC 3.0 vs 4.0\n\n> 7250 平台用 TMC 3.0。和 4.0 区别：\n> \n> - **3.0 是 GTM**（全局色调映射），整图共用一条曲线\n> - **4.0 是 LTM**（局部色调映射），按区域分块各自映射\n> \n> 4.0 优势：动态范围处理更精细，暗 / 亮分别处理。劣势：计算成本高、tuning 工作量大。3.0 计算便宜、调教简单，适合中端机型。具体差别还包括：4.0 引入 NPU 辅助、支持实时分析每帧；3.0 是静态参数。\n\n### Q15：safe_target 三步推导\n\n> Step 1: **luma_target** —— 按 lux 查表的基础亮度（暗光 60、室内 80、强光 90）\n> \n> Step 2: **adjusted_target** = luma_target × scene_factor + scene_offset，加 face / dark region / bright region / saturation prevention 等 Scene Analyzer 修正后的目标\n> \n> Step 3: **safe_target** = adjusted_target − dark_boost_extra，减去 ADRC 引入的额外亮度提升估计后的最终目标\n> \n> safe_target 用于驱动 AE 调 sensor，保证 ADRC 处理之后画面亮度恰好达到 adjusted_target，避免整体过曝。\n\n### Q17：高通 AE 多少数据块？测光模式？\n\n> 64×48 = 3072 个数据块。中心测光模式 + Touch ROI / Face ROI / Saliency ROI 加权。\n\n### Q18 / Q23：Metering 两个模块\n\n> Metering 由两部分组成：\n> \n> 1. **AE 数据统计模块**（sensor-independent）：包括 64×48 块统计、中心测光、ROI 加权（Touch/Face/Saliency/Depth）、Bright/Dark Region 测光、10 个 Scene Analyzer（Brighten / Saturation Prevention / Dark Prevention / Extreme Color / Face / Touch / Saliency / Depth / Frame / LLS）。输入是 sensor 像素，输出 adjusted_target / safe_target。\n> \n> 2. **evtable（曝光表）**（sensor-dependent）：包括主曝光表、拐点配置、HDR 多曝光表、lux_to_exp 映射桥。输入 lux_index，输出 sensor 寄存器配置（Coarse Integration Time + Analog Gain + Digital Gain）。\n> \n> 设计理由：解耦让换 sensor 时只改 evtable，统计模块跨 sensor 通用。\n\n### Q19：高通曝光表怎么调试\n\n> 5+ 层次：\n> \n> 1. **基础曝光表**：拐点位置（一般 lux 200 / 1/30 秒，OIS 机型可放到 1/8 秒）、Analog Gain 上限（决定暗光画质）、Digital Gain 是否启用\n> 2. **lux_to_exp 映射**：lux_index 到曝光表行号的桥接\n> 3. **Bright/Dark Region**：dark_high / bright_low / dark_weight / bright_weight\n> 4. **ROI 加权**：Touch / Face / Saliency / Depth 三类 ROI 的权重和半径\n> 5. **HDR sensor**：多曝光表分别调（长 / 短 / 超短）\n> 6. **抗带状**：曝光时间吸附到 50/60Hz 整数倍，gain 补足总曝光量\n> \n> 调教方法：标准光源箱 + 灰板从亮到暗扫一遍，每个 lux 验证亮度收敛 + 拐点过渡平滑 + 真实场景验证（夜景/室内/户外/雪景/夕阳/逆光人像）。\n\n### Q21：Video 拍人脸偏亮\n\n> 通常是 Face Analyzer 调教不平衡。4 种解决思路：\n> \n> 1. **降低 video 模式的 face_roi_weight**（5.0 → 3.5）：人脸不主导测光\n> 2. **增强 Face Analyzer 的过亮修正**（factor 0.92 → 0.85）：人脸过亮时主动压低\n> 3. **动态 ROI 权重**：按人脸亮度自适应调整\n> 4. **video 模式专属配置**：与 photo 模式分开调教\n> \n> 实际工程：方案 1 + 4 组合。video 模式 face_roi_weight 偏低 + 减弱 Face Analyzer 影响，避免人脸主导导致整体过曝。\n\n### Q22：flux 越大越暗\n\n> flux 是工程参数（不是物理通量），数值越大 → 触发的闪光强度阈值越低 → 实际打闪较弱 → 画面较暗。具体含义看公司定义，建议查 tuning 文档。\n\n这是 AE + Flash 跨题，正确答法是「**说明 flux 是工程参数，建议查具体文档**」。",
+      "glossary": [],
+      "extras": {
+        "faq": [
+          { "q": "面试时全部要答这么完整吗？", "a": "不一定。面试官可能只问要点。你给完整版会让他认为「**真懂**」而不是「记答案」。" },
+          { "q": "怎么背？", "a": "结构记住（每题的「框架」），细节用例子记。例如 Q15 三步：「luma → adjusted → safe」，分别 + Scene 修正 / - ADRC 修正。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "本节就是 cheat sheet。打印出来。" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "AEC 调教 cheat sheet 完整版",
+      "type": "example",
+      "content": "### 用户报 bug 时调什么参数\n\n这是 Week 3 + 4 调教 cheat 的最终汇总。\n\n### 暗光 / 暗场景类\n\n**「夜景太暗」**\n→ Brighten Analyzer 加 strength（0.25 → 0.35）\n→ 减弱 LLS suppression\n→ 降低 luma_target（暗光档）\n\n**「夜景过曝、亮部白成一片」**\n→ Brighten 减弱 strength\n→ 增强 Saturation Prevention（priority 高，能稳赢 Brighten）\n→ 降低 ADRC 暗部 gain\n\n**「夜景噪点雪花」**\n→ 增强 LLS suppression\n→ 降低 ISO 上限（曝光表）\n→ 加强降噪（不在 AE 范围，但相关）\n→ 让用户开夜景模式（多帧合成）\n\n**「黑色物体（黑车）拍出来灰」**\n→ 降低 Brighten activation_lux_max（150 → 100）\n→ 检查 Dark Prevention 阈值\n→ 看是否人脸 / 触摸 ROI 误触发了\n\n### 高光 / 过曝类\n\n**「雪景灰蒙蒙」**\n→ 减弱 Bright Region 的 bright_weight（Day 20）\n→ 减弱 Saturation Prevention strength\n→ 加 Bright Scene Analyzer（雪景专门加亮）\n\n**「白色衣服 / 白桌面拍灰」**\n→ 同上，Saturation Prevention 太激进\n→ 或 luma_target 设太低\n\n**「日落变蓝紫色」**\n→ Extreme Color Analyzer 没生效\n→ AWB 没收到信号\n→ 检查两者协同\n\n### 人脸 / 主体类\n\n**「逆光人脸黑」**\n→ 增大 face_roi_weight（5.0 → 7.0）\n→ 增强 Face Analyzer 暗脸修正\n→ 配合 ADRC 拉暗部\n\n**「Video 拍人脸偏亮」（PRD-Q21）**\n→ 降低 video 模式 face_roi_weight\n→ 增强 Face Analyzer 过亮修正\n→ 或专门 video 模式配置\n\n**「人脸两个时切换抖动」**\n→ Face Detection 频率太低 / 多人脸策略不对\n→ 增加 Face history 平滑\n→ 锁定主脸（不让切换）\n\n**「点击对焦后 AE 也跟着亮」**\n→ Touch ROI 权重太大\n→ 或这是设计意图（Touch 同时控 AE+AF），用户不喜欢\n→ 提供模式开关\n\n### 收敛 / 时序类\n\n**「画面亮度抖来抖去（视频）」**\n→ 减小 damping α（0.3 → 0.15）\n→ 增大 Frame Analyzer window_size（10 → 20）\n→ 检查 Stability Check 是否启用\n\n**「拍照按下后画面闪一下才出片」**\n→ AE 收敛太慢，按下时还没 settle\n→ 拍照模式 α 调大（0.3 → 0.6）加快收敛\n→ 或用「锁定 AE」策略\n\n**「视频换场景画面渐变太慢」**\n→ Frame Analyzer window 太大\n→ damping α 太小\n→ 但平衡：调快了画面会闪\n\n### HDR 类\n\n**「逆光场景细节不够」**\n→ HDR 没启用：检查启用阈值\n→ HDR 启用了但 ADRC 弱：增强 ADRC 暗部 gain\n→ HDR Merge 参数不对\n\n**「HDR 视频鬼影」**\n→ 运动检测灵敏度太低\n→ 切到 SHDR / 关 HDR\n→ 用户拍运动场景应避免 MFHDR\n\n**「同 HDR 模式下视频画面卡顿」**\n→ HDR 计算成本高，看是否超 ISP 算力\n→ 降低分辨率 / 帧率\n→ 或换更弱的 HDR 模式（SHDR → MFHDR → 关）\n\n### 多摄类\n\n**「主摄切长焦画面突变」**\n→ 多摄 AE 同步没启用\n→ Master/Slave 配置不对\n→ Sensor 标定差异未补偿\n\n**「主摄切超广角颜色变了」**\n→ AWB 同步没做\n→ 或两个 sensor 的 CCM 标定差异\n→ 长焦镜头自有色彩偏向（CCM 校准时考虑）\n\n### Tuning 工作流模板\n\n```\n步骤 1：复现 bug（拍同样场景）\n步骤 2：抓 AEC log（lux/face/target/factor 等字段）\n步骤 3：定位是哪个 Analyzer 问题\n步骤 4：查 cheat sheet 找参数\n步骤 5：修改 Chromatix XML\n步骤 6：重新出图测试\n步骤 7：对比 + 综合评估\n步骤 8：通过 → commit；否则回 4\n```\n\n### 这是你的「**面试基础**」\n\n你将来面试，**面试官最常问**「**你怎么调教 AEC 的？**」。\n\n你能答：\n\n> 1. 先看用户反馈的具体场景\n> 2. 在那个场景下抓 AEC log，看每个字段\n> 3. 定位是哪个 Analyzer 问题（用 priority 和 active 信号）\n> 4. 改对应 Tuning 参数\n> 5. 重新测试 + 对比\n> 6. 综合评估其他场景没被影响\n\n这就是**真正的 Tuning 工程师**思维。",
+      "glossary": []
+    },
+    {
+      "id": "s4",
+      "title": "Week 5 + 后续预告",
+      "type": "concept",
+      "content": "### 你已经走过最难的山\n\n```\n████████████████████████████████░░░░░░░░░░  60% (Week 4/8)\n```\n\nAEC 是 60 天里**最大、最难**的模块（占 60 天的 1/4 时间）。学完 Week 4，你过了最难的关。\n\n### Week 5 学什么：AWB 第一阶段\n\n下周开始 AWB（自动白平衡）。AWB 在很多方面**和 AE 类似**：\n\n| | AE | AWB |\n|---|---|---|\n| 输入 | 64×48 块 (Y) | 64×48 块 (R/G/B) |\n| 决策 | exp_time + ISO | RGB 三通道增益 |\n| 修正 | Scene Analyzer | 类似的 Scene Analyzer |\n| 收敛 | damping + settle | damping + settle |\n| 多摄 | AE 同步 | AWB 同步 |\n\nWeek 5 主题：\n- Day 29: AWB 总览 + 灰世界假设\n- Day 30: Bayer 网格统计 + 传感器 OTP 校准\n- Day 31: 参考点（Reference Points）\n- Day 32: 光源权重向量\n- Day 33: 距离权重向量 + 误导色区（MLC）\n- Day 34: AWB 决策聚合\n- Day 35: Week 5 总结\n\n### Week 6：AWB 第二阶段\n\n- AGW（高级灰世界）\n- FA（人脸辅助）\n- AWB Flash（闪光灯下的白平衡）\n- AWB 双摄同步\n- FCM（Fixed Color Matching）\n- Smart Convergence\n\n### Week 7：AF + Flash + HDR + Flicker\n\n- CAF（反差对焦）\n- Saliency AF\n- Depth AF\n- Precision Flash\n- Auto Flicker Detection\n\n### Week 8：色彩 + 工具 + 模拟面试\n\n- 色彩科学（Lab / sRGB / Display P3）\n- Chromatix 工具实操\n- 模拟面试（PRD 全 23 题答辩）\n- 简历润色\n\n### 你的 60 天进度\n\n```\nWeek 1: 光学 / 硬件        ✓ 完成\nWeek 2: ISP Pipeline       ✓ 完成\nWeek 3: AEC 第一阶段       ✓ 完成\nWeek 4: AEC 第二阶段       ✓ 完成（你今天）\nWeek 5: AWB 第一阶段       ⏰ 下周开始\nWeek 6: AWB 第二阶段\nWeek 7: AF + Flash + HDR\nWeek 8: 色彩 + 工具 + 面试\n```\n\n### 时间节奏\n\n按 PRD 计划「**4 小时/天 + 周末更多**」，你 Day 28 完成大约是入学第 4 周（一个月）。**正好一半**。\n\n两个月（60 天）后你将完成全部 8 周。届时你可以：\n\n- 完整答 23 道 PRD 面试题\n- 看懂高通 7.0 / 10 PDF\n- 用 Chromatix 工具调一个简单的项目\n- 解读你妹妹笔记里的所有术语\n- 通过初级 / 中级 Tuning 工程师面试\n\n### 周末的安排\n\n建议这个周末做：\n\n1. **整理 Week 4 笔记**：10 个 Scene Analyzer 表 + AEC 调教 cheat\n2. **过一遍所有 13 道 AE 类 PRD 题答案**\n3. **翻一翻高通 7.0 PDF 的 AEC 章节**（第 14-100 页）—— 应该能看懂 80% 以上\n4. **预读 Day 29 AWB 总览**（让下周开始更顺）\n5. **休息！** 学了一个月，给自己一个奖励",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本周小结",
+      "type": "recap",
+      "content": "### Week 4 收获\n\n- ✅ 学完 10 个 Scene Analyzer：检测什么 / 修正方向 / priority\n- ✅ 答出 PRD 13 道 AE 类题（Q1-Q5/Q10/Q15/Q17-Q23）\n- ✅ 理解 ADRC + HDR + 多摄一致性的工程链路\n- ✅ 拥有 AEC 调教 cheat sheet（用户报告 → 参数）\n- ✅ 能用 AE 视角分析任何拍摄场景\n- ✅ 知道 Tuning 工程师的真实工作流程\n\n### Week 4 自我检查\n\n1. **画一张 10 个 Scene Analyzer 的 priority 排序图**（priority 90 最高，30 最低）。\n2. **默写 PRD 第 21 题**：Video 拍人脸偏亮怎么解决？\n3. **默写 PRD 第 10 题**：TMC 3.0 vs 4.0 区别。\n4. **场景分析**：用户拍逆光人像（PRD-Q21 反向场景）AE 怎么决策？\n5. **完成本周周考**（15 题，进入「考核」页 Week 4 周考）。\n\n### Week 4 周考\n\n打开「考核 → 周测试 → Week 4」做 15 题综合测验。\n\n这是 Week 3 + 4 的全 AEC 内容。如果 80% 正确，你的 AEC 已经过关。如果不到，**回去重看错题对应的 Day**。\n\n### 笔记最终建议\n\n这一周笔记最起码包含：\n\n1. 10 个 Scene Analyzer 完整对比表（priority / 检测 / 修正 / 学到哪天）\n2. PRD 13 道 AE 类题完整答案（一份 cheat sheet）\n3. AEC 调教 cheat sheet（用户报告 → 参数）\n4. ADRC 曲线 + 3 种 HDR 对比表\n5. 多摄 AE / AWB 同步的主从架构图\n\n这一份「**完整 AEC 武功秘籍**」面试时是金子。\n\n### 下周见\n\n下周一开始 Week 5 AWB。AWB 是 60 天里**第二大**的模块（比 AE 略小），但因为很多概念和 AE 类似，**学起来比 AE 容易**。\n\n你已经过了山。后面是下坡路。继续加油 :)",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "本周 Day 22-27 所有 references" },
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "AEC 整章节（第 14-100 页）" },
+    { "source": "高通 3A 10 Deep Dive", "section": "AEC + HDR + 多摄章节" }
+  ],
+  "dailyQuizId": "daily-day-28"
+}

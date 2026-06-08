@@ -1,0 +1,49 @@
+{
+  "id": "daily-day-28",
+  "title": "Day 28 日测：Week 4 串讲（综合）",
+  "module": "M3",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "学完 Week 3 + 4，你能完整答出 PRD 23 道题里的几道？",
+      "options": ["3 道", "8 道", "13 道（全部 AE 类）", "23 道全部"],
+      "answer": "13 道（全部 AE 类）",
+      "explain": "Q1/Q2/Q3/Q4/Q5/Q10/Q15/Q17/Q18/Q19/Q21/Q22/Q23 共 13 道 AE 类题。剩下 10 道是 ISP/Flash/色彩，分布在 Week 1-2、6-8。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "调教 cheat 题：用户报「关灯拍照画面雪花」，最优先调什么？",
+      "options": [
+        "增大 Brighten strength",
+        "增强 LLS suppression_strength + 降 ISO 上限 + 建议用户开夜景模式",
+        "增强 Saturation Prevention",
+        "关闭 ADRC"
+      ],
+      "answer": "增强 LLS suppression_strength + 降 ISO 上限 + 建议用户开夜景模式",
+      "explain": "极暗下 Brighten + Dark Prevention 互相加强 → AE 拉到 ISO 极限 → 噪点雪花。LLS 就是来 suppress 这种过激的，必须增强它。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "Week 3+4 学完，AEC 模块的 tuning 总参数大概 ___ 个量级",
+      "answer": ["200-400", "300", "几百", "几百个"],
+      "explain": "曝光表 250 + Region 8 + 10 个 Analyzer 50-100 + 收敛 5-10 + HDR 多组 = 200-400 个参数。3-6 个月调好一个项目。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "10 个 Scene Analyzer 中，「ROI 类」（不走聚合直接改权重）共 ___ 个",
+      "answer": ["4", "四", "四个"],
+      "explain": "Face / Touch / Saliency / Depth 共 4 个。其他 6 个走 Decision Aggregator 几何加权。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "面试题预演：用 AE 视角分析「拍逆光人像（窗户前拍朋友）」的完整决策链路。",
+      "referenceAnswer": "1) 64×48 统计：上半天空（亮 230）下半人脸（暗 50）；2) Frame Average 平滑（避免单帧极端）；3) Face Detection 找到人脸 → Face ROI 加权那块 ×5.0 → final_luma 偏向人脸 ~65；4) lux_index 公式算出场景档位（约 220 户外）；5) luma_target 80（按 lux 查表）；6) Scene Analyzer 聚合：Face Analyzer 检测到人脸偏暗 factor 1.10 + Saturation Prevention 检测到亮部接近过曝 factor 0.90 + Brighten 不激活；7) 几何加权 → adjusted_target ≈ 84；8) ADRC 在暗光偏激进 → safe_target = 84 - 6 = 78；9) AE 决策：current 65 < target 78，加曝光（曝光 ↑ + ISO 略 ↑）；10) damping α=0.3，连续多帧渐近收敛；11) 写 sensor + 给 ISP 后段 lux_index/safe_target；12) ISP 段 ADRC 给暗部加 gain，LTM 局部精细；13) 最终用户看到「人脸不黑 + 天空略亮但保细节」。这是「逆光人像出片好」的全套机制。"
+    }
+  ]
+}

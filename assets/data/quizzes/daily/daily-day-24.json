@@ -1,0 +1,54 @@
+{
+  "id": "daily-day-24",
+  "title": "Day 24 日测：4 类 ROI 分析器（Face/Touch/Saliency/Depth）",
+  "module": "M3",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "Face / Touch / Saliency / Depth 4 个 ROI 类分析器为什么不通过 Scene Analyzer 聚合，而直接修改 64×48 权重表？",
+      "options": [
+        "性能更快",
+        "避免被其他 Analyzer 稀释，「明确 > 推断」哲学",
+        "硬件限制",
+        "随意设计"
+      ],
+      "answer": "避免被其他 Analyzer 稀释，「明确 > 推断」哲学",
+      "explain": "ROI 是「用户/AI 明确指定的主体」，比起其他 Analyzer 推断出的修正更可靠。直接改权重保证不被聚合稀释。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "PRD 第 21 题：Video 拍人脸偏亮的处理思路？",
+      "options": [
+        "增大 face_roi_weight",
+        "降低 video 模式 face_roi_weight + 增强 Face Analyzer 过亮修正",
+        "关闭 Face Detection",
+        "让用户切到拍照模式"
+      ],
+      "answer": "降低 video 模式 face_roi_weight + 增强 Face Analyzer 过亮修正",
+      "explain": "video 模式人脸 ROI 不能太强，否则人脸主导导致整体过曝。专门的 video 配置 + Face Analyzer 过亮修正双管齐下。"
+    },
+    {
+      "id": "q3",
+      "type": "fill",
+      "prompt": "Face Analyzer 检测到多人脸时，常见策略是优先「___」那张人脸",
+      "answer": ["最大", "最近"],
+      "explain": "最大人脸 = 最近的人 = 主体。避免远处路人干扰主体测光。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "Saliency Analyzer 输出的是什么数据结构？",
+      "answer": ["热力图", "saliency map", "热力图（Saliency Map）", "saliency 热力图"],
+      "explain": "每像素一个 0-1 的「显眼度」值。AE/AF/AWB 按热力值软加权 64×48 权重。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "Touch ROI 有哪几个状态（状态机）？分别是什么时候？",
+      "referenceAnswer": "4 个状态：1) INACTIVE（用户没点屏幕，不工作）；2) PRESSED（用户刚点击，影响最强 strength=1.0）；3) HOLD（持续若干秒保持影响）；4) FADEOUT（开始渐弱，strength 线性衰减到 0）。然后回 INACTIVE。这种状态机让用户感觉「点过的地方影响一会儿」，不会瞬间消失（让画面突变），也不会永远生效（让用户失去自动测光）。"
+    }
+  ]
+}
