@@ -108,7 +108,17 @@ async function loadVersionBadge() {
     const ver = (await res.text()).trim();
     if (!ver) throw new Error("empty");
     badge.textContent = "v " + ver;
-    badge.title = `部署版本 ${ver}\n（每次打包/更新自动刷新；如果版本号没变，说明主机还没部署新版本）`;
+    badge.title = `部署版本 ${ver}\n点击：清缓存重载（拿最新代码）\n注：每次打包/更新自动刷新；如果版本号没变，说明主机还没部署新版本`;
+    badge.addEventListener("click", () => {
+      // 清所有 ServiceWorker / Cache + 强制重载
+      if ("caches" in window) {
+        caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
+          location.reload();
+        });
+      } else {
+        location.reload();
+      }
+    });
     // 与上次看到的版本对比，新版本闪一下绿色
     const last = localStorage.getItem("camera3a:lastSeenVersion");
     if (last && last !== ver) {

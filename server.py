@@ -47,6 +47,16 @@ def cors_headers():
 
 
 class CourseHandler(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        # 给所有静态资源加 no-cache 头，强制每次验证（避免动态 import 命中旧缓存）
+        # 注：这只对走父类 SimpleHTTPRequestHandler 的请求生效（_serve_index_with_version 自己控制）
+        path_only = (self.path or "/").split("?", 1)[0]
+        is_static = not path_only.startswith("/dav-proxy/")
+        if is_static:
+            self.send_header("Cache-Control", "no-cache, must-revalidate")
+            self.send_header("Pragma", "no-cache")
+        super().end_headers()
+
     # 处理所有 WebDAV 方法
     def do_GET(self):       self._dispatch()
     def do_HEAD(self):      self._dispatch()
