@@ -68,12 +68,15 @@ class CourseHandler(http.server.SimpleHTTPRequestHandler):
     def _dispatch(self):
         if self.path.startswith("/dav-proxy/"):
             self._proxy_dav()
-        elif self.command == "GET" and (self.path == "/" or self.path == "/index.html"):
+            return
+        # 解析 path 去掉 query 再判断（self.path 含 query string）
+        path_only = self.path.split("?", 1)[0].split("#", 1)[0]
+        if self.command == "GET" and (path_only == "/" or path_only == "/index.html"):
             # 给 HTML 注入当前 .version 替换 ?v=XX 占位，避免 css/js 缓存
             self._serve_index_with_version()
-        else:
-            # 静态文件
-            super().do_GET() if self.command == "GET" else super().do_HEAD()
+            return
+        # 静态文件
+        super().do_GET() if self.command == "GET" else super().do_HEAD()
 
     def _serve_index_with_version(self):
         try:
