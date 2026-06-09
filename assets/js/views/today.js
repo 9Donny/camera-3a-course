@@ -60,8 +60,25 @@ function pickGreeting(day) {
   return { hi: timePart, line };
 }
 
-export async function renderToday(content, { progress, router, persistProgress }) {
-  const day = progress.getState().currentDay;
+export async function renderToday(content, { progress, router, persistProgress, dayOverride = null }) {
+  // dayOverride: 路由 #/today/day-XX 指定的复读日（必须是已完成或当前 day），否则用 currentDay
+  let day;
+  if (dayOverride) {
+    const m = String(dayOverride).match(/^day-(\d{2})$/);
+    if (!m) {
+      content.innerHTML = `<h1>⚠️ 路径错误</h1><p>不认识的 day id：<code>${escapeHTML(dayOverride)}</code></p>`;
+      return;
+    }
+    day = parseInt(m[1], 10);
+    // 安全限制：只能看「已解锁」的 day（不能跳到未来）
+    if (!progress.isUnlocked(day) && day !== progress.getState().currentDay) {
+      content.innerHTML = `<h1>🔒 未解锁</h1><p>Day ${day} 还没解锁。<a href="#/today">回到今日学习</a></p>`;
+      return;
+    }
+  } else {
+    day = progress.getState().currentDay;
+  }
+
   if (day > 60) {
     content.innerHTML = `<h1>🎉 全部完成</h1><p>你已学完 60 天课程。前往 <a href="#/quiz">考核中心</a> 做最终月考。</p>`;
     return;
@@ -106,10 +123,12 @@ export async function renderToday(content, { progress, router, persistProgress }
   const ttsSupported = tts.isSupported();
   const currentRate = tts.getRate();
 
+  const isRevisit = !!dayOverride;
   content.innerHTML = `
     <div class="lesson-header">
-      <div class="muted">Week ${data.week} · 模块 ${data.module} · 预计 ${data.estimatedMinutes} 分钟</div>
+      <div class="muted">Week ${data.week} · 模块 ${data.module} · 预计 ${data.estimatedMinutes} 分钟${isRevisit ? ' · <span style="color:#10b981">📖 复读模式</span>' : ''}</div>
       <h1>Day ${day} · ${escapeHTML(data.title)}</h1>
+      ${isRevisit ? `<div class="muted" style="margin-top:4px;font-size:13px"><a href="#/today">← 回到当前学习日</a></div>` : ''}
       <div class="hint-tip" id="highlightHint">💡 提示：选中任意句子，会弹出「📌 收藏到笔记」按钮，一键存到当天笔记中 · <a href="#" id="dismissHint">知道了</a></div>
     </div>
     ${ttsSupported ? `
@@ -160,12 +179,14 @@ export async function renderToday(content, { progress, router, persistProgress }
   }
 
   // 划词收藏：全局事件只绑一次（即使切换 Day 也复用）
+  // 注意：复读模式下笔记应写到「当前正在看」的 day，不是 currentDay
   if (!highlightInitialized) {
     initHighlightCollect({
-      getDayId: () => `day-${String(Math.min(progress.getState().currentDay, 60)).padStart(2, "0")}`,
+      getDayId: () => window.__currentLessonDayId || `day-${String(Math.min(progress.getState().currentDay, 60)).padStart(2, "0")}`,
     });
     highlightInitialized = true;
   }
+  window.__currentLessonDayId = dayId;
 
   // 提示条：localStorage 没标记过就显示
   const hintEl = document.getElementById("highlightHint");

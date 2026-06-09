@@ -220,6 +220,13 @@ const router = new Router()
     const { renderToday } = await import("./views/today.js");
     await renderToday(content, { progress, router, persistProgress });
   })
+  .on("#/today/:dayId", async (p) => {
+    // 复读模式：回顾已完成或当前的某一天，不会跳到下一天
+    trackPage("today-revisit");
+    renderSidebar("#/today");
+    const { renderToday } = await import("./views/today.js");
+    await renderToday(content, { progress, router, persistProgress, dayOverride: p.dayId });
+  })
   .on("#/review", async () => {
     trackPage("review");
     renderSidebar("#/review");

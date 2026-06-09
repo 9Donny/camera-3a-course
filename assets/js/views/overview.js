@@ -79,12 +79,16 @@ export async function renderOverview(content, { progress, router }) {
       const isCompleted = cell.classList.contains("done");
       const status = isCompleted ? "✅ 已完成" : isUnlocked ? "▶ 当前可学" : "🔒 未解锁";
 
+      const dayId = `day-${String(day).padStart(2, "0")}`;
+      // 已完成 → 跳到复读路由 #/today/day-XX；当前天 → #/today（正常学习）
+      const targetHref = isCompleted ? `#/today/${dayId}` : "#/today";
       popover.innerHTML = `
         <div class="dp-status">${status}</div>
         <div class="dp-title">Day ${day} · ${escapeHTML(title || "（标题待补充）")}</div>
         ${goal ? `<div class="dp-goal"><span class="label">学习目标</span> ${escapeHTML(goal)}</div>` : ""}
         <div class="dp-actions">
-          ${isUnlocked ? `<a class="btn" href="#/today" onclick="document.getElementById('dayPopover').style.display='none'">${isCompleted ? '回顾' : '开始学习'}</a>` : `<span class="muted">完成上一天后解锁</span>`}
+          ${isUnlocked ? `<a class="btn" href="${targetHref}" onclick="document.getElementById('dayPopover').style.display='none'">${isCompleted ? '回顾' : '开始学习'}</a>` : `<span class="muted">完成上一天后解锁</span>`}
+          ${isCompleted ? `<a class="btn secondary" href="#/notes/${dayId}" onclick="document.getElementById('dayPopover').style.display='none'">📝 笔记</a>` : ""}
           <button class="btn secondary" onclick="document.getElementById('dayPopover').style.display='none'">关闭</button>
         </div>
       `;
