@@ -21,3 +21,6 @@ preview-day-01.html
 
 # 自部署打包输出，不进 git
 dist/
+
+# 版本号文件（每次打包自动生成，不进 git 但要进 tarball）
+.version

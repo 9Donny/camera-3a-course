@@ -13,6 +13,9 @@ PACKAGE_NAME="camera3a-course-${STAMP}"
 DIST_DIR="$ROOT_DIR/dist"
 STAGE_DIR="$DIST_DIR/$PACKAGE_NAME"
 
+# 先写版本号到仓库根（让开发环境也能看到，前端 fetch /.version 用）
+echo "$STAMP" > "$ROOT_DIR/.version"
+
 echo "→ 清理 dist/ ..."
 rm -rf "$DIST_DIR"
 mkdir -p "$STAGE_DIR"

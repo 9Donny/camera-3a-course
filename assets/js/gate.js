@@ -87,11 +87,43 @@ function showApp() {
   document.getElementById("gateMask").style.display = "none";
   document.getElementById("topbar").style.display = "";
   document.getElementById("layout").style.display = "";
+
+  // 加载版本徽章
+  loadVersionBadge();
+
   // 加载主应用
   const s = document.createElement("script");
   s.type = "module";
   s.src = "assets/js/app.js?v=20";
   document.body.appendChild(s);
+}
+
+// 读 /.version 文件显示在右下角徽章
+async function loadVersionBadge() {
+  const badge = document.getElementById("versionBadge");
+  if (!badge) return;
+  try {
+    const res = await fetch("./.version?t=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const ver = (await res.text()).trim();
+    if (!ver) throw new Error("empty");
+    badge.textContent = "v " + ver;
+    badge.title = `部署版本 ${ver}\n（每次打包/更新自动刷新；如果版本号没变，说明主机还没部署新版本）`;
+    // 与上次看到的版本对比，新版本闪一下绿色
+    const last = localStorage.getItem("camera3a:lastSeenVersion");
+    if (last && last !== ver) {
+      badge.classList.add("fresh");
+      badge.textContent = "v " + ver + " · 已更新 ✓";
+      setTimeout(() => {
+        badge.classList.remove("fresh");
+        badge.textContent = "v " + ver;
+      }, 8000);
+    }
+    localStorage.setItem("camera3a:lastSeenVersion", ver);
+  } catch (e) {
+    badge.textContent = "v ?";
+    badge.title = "无法读取版本号：" + e.message;
+  }
 }
 
 function getAttempts() {

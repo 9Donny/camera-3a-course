@@ -68,9 +68,37 @@ class CourseHandler(http.server.SimpleHTTPRequestHandler):
     def _dispatch(self):
         if self.path.startswith("/dav-proxy/"):
             self._proxy_dav()
+        elif self.command == "GET" and (self.path == "/" or self.path == "/index.html"):
+            # 给 HTML 注入当前 .version 替换 ?v=XX 占位，避免 css/js 缓存
+            self._serve_index_with_version()
         else:
             # 静态文件
             super().do_GET() if self.command == "GET" else super().do_HEAD()
+
+    def _serve_index_with_version(self):
+        try:
+            with open("index.html", "rb") as f:
+                content = f.read()
+        except OSError as e:
+            self.send_error(404, str(e))
+            return
+        # 读 .version
+        try:
+            with open(".version", "r", encoding="utf-8") as f:
+                version = f.read().strip()
+        except OSError:
+            version = "dev"
+        # 把所有 ?v=XX 替换成 ?v=<version>
+        import re
+        content_str = content.decode("utf-8", errors="replace")
+        content_str = re.sub(r"\?v=[\w.-]+", f"?v={version}", content_str)
+        body = content_str.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.end_headers()
+        self.wfile.write(body)
 
     def _proxy_dav(self):
         # /dav-proxy/<dav-path>  →  https://dav.jianguoyun.com/<dav-path>
