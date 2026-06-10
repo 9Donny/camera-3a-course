@@ -3,224 +3,329 @@
     "id": "fc-w5-d29-1",
     "front": "AWB 是干什么的？",
     "back": "Auto White Balance 自动白平衡。估计当前光源色温 + 给 ISP 三通道（R/G/B）配增益，让画面里的「白色物体」还原成中性白。模拟人眼的「色彩恒常性」 —— 不论钨丝灯还是日光下，白纸都还原成白。",
-    "tags": ["Day 29", "AWB", "概念"],
+    "tags": [
+      "Day 29",
+      "AWB",
+      "概念"
+    ],
     "srcDay": "day-29"
   },
   {
     "id": "fc-w5-d29-2",
-    "front": "色温（CCT）单位 + 常见光源对应？",
-    "back": "Kelvin (K)。常见对应：钨丝/烛光 ~2700-2900K（暖橙）；卤素 ~3000K；早晚日光 D50 ~5000K；正午日光 D65 ~6500K（标准白）；阴天 ~7500K；蓝天 10000K+（冷蓝）。CCT 越低光越暖，越高越冷（反直觉！）。",
-    "tags": ["Day 29", "色温"],
+    "front": "色温 + 常见光源对应？",
+    "back": "```\n   暖 ←─────────────→ 冷\n2700K ─── 5500K ─── 10000K+\n```\n\n| K | 光源 | 场景 |\n|---|---|---|\n| 2700-2900 | 钨丝 / 烛光 | 室内暖光 |\n| 3000 | 卤素灯 | 餐厅 |\n| 4000-4150 | TL84 / CWF 荧光 | 办公室 |\n| 5000 | D50 早晚日光 | |\n| **6500** | **D65 标准白** | **正午日光** ★ |\n| 7500 | 阴天 | 户外多云 |\n| 10000+ | 蓝天 | 极冷场景 |\n\n**反直觉**：色温越**低**光越**暖**（红黄）；越**高**越**冷**（蓝紫）。\n\nD65 是**色彩科学的中性参考**。",
+    "tags": [
+      "Day 29",
+      "色温"
+    ],
     "srcDay": "day-29"
   },
   {
     "id": "fc-w5-d29-3",
     "front": "AWB 为什么用 RG / BG 比例（而不是直接 RGB）？",
     "back": "RG (R/G) 和 BG (B/G) 是无量纲比值，不受亮度影响。同一光源下白纸在亮处或暗处 RG/BG 一样。让 AWB 在「色温坐标系」上工作，与亮度解耦。G 是参考通道（Bayer 中 G 像素是 R/B 的 2 倍，信噪比最好）。",
-    "tags": ["Day 29", "RG-BG"],
+    "tags": [
+      "Day 29",
+      "RG-BG"
+    ],
     "srcDay": "day-29"
   },
   {
     "id": "fc-w5-d29-4",
     "front": "灰世界假设？什么场景下失败？",
     "back": "Gray World Assumption：所有像素的平均颜色应该是中性灰（R=G=B）。算法：算 R/G/B 平均，用比例反推光源 → 配 gain。失败场景：单一色彩主导（绿草地全绿、夕阳全红、蓝天大海全蓝）。这种场景下「平均偏色」被误判为「光源偏色」，AWB 把草地修成灰白。",
-    "tags": ["Day 29", "灰世界"],
+    "tags": [
+      "Day 29",
+      "灰世界"
+    ],
     "srcDay": "day-29"
   },
   {
     "id": "fc-w5-d29-5",
     "front": "AWB 在 ISP Pipeline 里的位置？为什么统计在 WB 之前？",
     "back": "ISP 流程：RAW → OB → LSC → Demosaic → 【WB】→ CCM → Gamma → ... 。但 AWB 算法用的统计模块在 WB **之前**（在 OB/LSC 之后）。原因：AWB 必须看「带光源偏色的原始数据」才能测出色温。如果统计在 WB 之后，看到的总是已平衡过的，没法工作。这是 ISP 流水线设计的精妙之处。",
-    "tags": ["Day 29", "ISP", "流水线"],
+    "tags": [
+      "Day 29",
+      "ISP",
+      "流水线"
+    ],
     "srcDay": "day-29"
   },
   {
     "id": "fc-w5-d30-1",
     "front": "Bayer 阵列的 Gr 和 Gb 区别？",
     "back": "Bayer 排列：R Gr R Gr / Gb B Gb B / R Gr R Gr / ...。和 R 同行的 G 叫 Gr，和 B 同行的叫 Gb。理论上同一种绿滤光，但相邻像素串扰让 Gr 和 Gb 数值有 1-3% 差异（Gr/Gb Imbalance）。AWB 一般用 G_avg = (Gr_avg + Gb_avg) / 2 消除不平衡。",
-    "tags": ["Day 30", "Bayer", "Gr/Gb"],
+    "tags": [
+      "Day 30",
+      "Bayer",
+      "Gr/Gb"
+    ],
     "srcDay": "day-30"
   },
   {
     "id": "fc-w5-d30-2",
     "front": "OTP 是什么？AWB 怎么用它？",
     "back": "OTP = One Time Programmable，sensor 内不可改写存储器。工厂校准时测每个 sensor 在 D65/D50/A/H 等标准光源下的实际 RG/BG，烧录进 OTP。AWB 启动时读 OTP 调整内部参考点表。这让每个 sensor 个体差异（颜色响应不同）被消除，跨设备一致。",
-    "tags": ["Day 30", "OTP", "校准"],
+    "tags": [
+      "Day 30",
+      "OTP",
+      "校准"
+    ],
     "srcDay": "day-30"
   },
   {
     "id": "fc-w5-d30-3",
     "front": "AWB 启动时第 0 帧的 gain 哪里来？",
     "back": "用 NVRAM 存储的「上次关相机时的 gain」。开相机时立即用上次状态 → 第 0 帧颜色基本对，避免「色彩从零开始收敛」延迟。第 1 帧基于第 0 帧统计才开始算新 gain。这就是「秒拍秒准」的内部机制。",
-    "tags": ["Day 30", "启动"],
+    "tags": [
+      "Day 30",
+      "启动"
+    ],
     "srcDay": "day-30"
   },
   {
     "id": "fc-w5-d30-4",
     "front": "为什么 AWB 要做过曝过暗块过滤？",
     "back": "过曝块（任一通道接近 255）真实数值被截断 → R/G/B 比例失真。例如真实 R=400/G=200/B=100，sensor 输出 R=255/G=200/B=100，看起来 RG=1.28 但其实 RG=2.0。AWB 用这种数据会大幅误判光源。过暗块（接近 0）噪点大不可靠。两者都必须排除（valid_blocks 通常少于 3072）。",
-    "tags": ["Day 30", "过滤"],
+    "tags": [
+      "Day 30",
+      "过滤"
+    ],
     "srcDay": "day-30"
   },
   {
     "id": "fc-w5-d30-5",
     "front": "AWB 收敛 vs AE 收敛区别？",
     "back": "类似但 AWB 慢一些（damping α=0.2 vs AE 的 0.3，避免色彩抖）。AWB 多了「光源切换检测」：当前 LWV 和历史距离 > 阈值 → fast_converge 模式（α=0.6 + 清空时序历史 + 减小聚合窗口）。让正常时稳、切换时快。",
-    "tags": ["Day 30", "收敛"],
+    "tags": [
+      "Day 30",
+      "收敛"
+    ],
     "srcDay": "day-30"
   },
   {
     "id": "fc-w5-d31-1",
-    "front": "RG-BG 平面是什么？",
-    "back": "AWB 内部的色温二维坐标系。X 轴 = R/G，Y 轴 = B/G。每个光源在这平面对应一个点。所有自然光源沿「普朗克轨迹」分布（从暖到冷的连续曲线）。AWB 决策就在这平面上找「最匹配的已知光源」。",
-    "tags": ["Day 31", "RG-BG"],
+    "front": "RG-BG 色温坐标系 + 普朗克轨迹？",
+    "back": "```\n  BG (B/G)\n   ↑\n1.5 +     · H_blue 10000K  ← 蓝天端\n    |    · D75 7500K\n1.2 +   · D65 6500K  ★ 标准白\n    |  · D50 5000K\n1.0 + · CWF 4150K\n    |· TL84 4100K\n0.7 +─ A 2856K  ← 钨丝端\n    |\n0.5 +\n    +───┬───┬───┬───→ RG (R/G)\n       0.7 1.0 1.5 1.9\n```\n\n**普朗克轨迹**：所有自然光源在 RG-BG 平面上沿一条曲线分布（黑体辐射规律）。\n\n**离轨迹远的颜色**（如纯红 RG=2.5）= **不可能是光源** = MLC 误导色 → AWB 排除。",
+    "tags": [
+      "Day 31",
+      "RG-BG"
+    ],
     "srcDay": "day-31"
   },
   {
     "id": "fc-w5-d31-2",
     "front": "Reference Points 是什么？常见有哪几个？",
     "back": "AWB 配置预存的常见光源在 RG-BG 平面上的位置 + 概率权重。每个含 (name, cct, rg, bg, prior_weight)。常见 8-15 个：A 钨丝 (2856K) / H 卤素 (3000K) / TL84 三波长荧光 (4100K) / CWF 冷白荧光 (4150K) / D50 (5000K) / D65 (6500K) / D75 (7500K) / H_blue 蓝天 (10000K)。",
-    "tags": ["Day 31", "Reference Points"],
+    "tags": [
+      "Day 31",
+      "Reference Points"
+    ],
     "srcDay": "day-31"
   },
   {
     "id": "fc-w5-d31-3",
     "front": "普朗克轨迹（Planckian Locus）是什么？",
     "back": "黑体辐射在不同温度下色调变化形成的曲线，画在 RG-BG 平面上是一条连续轨迹。所有「自然光源」（钨丝灯、日光、阴天、蓝天）都在这条轨迹附近。这是 AWB 的物理基础 —— 远离普朗克轨迹的颜色 = 不可能是自然光源 = 误导色（MLC）。",
-    "tags": ["Day 31", "普朗克"],
+    "tags": [
+      "Day 31",
+      "普朗克"
+    ],
     "srcDay": "day-31"
   },
   {
     "id": "fc-w5-d31-4",
     "front": "「最近参考点 + 内插」相比灰世界的优势？",
     "back": "灰世界把「画面 RGB 平均」当作光源色 → 单色场景误判。最近参考点不直接用 current 当光源，而在已知光源里挑最匹配的，用「该参考点」的 RG/BG 计算 gain。即使 current 被绿色拉偏，最近参考点（D65）位置不变 → 给 D65 的 gain → 草地保持绿色。本质：用「先验已知光源」做基准，比「画面平均」更稳。",
-    "tags": ["Day 31", "参考点法"],
+    "tags": [
+      "Day 31",
+      "参考点法"
+    ],
     "srcDay": "day-31"
   },
   {
     "id": "fc-w5-d31-5",
     "front": "线性内插：current 在两个参考点之间怎么处理？",
     "back": "找最近 2 个参考点（不是 1 个）→ 按距离比例线性内插。weight1 = dist2/(dist1+dist2)（近的权重大）。final_rg = ref1.rg × w1 + ref2.rg × w2。CCM 同理在两个 CCT 矩阵之间内插。这让 AWB 输出连续 CCT（如 5450K）而不是固定档位，画面色彩平滑。",
-    "tags": ["Day 31", "内插"],
+    "tags": [
+      "Day 31",
+      "内插"
+    ],
     "srcDay": "day-31"
   },
   {
     "id": "fc-w5-d32-1",
-    "front": "LWV（光源权重向量）是什么？",
-    "back": "Light Weight Vector，AWB 内部数据结构。维度 = 参考点数量（8-15 维），每个元素是 0-1 的概率，表示「当前光源是这个参考点的可能性」。元素之和 = 1。LWV 反映 AWB 对当前帧光源的「概率分布」估计，是聚合多 sub-algorithm 的核心。",
-    "tags": ["Day 32", "LWV"],
+    "front": "LWV 光源权重向量？",
+    "back": "**LWV = Light Weight Vector**\n\n每个参考点的概率（之和 = 1，是概率分布）：\n\n```\n参考点：[A, H, TL84, CWF, D50, D65, D75, H_blue]\n        2856 3000 4100 4150 5000 6500 7500 10000\n\nLWV：    [.05  .05  .10  .10  .20  .30  .15  .05]\n                                    ↑\n                                 主导（户外日光场景）\n```\n\n**计算**：\n```\nweight_i = (1 / (1 + d_i × σ)) × prior_weight_i\nLWV_i = weight_i / Σ weight\n```\n其中 d_i = current 到参考点 i 的距离。\n\n**多峰 LWV** = 混合光源场景（如客厅钨丝 + 窗外日光）。\n**单峰 LWV** = 单一光源。",
+    "tags": [
+      "Day 32",
+      "LWV"
+    ],
     "srcDay": "day-32"
   },
   {
     "id": "fc-w5-d32-2",
     "front": "LWV 距离权重公式 + sigma 的作用？",
     "back": "weight = (1/(1+d×σ)) × prior_weight，归一化后得 LWV。σ 大 → 远参考点权重快速衰减 → 接近「最近参考点法」（决策尖锐）；σ 小 → 远参考点也参与 → 多参考点融合（决策平滑）。常见 σ=3-5。录像用 σ 略小（更平滑），专业模式 σ 大（更确定）。",
-    "tags": ["Day 32", "LWV", "sigma"],
+    "tags": [
+      "Day 32",
+      "LWV",
+      "sigma"
+    ],
     "srcDay": "day-32"
   },
   {
     "id": "fc-w5-d32-3",
     "front": "AWB 多 sub-algorithm 列表 + 各自擅长场景？",
     "back": "1) 灰世界（多色场景，conf 看颜色多样性）；2) 参考点法 + LWV（已知光源场景，主力算法）；3) FA 人脸辅助（拍人场景，肤色提供光源信号）；4) AGW 高级灰世界（复杂混合光源）；5) AI 神经网络（旗舰才有，模型见过的场景）。每个独立输出 LWV + confidence，聚合器加权融合。",
-    "tags": ["Day 32", "Sub-Algorithm"],
+    "tags": [
+      "Day 32",
+      "Sub-Algorithm"
+    ],
     "srcDay": "day-32"
   },
   {
     "id": "fc-w5-d32-4",
     "front": "为什么 AWB 不只用 AI？",
     "back": "1) AI 训练数据有偏：见过的擅长，没见过的（蓝色 LED、混合光源）翻车；2) 传统算法稳定可解释：参考点 / 灰世界 / FA 各擅长场景，逻辑清晰好调；3) 多算法投票更稳：单算法误判时其他纠正；4) 中端机型成本：AI 需要 NPU 算力，必须传统算法兜底。所以现代 AWB 是「传统多算法 + AI 增强」混合架构。",
-    "tags": ["Day 32", "AI vs 传统"],
+    "tags": [
+      "Day 32",
+      "AI vs 传统"
+    ],
     "srcDay": "day-32"
   },
   {
     "id": "fc-w5-d33-1",
-    "front": "DWV（距离权重向量）是什么？维度多大？",
-    "back": "Distance Weight Vector，对 64×48 网格每个块的权重，决定算 current_rg/bg 时怎么加权。维度 3072（每块一个值）。综合考虑：1) 位置权重（中心高边缘低）；2) 亮度合理性（过曝过暗 = 0）；3) 颜色合理性（接近普朗克轨迹高、远离低）；4) MLC 多边形排除。",
-    "tags": ["Day 33", "DWV"],
+    "front": "AWB 完整流程？",
+    "back": "```\nsensor 64×48 块（R, G, B + 过曝/过暗标志）\n        ↓\nDWV 计算（3072 维块权重）\n  · 位置（中心高）+ 颜色合理性 + MLC 排除\n        ↓\nDWV 加权 → current_rg, current_bg\n        ↓\n多 sub-algorithm（并行）\n  灰世界 / 参考点+LWV / FA / AGW / AI\n   ↓ 各输出 LWV + confidence\n聚合（confidence 加权 + 冲突处理）\n        ↓\n时序平滑（10 帧滑窗）\n        ↓\n异常处理（fallback chain）\n        ↓\nfinal_lwv → final_cct, rg, bg\n        ↓\nTGA 风格约束 + style_bias\n        ↓\nFCM 检查 / Bias Compensation\n        ↓\nSmart Convergence damping\n        ↓\n多摄同步（Master/Slave）\n        ↓\n写 ISP（WB module + CCM module）\n```",
+    "tags": [
+      "Day 33",
+      "DWV"
+    ],
     "srcDay": "day-33"
   },
   {
     "id": "fc-w5-d33-2",
     "front": "MLC（误导色区）是什么？怎么定义？",
     "back": "Misleading Light Color，RG-BG 平面上「不可能是光源」的颜色区域。通常用「有效色温区域多边形」定义 —— 多边形顶点是常见光源（A/D65/H_blue 等），多边形外的颜色 = MLC。落在 MLC 的 64×48 块 dwv 设为 0，不参与 AWB 决策。判断「点在多边形内」用射线法。",
-    "tags": ["Day 33", "MLC"],
+    "tags": [
+      "Day 33",
+      "MLC"
+    ],
     "srcDay": "day-33"
   },
   {
     "id": "fc-w5-d33-3",
     "front": "「拍纯红墙变蓝紫」原因 + MLC 怎么解决？",
     "back": "原因：纯红墙所有块 R 远 > G > B（R=200/G=80/B=50），current_rg ≈ 2.5（远超 D65 的 1.0）。AWB 误以为光源极暖（CCT < 2500K）→ 大幅压 R 加 B → 红墙变蓝紫。MLC 解决：纯红墙的 RG/BG 在多边形外 → 所有块 dwv=0 → AWB 没数据可用 → fallback 到上一帧或默认 D65 → 红墙保持红。",
-    "tags": ["Day 33", "红墙", "MLC"],
+    "tags": [
+      "Day 33",
+      "红墙",
+      "MLC"
+    ],
     "srcDay": "day-33"
   },
   {
     "id": "fc-w5-d33-4",
     "front": "颜色合理性权重为什么用渐变（软）而不是 0/1（硬）？",
     "back": "硬切：完全中性的灰=权重1、稍偏色=权重0，太极端。软权重：用高斯衰减或调和函数，让淡红人脸（轻微偏色）保留 0.6 权重，鲜红衣（大偏色）0.2，纯红墙（在 MLC 内）0.05 或 0。这样 AWB 决策更柔和，少出极端 bug。",
-    "tags": ["Day 33", "软权重"],
+    "tags": [
+      "Day 33",
+      "软权重"
+    ],
     "srcDay": "day-33"
   },
   {
     "id": "fc-w5-d34-1",
     "front": "AWB 决策聚合 4 个挑战？",
     "back": "1) 冲突处理：sub-algos 严重不一致（一个说 D65 一个说 A）→ 选最高 conf 主导；2) confidence 校准：让自报 conf 接近真实准确率；3) 时序平滑：滑动窗口（10 帧）+ 光源切换时清空历史；4) 异常处理：fallback chain（高 conf → 用 lwv，中 conf → mix，低 conf → 用上一帧，无 prev → 默认 D65）。",
-    "tags": ["Day 34", "聚合"],
+    "tags": [
+      "Day 34",
+      "聚合"
+    ],
     "srcDay": "day-34"
   },
   {
     "id": "fc-w5-d34-2",
     "front": "光源切换检测是干什么的？",
     "back": "判断当前帧 LWV 与历史平均距离是否 > 阈值。是 → 触发 fast_converge：清空时序历史 + 提高 damping α (0.2→0.6) + 减小聚合窗口 (10→3)。这样光源突变（户外→室内）时 AWB 5-10 帧（~333ms）快速切换，不切换时稳定。",
-    "tags": ["Day 34", "光源切换"],
+    "tags": [
+      "Day 34",
+      "光源切换"
+    ],
     "srcDay": "day-34"
   },
   {
     "id": "fc-w5-d34-3",
     "front": "Fallback Chain 4 级是什么？",
     "back": "1) 高 confidence → 直接用 final_lwv；2) 中等 conf → 当前 lwv 与上一帧 mix；3) 低 conf → 直接用上一帧 lwv；4) 没有上一帧（启动）→ 用项目级默认 LWV（一般 D65 主导）。这种链式降级让 AWB 在各种场景都有合理输出，包括极暗、极端色彩、sensor 异常。",
-    "tags": ["Day 34", "Fallback"],
+    "tags": [
+      "Day 34",
+      "Fallback"
+    ],
     "srcDay": "day-34"
   },
   {
     "id": "fc-w5-d34-4",
     "front": "AWB 时序平滑常见 window_size + 不同模式调多少？",
     "back": "默认 10 帧（约 333ms）。录像模式 window 增大到 20（更稳，避免画面色彩抖）；专业模式减小到 5（响应快）。光源切换时临时减小到 3（fast_converge）。window 大小决定「响应速度 vs 稳定性」的平衡。",
-    "tags": ["Day 34", "时序"],
+    "tags": [
+      "Day 34",
+      "时序"
+    ],
     "srcDay": "day-34"
   },
   {
     "id": "fc-w5-d35-1",
     "front": "默写 AWB 完整算法流程（8 步）",
     "back": "1) 接收 64×48 Bayer 域统计；2) 算 DWV（位置 + 颜色合理性 + MLC）；3) DWV 加权计算 current_rg/bg；4) 多 sub-algorithm 各自算 LWV + confidence；5) 决策聚合（confidence 加权 + 冲突检测）；6) 时序平滑（滑动窗口 + 光源切换）；7) 异常处理（fallback chain）；8) 加权平均得 final_cct/rg/bg → damping → R_gain/B_gain → 写 ISP（WB module + CCM module）。",
-    "tags": ["Day 35", "总流程"],
+    "tags": [
+      "Day 35",
+      "总流程"
+    ],
     "srcDay": "day-35"
   },
   {
     "id": "fc-w5-d35-2",
     "front": "AWB 调教 5 层是什么？",
     "back": "1) DWV 配置（位置权重 + color_sigma + MLC 多边形）；2) LWV 配置（参考点表 + LWV sigma）；3) 聚合（各 sub-algo weight + confidence threshold）；4) 收敛（damping_alpha + settle_tolerance + light_change_threshold）；5) CCM 联动（每个 cct 对应的 3×3 矩阵）。每层约 10-30 个参数，总计 100-150 个。",
-    "tags": ["Day 35", "调教层"],
+    "tags": [
+      "Day 35",
+      "调教层"
+    ],
     "srcDay": "day-35"
   },
   {
     "id": "fc-w5-d35-3",
     "front": "AWB 调教 cheat：用户报「绿草地变白」怎么调？",
     "back": "原因：灰世界算法误判（草地 G 高被当作「光源偏绿」）。修法：1) 调小 DWV color_sigma（让绿色块权重快速衰减）；2) 启用 MLC（绿草色在 MLC 区 → dwv=0）；3) 启用参考点法替代灰世界（不平均，看最近参考点）；4) 启用 AGW 高级灰世界（Week 6 学）—— 在不同色温区分别用灰世界。",
-    "tags": ["Day 35", "调教 cheat", "草地"],
+    "tags": [
+      "Day 35",
+      "调教 cheat",
+      "草地"
+    ],
     "srcDay": "day-35"
   },
   {
     "id": "fc-w5-d35-4",
     "front": "AWB 调教 cheat：用户报「室内→户外切换慢」怎么调？",
     "back": "原因：光源切换没触发 fast_converge，AWB 用正常 damping α=0.2 慢慢调，10-30 帧才稳定。修法：1) 减小 light_change_threshold（更敏感，更容易触发 fast_converge）；2) 增大 fast_converge_alpha（如 0.6 → 0.8）；3) fast_converge 模式下 window 减小到 3（不被历史拖累）。注意：太敏感会让正常场景误判为「切换」导致色彩抖。",
-    "tags": ["Day 35", "调教 cheat", "切换"],
+    "tags": [
+      "Day 35",
+      "调教 cheat",
+      "切换"
+    ],
     "srcDay": "day-35"
   },
   {
     "id": "fc-w5-d35-5",
     "front": "面试题：「拍蓝天偏紫」原因 + 修法",
     "back": "原因：蓝天本身高色温（10000K+），current_rg 低 bg 高 → AWB 匹配 H_blue → 大幅加红 → 蓝+红=紫。修法：1) H_blue 参考点 weight 调小（≤ 0.05）；2) 启用「天空检测」让 AWB 知道是「蓝天景物」不是「光源偏蓝」→ 减弱修正；3) MLC 多边形可裁剪（极冷端落在外）让 AWB 不修；4) Saliency 检测主体 → 给主体那块加权作为光源信号，蓝天权重降。",
-    "tags": ["Day 35", "面试", "蓝天"],
+    "tags": [
+      "Day 35",
+      "面试",
+      "蓝天"
+    ],
     "srcDay": "day-35"
   }
 ]

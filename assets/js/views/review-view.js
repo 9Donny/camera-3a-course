@@ -1,8 +1,10 @@
 // 复习页：大卡片正反面 + 三档评分（忘了 / 模糊 / 记得）+ 1/2/3 键盘快捷键
+// back 支持 Markdown（含 ASCII 流程图、表格、列表），让卡片图文并茂
 
 import { flashcards } from "../flashcards.js";
 import { schedule } from "../srs.js";
 import { celebrateRise, celebrateFireworks } from "../particles.js";
+import { renderMarkdown } from "../markdown.js";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -97,7 +99,7 @@ export function renderReview(content, { router }) {
             ${card.tags && card.tags.length ? card.tags.map(t => `<span class="tag">${escapeHTML(t)}</span>`).join("") : ""}
           </div>
           <div class="review-card-front">${escapeHTML(card.front)}</div>
-          ${revealed ? `<div class="review-card-back">${escapeHTML(card.back)}</div>` : ""}
+          ${revealed ? `<div class="review-card-back md">${renderMarkdown(card.back)}</div>` : ""}
         </div>
 
         <div class="review-actions">

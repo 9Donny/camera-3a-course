@@ -3,238 +3,358 @@
     "id": "fc-w3-d15-1",
     "front": "PRD 第 17 题：高通 AE 多少数据块？什么测光模式？",
     "back": "64×48 = 3072 块。中心测光模式 + Touch ROI / Face ROI / Saliency ROI 加权。",
-    "tags": ["Day 15", "PRD-Q17", "AE"],
+    "tags": [
+      "Day 15",
+      "PRD-Q17",
+      "AE"
+    ],
     "srcDay": "day-15"
   },
   {
     "id": "fc-w3-d15-2",
-    "front": "PRD 第 1 题：AE 算法的完整 3 步？",
-    "back": "1) 亮度获取（OB/LSC 后 64×48 加权得 final_luma）2) 计算 Target（luma_target → adjusted → safe_target，加 Scene Analyzer + 减 ADRC 修正）3) 曝光调节（lux_index → 查 lux_to_exp → 查曝光表 → 写 sensor 的 Coarse Time + Analog Gain）。",
-    "tags": ["Day 15", "PRD-Q1", "AE"],
+    "front": "PRD-Q1：AE 算法的完整流程？",
+    "back": "**3 步流程**：\n\n```\n1. 亮度获取\n   sensor → OB/LSC → 64×48 块统计 → 中心权重 + ROI\n                                    → final_luma\n   ↓\n2. 计算 Target\n   luma_target（按 lux 查表，常见 80）\n   + Scene Analyzer 修正（10 个）\n   = adjusted_target\n   - ADRC dark_boost_extra\n   = safe_target\n   ↓\n3. 曝光调节\n   safe_target vs final_luma\n   → lux_index（公式 = 基准 + log2 偏差）\n   → exp_index（查 lux_to_exp 表）\n   → 曝光表 → linecount + gain_index\n   → 写 sensor: Coarse Time + Analog Gain\n```\n\n**关键点**：每帧 33ms 完成。整个反馈环 30 fps 运行。",
+    "tags": [
+      "Day 15",
+      "PRD-Q1",
+      "AE"
+    ],
     "srcDay": "day-15"
   },
   {
     "id": "fc-w3-d15-3",
     "front": "AE 是什么？为什么要每帧跑？",
     "back": "Auto Exposure，自动曝光算法。每帧（30fps）一次决策：当前场景多亮 → 该用多长曝光 + 多大 ISO + ISP 参数。是反馈控制环（测亮度 → 决策 → 写参数 → 下一帧再测），让画面亮度跟得上场景变化。",
-    "tags": ["Day 15", "AE", "原理"],
+    "tags": [
+      "Day 15",
+      "AE",
+      "原理"
+    ],
     "srcDay": "day-15"
   },
   {
     "id": "fc-w3-d15-4",
     "front": "中心测光的核心数据结构是什么？",
     "back": "一张 64×48 的「权重矩阵」（Bias Weight Table），中心权重高（最大约 8）、边缘权重低（最小 1）。final_luma = Σ Y_avg × weight / Σ weight。Touch ROI / Face ROI 在此基础上临时把对应块加权。",
-    "tags": ["Day 15", "测光", "数据结构"],
+    "tags": [
+      "Day 15",
+      "测光",
+      "数据结构"
+    ],
     "srcDay": "day-15"
   },
   {
     "id": "fc-w3-d15-5",
     "front": "为什么不能用平均测光？",
     "back": "因为「关心区域不在中心」时会失准。逆光人脸：天空+人脸平均得到「中等亮度」，AE 不会优先照顾人脸 → 人脸照样黑。中心测光让画面中心（多数主体所在）权重大，结合 ROI 加权处理特殊情况。",
-    "tags": ["Day 15", "测光"],
+    "tags": [
+      "Day 15",
+      "测光"
+    ],
     "srcDay": "day-15"
   },
   {
     "id": "fc-w3-d16-1",
     "front": "曝光表里的拐点（Knee Point）？",
     "back": "曝光优先和 Gain 优先两种策略的切换点。常见 lux 200 / 1/30 秒。之前 AE 拉曝光时间不动 ISO；之后不动曝光时间拉 ISO。OIS 机型可以延长到 1/8 秒。",
-    "tags": ["Day 16", "曝光表", "拐点"],
+    "tags": [
+      "Day 16",
+      "曝光表",
+      "拐点"
+    ],
     "srcDay": "day-16"
   },
   {
     "id": "fc-w3-d16-2",
     "front": "曝光表的关键字段？",
     "back": "lux_index（场景亮度）→ exposure_time（us）+ linecount（曝光行数，写 sensor）+ gain_index（增益档位）+ digital_gain（一般为 1）。HDR sensor 有多份曝光表（长/短/超短）。",
-    "tags": ["Day 16", "曝光表", "字段"],
+    "tags": [
+      "Day 16",
+      "曝光表",
+      "字段"
+    ],
     "srcDay": "day-16"
   },
   {
     "id": "fc-w3-d16-3",
     "front": "Tuning 工程师调曝光表的 3 个核心参数？",
     "back": "1) 拐点位置（防手抖原则，1/30 秒/lux 200，OIS 延到 1/8 秒）；2) 拐点后 ISO 上限（决定暗光画质，常见 6400-12800）；3) 拐点处的曝光时间（防手抖前提下尽量长）。",
-    "tags": ["Day 16", "曝光表", "调教"],
+    "tags": [
+      "Day 16",
+      "曝光表",
+      "调教"
+    ],
     "srcDay": "day-16"
   },
   {
     "id": "fc-w3-d16-4",
     "front": "gain_index 怎么映射到 analog_gain？",
     "back": "通过 sensor 出厂的 gain_table（不是 Tuning 工程师调的）。一般 32-64 档，每档间隔约 1.07x（sqrt(2) 的 1/3），从 1x 到 16x。例：gain_index 15 ≈ 4.0x。量化误差靠 Digital Gain 补足。",
-    "tags": ["Day 16", "Gain"],
+    "tags": [
+      "Day 16",
+      "Gain"
+    ],
     "srcDay": "day-16"
   },
   {
     "id": "fc-w3-d16-5",
     "front": "HDR sensor 和普通 sensor 的曝光表区别？",
     "back": "HDR sensor 一帧出多个曝光（长/短/超短），需要多份曝光表（每个曝光强度一份）。常见模式：Staggered HDR（SHDR，sensor 不同行不同曝光）、Multi-frame HDR（MFHDR，多帧合成）、3-EXP HDR（一帧 3 曝光）。Tuning 工作量 3-4 倍。",
-    "tags": ["Day 16", "HDR"],
+    "tags": [
+      "Day 16",
+      "HDR"
+    ],
     "srcDay": "day-16"
   },
   {
     "id": "fc-w3-d17-1",
     "front": "lux_index 是什么？",
     "back": "AE 内部使用的整数亮度档位，范围 0-350。0 = 漆黑；350 = 强阳光。是 BV 的整数化对数压缩，方便 ISP 整数运算 + 分段查表 + 接近人眼对数感知（韦伯-费希纳定律）。",
-    "tags": ["Day 17", "lux_index"],
+    "tags": [
+      "Day 17",
+      "lux_index"
+    ],
     "srcDay": "day-17"
   },
   {
     "id": "fc-w3-d17-2",
-    "front": "PRD 第 5 题：lux_index 公式？",
-    "back": "lux_index = stats_target_lux_index + dec_const_aec_log2 × log2(real_gain × exp_time / target_real_gain × target_exp_time) + dec_const_lum_log2 × log2(target_lum / current_lum)。三项：基准 + 曝光偏差对数 + 亮度偏差对数。",
-    "tags": ["Day 17", "PRD-Q5", "公式"],
+    "front": "PRD-Q5：lux_index 公式？",
+    "back": "```\nlux_index = 基准\n          + log2(real_gain × exp_time\n                / target_gain × target_time)  ← 项 2：曝光偏差\n          + log2(target_lum / current_lum)    ← 项 3：亮度偏差\n```\n\n**直觉**：反馈控制。看「**当前曝光的反应**」反推「**环境到底多亮**」。\n\n| 项 | 含义 | 几号变化 |\n|---|---|---|\n| 1 基准 | sensor 标定锚点 | 不变 |\n| 2 曝光偏差 | 实际 vs 目标参数 | 多吸光 → 项 2 < 0 → lux 降 |\n| 3 亮度偏差 | 实际 vs 目标亮度 | 实际暗 → 项 3 < 0 → lux 降 |\n\n**lux_index 范围**：0-350（暗→亮的整数档）。\n\n**为何不直接用 lux**：\n- lux 跨 8 数量级（月光 0.001 到烈日 100000）\n- lux_index 是对数压缩 + 整数化，运算便宜 + 接近人眼对数感知",
+    "tags": [
+      "Day 17",
+      "PRD-Q5",
+      "公式"
+    ],
     "srcDay": "day-17"
   },
   {
     "id": "fc-w3-d17-3",
     "front": "lux_index vs exp_index？",
     "back": "lux_index = 场景亮度档位（0-350，AE 算的）；exp_index = 曝光表行号（0-30，查表用）。中间通过 lux_to_exp 表桥接。lux_index 是全局变量（被 ISP 多模块用），exp_index 只用来查曝光表。",
-    "tags": ["Day 17", "lux_index", "exp_index"],
+    "tags": [
+      "Day 17",
+      "lux_index",
+      "exp_index"
+    ],
     "srcDay": "day-17"
   },
   {
     "id": "fc-w3-d17-4",
     "front": "lux_index 影响 ISP 哪些模块？",
     "back": "降噪（lux 越小降噪越强）、CCM（不同 lux 选不同色彩矩阵）、Gamma（不同 lux 不同曲线）、LTM/GTM（safe_target 由 lux 决定）、Dark Boost、ADRC、AWB（暗光更稳重）、AF、Flash 触发阈值。是「ISP 调教时间轴」。",
-    "tags": ["Day 17", "lux_index", "ISP"],
+    "tags": [
+      "Day 17",
+      "lux_index",
+      "ISP"
+    ],
     "srcDay": "day-17"
   },
   {
     "id": "fc-w3-d17-5",
     "front": "lux_index 的数值与场景对应？",
     "back": "0 = 漆黑（看不见）/ 60 = 月光 / 120 = 路灯 / 160 = 室内昏暗 / 200 = 室内日常 / 240 = 多云室外 / 280 = 阴影户外 / 320 = 强阳光 / 350 = 烈日。lux_index 每升 60，亮度翻 8 倍（3 EV）。",
-    "tags": ["Day 17", "lux_index", "数值"],
+    "tags": [
+      "Day 17",
+      "lux_index",
+      "数值"
+    ],
     "srcDay": "day-17"
   },
   {
     "id": "fc-w3-d18-1",
     "front": "AE 内部 4 个 target 是什么？",
     "back": "luma_target（基础值，按 lux 查表，常见 80）→ adjusted_target（加 Scene Analyzer 修正）→ safe_target（减 ADRC 引入的额外亮度）→ final_target（限幅后的最终值）。",
-    "tags": ["Day 18", "Target"],
+    "tags": [
+      "Day 18",
+      "Target"
+    ],
     "srcDay": "day-18"
   },
   {
     "id": "fc-w3-d18-2",
-    "front": "PRD 第 15 题：safe_target 三步推导？",
-    "back": "Step 1: luma_target = 按 lux 查表的基础值（常见 80）；Step 2: adjusted_target = luma_target × scene_factor + scene_offset（加 face/region/saturation 修正）；Step 3: safe_target = adjusted_target − dark_boost_extra（减去 ADRC 引入的额外亮度）。safe_target 用于驱动 sensor，确保 ADRC 后画面恰好达 adjusted_target。",
-    "tags": ["Day 18", "PRD-Q15", "Target"],
+    "front": "PRD-Q15：safe_target 三步推导？",
+    "back": "```\nStep 1: luma_target = 80（按 lux 查表）\n   ↓ 加 Scene Analyzer 修正\nStep 2: adjusted_target\n       = luma_target × scene_factor + offset\n\n       例：Face 检测脸偏暗 → ×1.10\n           Saturation 防过曝 → ×0.85\n           几何加权聚合 final_factor\n   ↓ 减 ADRC 预扣\nStep 3: safe_target\n       = adjusted_target − dark_boost_extra\n\n       ADRC 会给暗部 ×1.5 gain（让暗部变亮）\n       AE 必须预扣，否则最终过曝\n```\n\n**为什么这样设计**：让 AE 和 ADRC 协同。AE 调到 safe_target，ADRC 再补一点点，最终画面恰好达 adjusted_target。\n\n**没有这一步**：开 ADRC 后画面整体偏亮 5-10%。",
+    "tags": [
+      "Day 18",
+      "PRD-Q15",
+      "Target"
+    ],
     "srcDay": "day-18"
   },
   {
     "id": "fc-w3-d18-3",
     "front": "luma_target 为什么是 80（不是 119）？",
     "back": "理论 18% 灰经过 Gamma 后 ≈ 119，但实际场景多数偏暗（黑发、阴影）。设 80 留出 30% 亮部余量，避免过曝。不同公司风格：苹果偏暗（70），三星偏亮（90），小米中等（80）。",
-    "tags": ["Day 18", "luma_target", "工程"],
+    "tags": [
+      "Day 18",
+      "luma_target",
+      "工程"
+    ],
     "srcDay": "day-18"
   },
   {
     "id": "fc-w3-d18-4",
     "front": "如果 ADRC 关闭，safe_target 等于什么？",
     "back": "等于 adjusted_target。因为 dark_boost_extra = 0（ADRC 没引入额外亮度提升）。这是 Step 3 的退化情形。",
-    "tags": ["Day 18", "Target", "ADRC"],
+    "tags": [
+      "Day 18",
+      "Target",
+      "ADRC"
+    ],
     "srcDay": "day-18"
   },
   {
     "id": "fc-w3-d18-5",
     "front": "10 个 Scene Analyzer 列出？",
     "back": "Face / Touch / Saliency / Depth / Brighten / Saturation Prevention / Dark Prevention / Extreme Color / Frame Average / Low Light Suppress (LLS)。Week 4 详讲。每个分析器输出 (factor, offset)，决策聚合器合并。",
-    "tags": ["Day 18", "Scene Analyzer"],
+    "tags": [
+      "Day 18",
+      "Scene Analyzer"
+    ],
     "srcDay": "day-18"
   },
   {
     "id": "fc-w3-d19-1",
     "front": "为什么 AE 不能一帧到位？",
     "back": "1) 物理限制：sensor 每帧最多调 2 EV（曝光 ×2 + ISO ×2）；2) 防闪烁：跳变让画面亮度突变，人眼非常敏感；3) 防误判：场景临时变化（如旁人打闪光）不能让 AE 全力反应。所以是逐帧靠近 + damping 平滑 + settle 判断。",
-    "tags": ["Day 19", "收敛"],
+    "tags": [
+      "Day 19",
+      "收敛"
+    ],
     "srcDay": "day-19"
   },
   {
     "id": "fc-w3-d19-2",
     "front": "AE damping 公式？α 怎么选？",
     "back": "exp_smoothed = α × exp_target + (1 - α) × exp_prev（一阶 IIR 低通滤波）。常见 α = 0.3（每帧靠近 30%，10-20 帧收敛 ~0.5 秒）。拍照时 α=0.6 加快，录像时 α=0.2 更稳。α 太大易振荡，太小收敛慢。",
-    "tags": ["Day 19", "damping"],
+    "tags": [
+      "Day 19",
+      "damping"
+    ],
     "srcDay": "day-19"
   },
   {
     "id": "fc-w3-d19-3",
     "front": "AE settle 判断的两个条件？",
     "back": "1) 当前偏差 < tolerance（容差，常见 2-5%）；2) 连续 stable_frames 帧都满足条件（常见 5-10 帧）。两个都满足 settled = 1。AF / AWB / 拍照触发 / HDR 都等 settled = 1。",
-    "tags": ["Day 19", "settle"],
+    "tags": [
+      "Day 19",
+      "settle"
+    ],
     "srcDay": "day-19"
   },
   {
     "id": "fc-w3-d19-4",
     "front": "Antibanding 50Hz 抗带状的算法？",
     "back": "曝光时间吸附到 1/50, 1/100, 1/200... 的整数倍周期。剩余时间用 Gain 补足总曝光量（保持 exp × gain 不变，让画面亮度等价）。例：AE 算 1/77 秒 → 吸附到 1/100 秒 → Gain × 1.3x 补偿。",
-    "tags": ["Day 19", "Antibanding"],
+    "tags": [
+      "Day 19",
+      "Antibanding"
+    ],
     "srcDay": "day-19"
   },
   {
     "id": "fc-w3-d19-5",
     "front": "为什么 AF 要等 AE settle？",
     "back": "AF 依赖画面对比度判断对焦清晰度。AE 不稳时画面亮度连续变化 → 对比度也跟着变 → AF 算法可能把亮度变化误判成失焦 → 对焦失败或拉风箱。等 settled 让画面稳定，AF 才能可靠工作。AWB 同理（亮度不稳 → 统计不可靠 → 光源判断错）。",
-    "tags": ["Day 19", "AF", "AWB"],
+    "tags": [
+      "Day 19",
+      "AF",
+      "AWB"
+    ],
     "srcDay": "day-19"
   },
   {
     "id": "fc-w3-d20-1",
     "front": "Bright/Dark Region 测光的 4 个边界？",
     "back": "dark_low（默认 0）/ dark_high（~50）/ bright_low（~210）/ bright_high（255）。块亮度 < dark_high 归暗区；> bright_low 归亮区；中间归 middle。",
-    "tags": ["Day 20", "Region"],
+    "tags": [
+      "Day 20",
+      "Region"
+    ],
     "srcDay": "day-20"
   },
   {
     "id": "fc-w3-d20-2",
     "front": "Bright/Dark Region 修正的 4 个 weight？",
     "back": "dark_target_ratio（暗区超标阈值，~0.20）/ dark_weight（修正系数，>1.0 让暗区超标时降 target，避免提亮放大噪点）；bright_target_ratio（~0.10）/ bright_weight（<1.0，让亮区超标时降 target，保亮部细节）。",
-    "tags": ["Day 20", "Region"],
+    "tags": [
+      "Day 20",
+      "Region"
+    ],
     "srcDay": "day-20"
   },
   {
     "id": "fc-w3-d20-3",
     "front": "三类 ROI 的权重大小排序？",
     "back": "Face ROI（5.0，最高，主体语义）> Touch ROI（3.0，临时用户行为）> Saliency ROI（2-3，AI 辅助）。ROI 都通过修改 64×48 网格的权重实现，多 ROI 合并取 max 或加权累加。",
-    "tags": ["Day 20", "ROI"],
+    "tags": [
+      "Day 20",
+      "ROI"
+    ],
     "srcDay": "day-20"
   },
   {
     "id": "fc-w3-d20-4",
     "front": "PRD 第 19 题：高通曝光表怎么调试？",
     "back": "5+ 层次：1) 基础曝光表（拐点 + ISO 上限）；2) lux_to_exp 映射；3) Bright/Dark Region 边界 + 修正系数；4) ROI 加权（Touch/Face/Saliency）；5) HDR sensor 多曝光表分别调；6) 抗带状 50/60Hz 整数倍。方法：标准光源箱 + 灰板从亮到暗扫一遍 + 真实场景验证（夜景/雪景/逆光）。",
-    "tags": ["Day 20", "PRD-Q19", "调教"],
+    "tags": [
+      "Day 20",
+      "PRD-Q19",
+      "调教"
+    ],
     "srcDay": "day-20"
   },
   {
     "id": "fc-w3-d20-5",
     "front": "Touch ROI 怎么从屏幕坐标映射？",
     "back": "屏幕 (x, y) → 64×48 网格的 block_x = int(x/screen_w × 64), block_y = int(y/screen_h × 48)。然后给中心块和周围 N×N 范围加权，距离用高斯衰减：boost × exp(-d²/2σ²)。",
-    "tags": ["Day 20", "Touch ROI"],
+    "tags": [
+      "Day 20",
+      "Touch ROI"
+    ],
     "srcDay": "day-20"
   },
   {
     "id": "fc-w3-d21-1",
     "front": "AE 全数据流的 9 步？",
     "back": "1) Bayer 64×48 块统计 → 2) 加权（中心+ROI）算 final_luma → 3) lux_index 公式 → 4) lux_to_exp 表 → 5) 查曝光表得 linecount + gain_index → 6) sensor gain_table 转 analog_gain → 7) Antibanding 吸附 → 8) damping 平滑 → 9) 写 sensor 寄存器 + 把 lux_index/safe_target 给 ISP 后段。",
-    "tags": ["Day 21", "AE 总览"],
+    "tags": [
+      "Day 21",
+      "AE 总览"
+    ],
     "srcDay": "day-21"
   },
   {
     "id": "fc-w3-d21-2",
     "front": "Week 3 学完能答出哪些 PRD 题？",
     "back": "Q1（AE 流程 3 步）、Q5（lux_index 公式）、Q15（safe_target 三步推导）、Q17（64×48 + 中心测光）、Q19（曝光表怎么调试）。Week 4 还会答 Q3/Q4/Q18/Q21/Q23。",
-    "tags": ["Day 21", "PRD"],
+    "tags": [
+      "Day 21",
+      "PRD"
+    ],
     "srcDay": "day-21"
   },
   {
     "id": "fc-w3-d21-3",
     "front": "Metering 是哪两个模块？（PRD-Q18/Q23 的视角）",
     "back": "1) evtable（曝光表）：决定怎么调曝光；2) AE 数据统计模块：包括 64×48 block stats + 各种 Scene Analyzer + Bright/Dark Region + ROI 加权，决定 target 怎么算。两者一起组成完整 metering 决策。",
-    "tags": ["Day 21", "PRD-Q18", "PRD-Q23"],
+    "tags": [
+      "Day 21",
+      "PRD-Q18",
+      "PRD-Q23"
+    ],
     "srcDay": "day-21"
   },
   {
     "id": "fc-w3-d21-4",
     "front": "夜景拍霓虹灯 AE 怎么决策？",
     "back": "1) 64×48 严重两极（80% 暗背景 + 20% 亮霓虹）；2) lux_index 算暗光 ~130；3) 曝光表给 1/30s + ISO 800 左右；4) 但只这样霓虹过曝；5) 必须靠 ISP 的 ADRC + LTM 救场（暗部 ×1.5 gain，亮部不动）；6) 这就是「夜景模式」核心 —— AE + ADRC 联动拉动态范围。",
-    "tags": ["Day 21", "夜景", "实战"],
+    "tags": [
+      "Day 21",
+      "夜景",
+      "实战"
+    ],
     "srcDay": "day-21"
   }
 ]

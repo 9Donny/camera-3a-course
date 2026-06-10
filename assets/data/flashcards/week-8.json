@@ -41,8 +41,8 @@
   },
   {
     "id": "fc-w8-05",
-    "front": "完整 ISP 色彩管线 6 模块？",
-    "back": "WB → CCM → Gamma → Tone Mapping → ADRC → 后期色彩调整。WB 去光源，CCM 转标准空间，Gamma 校正，Tone Mapping 压位深，ADRC 拉暗部，后期调风格。",
+    "front": "ISP 完整色彩管线？",
+    "back": "```\nsensor RAW（线性，14-bit）\n   ↓\nWB（白平衡）：去光源色温\n   R/G/B 三通道分别乘 gain\n   ↓\nCCM（色彩矩阵）：sensor → 标准 sRGB\n   3×3 矩阵，按 cct 分段（D65/D50/A 各一组）\n   ↓\nTone Mapping（GTM/LTM）：14-bit → 8-bit\n   暗部留更多档位 + 亮部压缩\n   ↓\nADRC：暗部加 gain（简化 LTM）\n   ↓\nGamma 校正：线性 → sRGB Gamma (γ≈2.2)\n   ↓\n后期色彩调整：饱和度 + 对比度 + 肤色优化\n   ↓\nJPEG（sRGB / Display P3，8-bit）\n```\n\n**关键**：每个模块都按 lux_index + cct 分段调（170+ 个 AWB 参数）。",
     "tags": [
       "Day 50",
       "管线"
@@ -161,8 +161,8 @@
   },
   {
     "id": "fc-w8-17",
-    "front": "PRD-Q1 AE 算法 3 步？",
-    "back": "亮度获取（64×48 + 加权得 final_luma）/ 计算 Target（luma_target → adjusted → safe_target）/ 曝光调节（lux_index → exp_index → 写 sensor）。",
+    "front": "10 个核心 takeaway（面试金子）？",
+    "back": "**1. AE 流程**：亮度获取 → 计算 Target → 曝光调节\n\n**2. safe_target 三步**：\n```\nluma_target → adjusted (+Scene) → safe (-ADRC)\n```\n\n**3. lux_index 公式**：基准 + log2 曝光偏差 + log2 亮度偏差\n\n**4. 64×48 + 中心测光 + ROI 加权**\n\n**5. 10 个 Scene Analyzer**：Saturation 90 / LLS 85 / Face 80 / ...\n\n**6. AWB 流程**：64×48 → DWV → LWV → 聚合 → TGA → 写 ISP\n\n**7. AWB 4 数据结构**：\n- DWV 3072 维（块权重）\n- LWV 8-15 维（参考点概率）\n- Reference Points（cct + rg + bg）\n- MLC 多边形（有效色温区域）\n\n**8. Precision Flash 400ms**：按下 → Pre-Flash → 主闪 → 出片\n\n**9. AF 三种模式**：CAF / PDAF / ToF\n\n**10. 调教 4 层**：算法 / 校准 / 场景 / 风格\n\n记住这 10 个 + 关键词精确，**80% 面试题能应付**。",
     "tags": [
       "Day 54",
       "PRD-Q1"

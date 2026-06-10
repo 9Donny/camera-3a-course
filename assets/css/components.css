@@ -509,9 +509,54 @@ details.extras > summary:hover {
 .review-card-back {
   border-top: 1px dashed var(--border);
   padding-top: 16px;
-  font-size: 16px;
-  line-height: 1.8;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text);
+}
+/* 让 markdown 内容（流程图代码块/表格/列表）在卡片里显示好看 */
+.review-card-back.md pre,
+.review-card-back.md code {
+  background: rgba(96, 165, 250, 0.08);
+  border-radius: 6px;
+  font-family: 'SF Mono', Consolas, Menlo, monospace;
+}
+.review-card-back.md pre {
+  padding: 12px 16px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+  color: #cbd5e1;
+  border-left: 3px solid var(--accent);
+  margin: 12px 0;
+}
+.review-card-back.md code:not(pre code) {
+  padding: 1px 5px;
+  font-size: 13px;
   color: var(--accent-2);
+}
+.review-card-back.md ul, .review-card-back.md ol { padding-left: 22px; margin: 8px 0; }
+.review-card-back.md li { margin: 4px 0; }
+.review-card-back.md table {
+  border-collapse: collapse;
+  margin: 12px 0;
+  width: 100%;
+  font-size: 13px;
+}
+.review-card-back.md th, .review-card-back.md td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+}
+.review-card-back.md th {
+  background: rgba(96, 165, 250, 0.08);
+  font-weight: 600;
+}
+.review-card-back.md strong { color: var(--accent-2); font-weight: 600; }
+.review-card-back.md h1, .review-card-back.md h2, .review-card-back.md h3 {
+  font-size: 14px;
+  margin: 12px 0 6px 0;
+  color: var(--accent);
 }
 .review-actions {
   display: flex;

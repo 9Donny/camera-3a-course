@@ -1,8 +1,8 @@
 [
   {
     "id": "fc-w6-01",
-    "front": "AGW（Advanced Gray World）核心改进？",
-    "back": "把 RG-BG 平面分多个 zone（warm/neutral/cool），每 zone 独立运行灰世界再综合。处理混合光源场景（钨丝灯 + 窗外日光）。",
+    "front": "AGW 处理混合光源？",
+    "back": "**场景**：客厅钨丝 + 窗外日光（两个色温差 3500K）\n\n```\nRG-BG 平面：\n\n  cool zone     ← 窗户区 (D65)\n  ░░░░░\n  ░░░░░\n  ─────  ← neutral zone（中性）\n\n  warm zone     ← 钨丝区 (A)\n```\n\n**AGW 步骤**：\n1. 把 64×48 块按 RG/BG 位置分到 3 zone\n2. 每 zone 独立运行灰世界算光源\n3. 综合多 zone 输出多峰 LWV\n\n**多峰 LWV 例**：\n```\nwarm zone:    A 0.40   ← 钨丝主导\nneutral:      D55 0.30\ncool zone:    D65 0.30 ← 窗外\n```\n\n**应对**（mixed_correction_strength=0.7）：\n- 钨丝区：修正减弱（保留温度）\n- 窗户区：不过冷\n- 旗舰用 Local WB 让两区域分别 gain",
     "tags": [
       "Day 36",
       "AGW",
@@ -82,8 +82,8 @@
   },
   {
     "id": "fc-w6-09",
-    "front": "中端机型不支持 Local WB 怎么办？",
-    "back": "用「前景占比加权全局 gain」折中：按前景块占比加权 LED gain 和 ambient gain。两边都不完美但都凑合。",
+    "front": "AWB Flash 双白平衡？",
+    "back": "**场景**：钨丝灯 + 闪光（色温瞬变 + 只照前景）\n\n```\n预闪测光阶段：\n  人脸 → 亮度大幅↑（前景）\n  墙壁 → 亮度小幅↑（半前景）\n  远景 → 几乎不变（背景）\n\n主闪触发时双 WB：\n  ┌──────────────────┐\n  │  前景（LED）       │\n  │  R=1.0  B=1.0     │\n  │  ───────          │\n  │   ↕ 内插过渡      │\n  │  ───────          │\n  │  背景（钨丝）      │\n  │  R=0.6  B=1.6     │\n  └──────────────────┘\n```\n\n**Precision Flash 流程**：\n```\nT+0    用户按下\nT+20   Pre-Flash 50ms（AE+AWB+AF+Flash 同测）\nT+100  等冷却\nT+200  主闪 + 曝光\nT+250  ISP 应用预算好的双 WB\nT+400  JPEG 出片\n```",
     "tags": [
       "Day 38",
       "Local WB"
@@ -142,8 +142,8 @@
   },
   {
     "id": "fc-w6-15",
-    "front": "TGA 三角形的三个顶点？",
-    "back": "冷端（如 D75 7500K）+ 中性（D65 6500K）+ 暖端（比真实钨丝略暖，~2400K）。定义产品「色彩底线」。",
+    "front": "TGA 三角形 + 风格化？",
+    "back": "**问题**：AWB 算得很准（cct 3000K），但用户期望「钨丝下保留温度」。\n\n```\nRG-BG 平面（TGA 三角形）：\n\n        cool 顶点 (D75)\n         ╱╲\n        ╱  ╲\n       ╱    ╲\n      ╱      ╲   ← 三角形内：用 AWB 原值\n     ╱  AWB  ╲\n    ╱  最终   ╲\n   ╱   gain   ╲\n  ╱            ╲\n ╱──────────────╲\nneutral       warm 顶点\n(D65)         (~2400K)\n              ↑\n        极端暖端「保留温度」\n```\n\n**算法**：\n- 在三角形内 → 用原值\n- 在三角形外 → **投影到三角形最近边**\n\n**风格差异**：\n- 苹果：三角形大，几乎不限制（中性）\n- 三星：warm 顶点紧（钨丝下不修到中性，保留暖意）",
     "tags": [
       "Day 40",
       "三角形"

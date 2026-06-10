@@ -1,8 +1,8 @@
 [
   {
     "id": "fc-w7-01",
-    "front": "AF 三种主要模式？",
-    "back": "CAF（反差对焦，爬山法，通用便宜暗光不稳）/ PDAF（相位对焦，sensor 内特殊像素直接算视差，一帧到位）/ ToF Depth AF（红外测距，弱光最稳）。",
+    "front": "AF 三种模式对比？",
+    "back": "```\n            ┌──────────┐\n            │ 用户场景 │\n            └─────┬────┘\n                  ↓\n        ┌─────────┴──────────┐\n        ↓                    ↓\n   ToF 测距          PDAF 视差检测\n   （红外）          （sensor 内）\n        ↓                    ↓\n        └────────┬───────────┘\n                 ↓\n            CAF 爬山精修\n                 ↓\n              对焦完成\n```\n\n| 模式 | 速度 | 弱光 | 纯色 | 硬件成本 |\n|---|---|---|---|---|\n| **CAF** | 慢（8-15 帧）| 不稳 | ❌ 失效 | 0 |\n| **PDAF** | **极快（1-2 帧）** | 相对稳 | ❌ 失效 | sensor 内特殊像素 |\n| **ToF** | 快（1 帧）| **最稳** | ✅ 可用 | ToF 模块 |\n\n**旗舰三件套**：PDAF + CAF + ToF，3-5 帧搞定。",
     "tags": [
       "Day 43",
       "AF 模式"
@@ -81,8 +81,8 @@
   },
   {
     "id": "fc-w7-09",
-    "front": "Saliency AF 工作流？",
-    "back": "NPU 输出 saliency map → 64×48 块的显著性 → 给 AF 评分加权（显著区权重高）→ AF 自动对焦主体（不依赖用户点击）。",
+    "front": "Precision Flash 完整流程？",
+    "back": "```\nT+0    用户按下拍照\n       ↓\nT+10   检查 AE/AF/AWB 是否 settled（最多等 500ms）\n       ↓\nT+20   Pre-Flash 触发（50ms 弱亮度 LED）\n       │\n       ├─ AE: 测主闪需要的强度\n       ├─ AWB: 双 WB（前景 LED / 背景 ambient）\n       ├─ AF: 用 LED 照亮的画面 + Face ROI 重对焦\n       └─ Flash: 算 LED 暖冷比例（跟环境 cct）\n       ↓\nT+100  等待（LED 冷却 + 决策固化）\n       ↓\nT+200  主闪触发（30-50ms）+ sensor 同步曝光\n       ↓\nT+250  ISP 处理（应用预算好的双 WB + 3A 参数）\n       ↓\nT+400  JPEG 出片 → 用户看到「咔嚓 + 出片」\n```\n\n**核心**：「**预测式**」AWB —— Pre-Flash 阶段算好所有参数，主闪只是应用。",
     "tags": [
       "Day 45",
       "Saliency AF"
