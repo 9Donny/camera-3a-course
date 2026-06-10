@@ -77,7 +77,7 @@
       "id": "s5",
       "title": "本日小结",
       "type": "recap",
-      "content": "### 今天打的核心地基\n\n1. **决策聚合 4 个挑战**：冲突 / confidence 校准 / 时序 / 异常\n2. **冲突处理**：低冲突时平均、高冲突时选最高置信度（避免「和稀泥」）\n3. **confidence 校准**：让 sub-algo 自报的 confidence 接近真实准确率\n4. **时序平滑**：滑动窗口（10 帧）+ 光源切换检测（突变时清空历史）\n5. **异常处理**：fallback chain（高置信度 → 中等 mix → 低置信度用 prev → 无 prev 用默认）\n6. **AWB 调教 cheat 综合表**：按 bug 反向定位参数（DWV / LWV / 聚合 / 收敛 / 异常）\n\n### 自我检查\n\n1. 决策聚合的 4 个挑战是什么？分别怎么处理？\n2. confidence 校准是干什么的？为什么需要它？\n3. 时序平滑会让 AWB 变慢，怎么平衡？\n4. fallback chain 的优先级顺序？\n5. 「拍视频画面色彩抖」可以从哪几个层次调？\n\n### 笔记建议\n\n- 把 fallback chain 的 4 步抄到笔记\n- 整理 Day 31-34 完整 AWB 调教 cheat sheet（按 bug 反查参数）\n- 想想你妹妹项目里 AWB 异常处理用了哪些 fallback\n\n### 明天预告\n\nDay 35：Week 5 总结 + 周考。把 AWB 第一阶段（Day 29-34）完整串完，包括 OTP / DWV / LWV / 聚合 / 时序 / 异常的全链路；做 15 题周考。",
+      "content": "### 今天打的核心地基\n\n1. **决策聚合 4 个挑战**：冲突 / confidence 校准 / 时序 / 异常\n2. **冲突处理**：低冲突时平均、高冲突时选最高置信度（避免「和稀泥」）\n3. **confidence 校准**：让 sub-algo 自报的 confidence 接近真实准确率\n4. **时序平滑**：滑动窗口（10 帧）+ 光源切换检测（突变时清空历史）\n5. **异常处理**：fallback chain（高置信度 → 中等 mix → 低置信度用 prev → 无 prev 用默认）\n6. **AWB 调教 cheat 综合表**：按 bug 反向定位参数（DWV / LWV / 聚合 / 收敛 / 异常）\n\n### 自我检查\n\n1. 决策聚合的 4 个挑战是什么？分别怎么处理？\n2. confidence 校准是干什么的？为什么需要它？\n3. 时序平滑会让 AWB 变慢，怎么平衡？\n4. fallback chain 的优先级顺序？\n5. 「拍视频画面色彩抖」可以从哪几个层次调？\n\n### 笔记建议\n\n- 把 fallback chain 的 4 步抄到笔记\n- 整理 Day 31-34 完整 AWB 调教 cheat sheet（按 bug 反查参数）\n- 想想你将做的项目里 AWB 异常处理用了哪些 fallback\n\n### 明天预告\n\nDay 35：Week 5 总结 + 周考。把 AWB 第一阶段（Day 29-34）完整串完，包括 OTP / DWV / LWV / 聚合 / 时序 / 异常的全链路；做 15 题周考。",
       "glossary": []
     }
   ],

@@ -2073,7 +2073,7 @@ Run: `node --test tests/data-validators.test.js` — expect all pass.
       "id": "s4",
       "title": "其他 CFA 模式",
       "type": "concept",
-      "content": "<<<填充内容（约 600 字）：RYYB（华为用过，提升进光量）、RGB-W（加白色像素）、Quad Bayer（4×4 同色块，可做高分像素合并）、Tetra Cell、Nona Cell。讲清各自取舍。这些会出现在你的妹妹笔记里、面试中也可能问到。>>>",
+      "content": "<<<填充内容（约 600 字）：RYYB（华为用过，提升进光量）、RGB-W（加白色像素）、Quad Bayer（4×4 同色块，可做高分像素合并）、Tetra Cell、Nona Cell。讲清各自取舍。这些会出现在你的行业前辈笔记里、面试中也可能问到。>>>",
       "glossary": [
         { "term": "Quad Bayer", "zh": "四拜耳", "explain": "把 2×2 同色像素堆在一起的 CFA 变种，常用于高像素手机的像素合并模式。" }
       ]

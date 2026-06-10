@@ -80,7 +80,7 @@
       "id": "s5",
       "title": "本日小结",
       "type": "recap",
-      "content": "### 今天打的核心地基\n\n1. **颜色 = 人眼感受**（不是物理量），CIE 1931 是色彩科学基础\n2. **色彩空间 = CIE 马蹄形里的多边形**：sRGB / Display P3 / DCI-P3 / BT.2020\n3. **Lab 是「人眼标尺」**：距离 = ΔE 色差\n4. **CCM 是 3×3 矩阵**：sensor RGB → 标准 sRGB；按 cct 分段配置\n5. **完整色彩管线**：sensor RAW → WB → CCM → Tone Mapping → Gamma → JPEG\n6. **Gamma**：线性 vs 人眼感知，sRGB γ≈2.2\n7. **品牌色彩风格**：苹果中性、三星鲜艳、小米中端偏暖\n\n### 自我检查\n\n1. CIE 1931 是什么？为什么所有色彩空间都在它里面？\n2. sRGB / Display P3 / Lab / Adobe RGB 各自用途？\n3. CCM 怎么标定？ΔE < 5 是什么意思？\n4. 为什么 sensor 是线性，输出是 Gamma？\n5. 完整色彩管线 6 步？\n\n### 笔记建议\n\n- 把 CIE 1931 + 各色彩空间画一遍\n- 整理 CCM 标定流程 5 步\n- 思考你妹妹项目用的是 sRGB 还是 P3 输出\n\n### 明天预告\n\nDay 51：Chromatix 工具实操。Tuning 工程师用 Chromatix 调教 3A，明天看这个工具的工作流 + 常见操作。",
+      "content": "### 今天打的核心地基\n\n1. **颜色 = 人眼感受**（不是物理量），CIE 1931 是色彩科学基础\n2. **色彩空间 = CIE 马蹄形里的多边形**：sRGB / Display P3 / DCI-P3 / BT.2020\n3. **Lab 是「人眼标尺」**：距离 = ΔE 色差\n4. **CCM 是 3×3 矩阵**：sensor RGB → 标准 sRGB；按 cct 分段配置\n5. **完整色彩管线**：sensor RAW → WB → CCM → Tone Mapping → Gamma → JPEG\n6. **Gamma**：线性 vs 人眼感知，sRGB γ≈2.2\n7. **品牌色彩风格**：苹果中性、三星鲜艳、小米中端偏暖\n\n### 自我检查\n\n1. CIE 1931 是什么？为什么所有色彩空间都在它里面？\n2. sRGB / Display P3 / Lab / Adobe RGB 各自用途？\n3. CCM 怎么标定？ΔE < 5 是什么意思？\n4. 为什么 sensor 是线性，输出是 Gamma？\n5. 完整色彩管线 6 步？\n\n### 笔记建议\n\n- 把 CIE 1931 + 各色彩空间画一遍\n- 整理 CCM 标定流程 5 步\n- 思考资深 Tuning 工程师项目用的是 sRGB 还是 P3 输出\n\n### 明天预告\n\nDay 51：Chromatix 工具实操。Tuning 工程师用 Chromatix 调教 3A，明天看这个工具的工作流 + 常见操作。",
       "glossary": []
     }
   ],

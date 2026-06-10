@@ -71,7 +71,7 @@
       "id": "s5",
       "title": "本日小结",
       "type": "recap",
-      "content": "### 今天打的核心地基\n\n1. **Auto Flicker Detection**：算法自动判断电网 50/60Hz，不靠用户设置\n2. **算法原理**：短曝光拍多帧，FFT 频谱分析，找 50Hz 或 60Hz 峰\n3. **5 个 corner case**：户外无 flicker / 混合灯 / 移动场景 / 极弱光 / 直流 LED\n4. **Rolling Shutter 复杂化**：sensor 帧读出时间也要锁周期整数倍（解决滚动条纹）\n5. **完整 antibanding 策略**：Auto Detect + 曝光时间锁 + frame_readout 锁\n6. **Tuning 工程师调教重点**：fallback_to_region（市场默认）+ 检测频率\n\n### 自我检查\n\n1. Auto Flicker Detection 怎么工作？为什么用短曝光？\n2. Stationary Banding vs Rolling Banding 区别？\n3. 「中国用户拍视频有条纹」可能怎么调？\n4. fallback_to_region 默认应该怎么设？\n5. 极弱光下 Auto Detect 怎么处理？\n\n### 笔记建议\n\n- 把 Auto Flicker 算法 5 步流程抄到笔记\n- 整理 antibanding 完整策略（3 个步骤）\n- 思考你妹妹项目 fallback_to_region 设的什么\n\n### 明天预告\n\nDay 49：Week 7 总结 + 周考。串完 AF + Flash + Flicker 完整内容，做 15 题周考。",
+      "content": "### 今天打的核心地基\n\n1. **Auto Flicker Detection**：算法自动判断电网 50/60Hz，不靠用户设置\n2. **算法原理**：短曝光拍多帧，FFT 频谱分析，找 50Hz 或 60Hz 峰\n3. **5 个 corner case**：户外无 flicker / 混合灯 / 移动场景 / 极弱光 / 直流 LED\n4. **Rolling Shutter 复杂化**：sensor 帧读出时间也要锁周期整数倍（解决滚动条纹）\n5. **完整 antibanding 策略**：Auto Detect + 曝光时间锁 + frame_readout 锁\n6. **Tuning 工程师调教重点**：fallback_to_region（市场默认）+ 检测频率\n\n### 自我检查\n\n1. Auto Flicker Detection 怎么工作？为什么用短曝光？\n2. Stationary Banding vs Rolling Banding 区别？\n3. 「中国用户拍视频有条纹」可能怎么调？\n4. fallback_to_region 默认应该怎么设？\n5. 极弱光下 Auto Detect 怎么处理？\n\n### 笔记建议\n\n- 把 Auto Flicker 算法 5 步流程抄到笔记\n- 整理 antibanding 完整策略（3 个步骤）\n- 思考资深 Tuning 工程师项目 fallback_to_region 设的什么\n\n### 明天预告\n\nDay 49：Week 7 总结 + 周考。串完 AF + Flash + Flicker 完整内容，做 15 题周考。",
       "glossary": []
     }
   ],

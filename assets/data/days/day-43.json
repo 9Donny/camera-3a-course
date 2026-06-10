@@ -97,7 +97,7 @@
       "id": "s5",
       "title": "本日小结",
       "type": "recap",
-      "content": "### 今天打的核心地基\n\n1. **AF 是什么**：调镜头 vs sensor 距离让物体在 sensor 上成像清晰\n2. **三种 AF 模式**：CAF 反差对焦（爬山法）/ PDAF 相位对焦（一步到位）/ ToF Depth AF（红外测距）\n3. **清晰度数学定义**：相邻像素亮度差异（Sobel/Laplacian 滤波）= 边缘强度\n4. **CAF 钟形曲线 + 爬山法**：粗-细两阶段搜索避免卡局部峰\n5. **VCM 马达**：DAC 控制电流 → 镜头位置（10-bit 1024 个位置）；位置 vs 距离非线性，OTP 标定\n6. **Single AF vs Continuous AF**：单次拍照用 SAF，预览/录像用 CAF\n\n### 自我检查\n\n1. AF 三种模式的核心区别？\n2. CAF 爬山法为什么需要粗-细两阶段？\n3. VCM 标定为什么必要？没有标定会怎样？\n4. Continuous AF 的「重对焦阈值」typically 多少？\n5. Predictive AF 解决什么场景？\n\n### 笔记建议\n\n- 把三种 AF 模式对比表抄到笔记（速度 / 暗光 / 硬件要求）\n- 整理 VCM DAC 和距离的对应关系（粗略：0=远 / 1023=近）\n- 想想你妹妹项目用的 sensor 是否带 PDAF\n\n### 明天预告\n\nDay 44：CAF（反差对焦）深入。看高通 ISP 怎么实现爬山搜索的具体细节、各种 corner case（弱光、纯色场景、运动场景）的处理。",
+      "content": "### 今天打的核心地基\n\n1. **AF 是什么**：调镜头 vs sensor 距离让物体在 sensor 上成像清晰\n2. **三种 AF 模式**：CAF 反差对焦（爬山法）/ PDAF 相位对焦（一步到位）/ ToF Depth AF（红外测距）\n3. **清晰度数学定义**：相邻像素亮度差异（Sobel/Laplacian 滤波）= 边缘强度\n4. **CAF 钟形曲线 + 爬山法**：粗-细两阶段搜索避免卡局部峰\n5. **VCM 马达**：DAC 控制电流 → 镜头位置（10-bit 1024 个位置）；位置 vs 距离非线性，OTP 标定\n6. **Single AF vs Continuous AF**：单次拍照用 SAF，预览/录像用 CAF\n\n### 自我检查\n\n1. AF 三种模式的核心区别？\n2. CAF 爬山法为什么需要粗-细两阶段？\n3. VCM 标定为什么必要？没有标定会怎样？\n4. Continuous AF 的「重对焦阈值」typically 多少？\n5. Predictive AF 解决什么场景？\n\n### 笔记建议\n\n- 把三种 AF 模式对比表抄到笔记（速度 / 暗光 / 硬件要求）\n- 整理 VCM DAC 和距离的对应关系（粗略：0=远 / 1023=近）\n- 想想资深 Tuning 工程师项目用的 sensor 是否带 PDAF\n\n### 明天预告\n\nDay 44：CAF（反差对焦）深入。看高通 ISP 怎么实现爬山搜索的具体细节、各种 corner case（弱光、纯色场景、运动场景）的处理。",
       "glossary": []
     }
   ],

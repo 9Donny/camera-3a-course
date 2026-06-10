@@ -66,7 +66,7 @@
       "id": "s5",
       "title": "本日小结",
       "type": "recap",
-      "content": "### 今天打的核心地基\n\n1. **Precision Flash 400ms 流程**：按下→Pre-Flash 测光→等→主闪→曝光→ISP→出片\n2. **Pre-Flash 4 个工作**：AE 测光 + AWB 双 WB + AF 重对焦 + Flash 强度估算\n3. **LED 双色温调节**：跟随环境 cct，避免突变\n4. **Flash 5 种模式**：Auto / On / Off / Fill（户外补光）/ Torch（持续亮）\n5. **Flash + ISP 协同**：传信息给 WB / CCM / Denoise，旗舰还有 Flash + HDR 多帧合成\n6. **PRD-Q22 解释**：flux 越大主闪触发越保守 → 画面较暗（前两次解释统一）\n\n### 自我检查\n\n1. Precision Flash 完整流程的 5 个关键时间点？\n2. Pre-Flash 同时做哪 4 件事？\n3. LED 暖冷比例怎么决定？\n4. Fill Flash 什么时候触发？\n5. Flash + HDR 组合怎么实现「夜景人像完美」？\n\n### 笔记建议\n\n- 把 Precision Flash 400ms 时间轴抄到笔记\n- 整理 5 种 Flash 模式适用场景\n- 思考你妹妹项目用的 Flash 模式策略\n\n### 明天预告\n\nDay 48：Auto Flicker Detection 自动闪烁检测。Day 19 学过 antibanding（50/60Hz 抗带状），明天看自动检测电网频率的算法（不靠用户手动设置 50/60Hz）。",
+      "content": "### 今天打的核心地基\n\n1. **Precision Flash 400ms 流程**：按下→Pre-Flash 测光→等→主闪→曝光→ISP→出片\n2. **Pre-Flash 4 个工作**：AE 测光 + AWB 双 WB + AF 重对焦 + Flash 强度估算\n3. **LED 双色温调节**：跟随环境 cct，避免突变\n4. **Flash 5 种模式**：Auto / On / Off / Fill（户外补光）/ Torch（持续亮）\n5. **Flash + ISP 协同**：传信息给 WB / CCM / Denoise，旗舰还有 Flash + HDR 多帧合成\n6. **PRD-Q22 解释**：flux 越大主闪触发越保守 → 画面较暗（前两次解释统一）\n\n### 自我检查\n\n1. Precision Flash 完整流程的 5 个关键时间点？\n2. Pre-Flash 同时做哪 4 件事？\n3. LED 暖冷比例怎么决定？\n4. Fill Flash 什么时候触发？\n5. Flash + HDR 组合怎么实现「夜景人像完美」？\n\n### 笔记建议\n\n- 把 Precision Flash 400ms 时间轴抄到笔记\n- 整理 5 种 Flash 模式适用场景\n- 思考资深 Tuning 工程师项目用的 Flash 模式策略\n\n### 明天预告\n\nDay 48：Auto Flicker Detection 自动闪烁检测。Day 19 学过 antibanding（50/60Hz 抗带状），明天看自动检测电网频率的算法（不靠用户手动设置 50/60Hz）。",
       "glossary": []
     }
   ],

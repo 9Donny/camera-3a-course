@@ -1,6 +1,6 @@
 # 部署到公网指南
 
-让你拿到一个固定 URL（如 `https://9donny.github.io/camera-3a-course/`），任何设备 / 任何网络都能开。
+让你拿到一个固定 URL（如 `https://your-username.github.io/camera-3a-course/`），任何设备 / 任何网络都能开。
 
 整个过程**全免费**，需要 **30-45 分钟**，主要是注册账号 + 点按钮。一次配好以后再也不用动。
 
@@ -11,7 +11,7 @@
 ```
 ┌─────────────────────────────────────┐
 │  GitHub Pages（HTML/JS/CSS 托管）   │
-│  https://9donny.github.io/...       │
+│  https://your-username.github.io/...       │
 └─────────────────────────────────────┘
               │
               ↓ 浏览器同步请求
@@ -30,7 +30,7 @@
 
 ## Step 1：在 GitHub 创建仓库（5 分钟）
 
-1. 浏览器打开 https://github.com，登录 `9Donny` 账号
+1. 浏览器打开 https://github.com，登录 `your-username` 账号
 2. 右上角 ➕ → **New repository**
 3. **Repository name** 填：`camera-3a-course`（或你喜欢的名字）
 4. **Public**（必须公开，私有要 Pro 才能用 Pages）
@@ -46,7 +46,7 @@
 cd /Users/mi/3A
 
 # 关联远端
-git remote add origin https://github.com/9Donny/camera-3a-course.git
+git remote add origin https://github.com/your-username/camera-3a-course.git
 
 # 推送
 git push -u origin main
@@ -75,7 +75,7 @@ git push -u origin main
 ✅ 变绿后，你的课程站点就可以访问了：
 
 ```
-https://9donny.github.io/camera-3a-course/
+https://your-username.github.io/camera-3a-course/
 ```
 
 打开试试 —— 应该看到密码门。**但同步功能现在是坏的**（因为没有代理）。下面 Step 4-7 解决同步。
@@ -118,7 +118,7 @@ Usage: https://...workers.dev/dav/...
 
 ## Step 7：在课程同步页填代理地址
 
-1. 打开 GitHub Pages 课程站点：`https://9donny.github.io/camera-3a-course/`
+1. 打开 GitHub Pages 课程站点：`https://your-username.github.io/camera-3a-course/`
 2. 输密码 → 进入 → 自动跳同步页（新设备）
 3. 邮箱、应用密码、设备名照常填
 4. **WebDAV 代理地址** 这一行填：
@@ -130,7 +130,7 @@ Usage: https://...workers.dev/dav/...
 6. 点 🔌 测试连接 → ✅
 7. 点 ⟳ 立即同步 → 拉到你 Mac 之前同步上去的所有数据
 
-🎉 **完成！** 之后任何设备打开 `https://9donny.github.io/camera-3a-course/`，输密码 → 配置同步（用同样的 Worker URL）→ 立即同步 → 就能接力学习。
+🎉 **完成！** 之后任何设备打开 `https://your-username.github.io/camera-3a-course/`，输密码 → 配置同步（用同样的 Worker URL）→ 立即同步 → 就能接力学习。
 
 ---
 
@@ -149,11 +149,11 @@ A：能。本地用 `python3 server.py` 启动时，同步代理地址留空 →
 ### Q：手机端打开 GitHub Pages URL 会被某些 Wi-Fi 拦截吗？
 A：极少。GitHub Pages 用全球 CDN，国内访问偶有慢但能开。如果你在中国大陆遇到非常慢，可以考虑改用 Cloudflare Pages（步骤类似但更快）。
 
-### Q：能用自己的域名替换 `9donny.github.io` 吗？
+### Q：能用自己的域名替换 `your-username.github.io` 吗？
 A：能。买个域名（如 `learncamera.xyz`）→ 在仓库 Settings → Pages → Custom domain 填进去 → DNS 加 CNAME 指向 GitHub。这步不必着急，有需要再做。
 
 ### Q：把 Worker URL 公开会怎样？
-A：别人会用你的免费配额，但不能访问你的坚果云数据（因为他们没你的应用密码）。如果担心，把 `cloudflare-worker.js` 里的 `ALLOWED_ORIGINS` 改成 `["https://9donny.github.io"]`，只允许你的 Pages 域名调用。
+A：别人会用你的免费配额，但不能访问你的坚果云数据（因为他们没你的应用密码）。如果担心，把 `cloudflare-worker.js` 里的 `ALLOWED_ORIGINS` 改成 `["https://your-username.github.io"]`，只允许你的 Pages 域名调用。
 
 ### Q：密码怎么改？
 A：和本地版一样：编辑 `assets/js/gate.js` 里的 `PASSWORD_SHA256` → push → 生效。

@@ -65,14 +65,14 @@
       "id": "s4",
       "title": "AF 完整调教 cheat",
       "type": "example",
-      "content": "### AF 调教 5 层\n\n```\n1. 硬件层（OTP + VCM 标定）\n   - VCM 距离-DAC 表\n   - PDAF disparity-DAC 表\n   - ToF 距离精度标定\n\n2. 算法层\n   - CAF 爬山（粗-细两阶段）\n   - PDAF 直接定位\n   - ToF 直接定位\n   - Saliency / Face ROI 加权\n\n3. 模式层\n   - Single AF（按下拍照）\n   - Continuous AF（预览/录像）\n   - Manual Focus（专业模式）\n   - 状态机（LOCKED/MONITORING/SEARCHING）\n\n4. 协同层\n   - 与 AE/AWB 共享 ROI\n   - 拍照流程等 settle\n   - 录像跟焦平滑\n\n5. 用户体验层\n   - Touch 触发\n   - Face 自动\n   - Predictive AF\n   - Focus Peaking\n```\n\n### 完整 AF 调教参数表\n\n大约 80-120 个参数。比 AE/AWB 少（200-400/100-150）。AF 调教比 AE/AWB **简单**。\n\n### 你妹妹的 AF 调教工作\n\n```\n阶段 1（硬件层）：\n  - VCM 标定（拍多距离测 DAC）\n  - PDAF/ToF 标定\n\n阶段 2（算法层）：\n  - CAF 爬山参数（coarse_step / fine_step）\n  - PDAF 阈值\n  - ROI 权重\n\n阶段 3（场景适配）：\n  - 弱光：多帧平均 + ToF fallback\n  - 运动：Predictive AF\n  - 微距：ToF 优先\n\n阶段 4（协同）：\n  - 录像跟焦平滑\n  - 拍照超时处理\n```\n\n3-4 个月一个项目（比 AE/AWB 短一倍）。",
+      "content": "### AF 调教 5 层\n\n```\n1. 硬件层（OTP + VCM 标定）\n   - VCM 距离-DAC 表\n   - PDAF disparity-DAC 表\n   - ToF 距离精度标定\n\n2. 算法层\n   - CAF 爬山（粗-细两阶段）\n   - PDAF 直接定位\n   - ToF 直接定位\n   - Saliency / Face ROI 加权\n\n3. 模式层\n   - Single AF（按下拍照）\n   - Continuous AF（预览/录像）\n   - Manual Focus（专业模式）\n   - 状态机（LOCKED/MONITORING/SEARCHING）\n\n4. 协同层\n   - 与 AE/AWB 共享 ROI\n   - 拍照流程等 settle\n   - 录像跟焦平滑\n\n5. 用户体验层\n   - Touch 触发\n   - Face 自动\n   - Predictive AF\n   - Focus Peaking\n```\n\n### 完整 AF 调教参数表\n\n大约 80-120 个参数。比 AE/AWB 少（200-400/100-150）。AF 调教比 AE/AWB **简单**。\n\n### 资深 Tuning 工程师的 AF 调教工作\n\n```\n阶段 1（硬件层）：\n  - VCM 标定（拍多距离测 DAC）\n  - PDAF/ToF 标定\n\n阶段 2（算法层）：\n  - CAF 爬山参数（coarse_step / fine_step）\n  - PDAF 阈值\n  - ROI 权重\n\n阶段 3（场景适配）：\n  - 弱光：多帧平均 + ToF fallback\n  - 运动：Predictive AF\n  - 微距：ToF 优先\n\n阶段 4（协同）：\n  - 录像跟焦平滑\n  - 拍照超时处理\n```\n\n3-4 个月一个项目（比 AE/AWB 短一倍）。",
       "glossary": []
     },
     {
       "id": "s5",
       "title": "本日小结",
       "type": "recap",
-      "content": "### 今天打的核心地基\n\n1. **AF settle 双稳定判断**：DAC 位置稳 + score 稳 + 连续多帧\n2. **Continuous AF 状态机**：LOCKED/MONITORING/SEARCHING 三态避免频繁重对焦\n3. **Manual Focus + Focus Peaking**：专业模式给用户手动控制\n4. **AF 与 3A 协同**：共享 ROI、拍照等 all settled、录像跟焦平滑\n5. **Snapshot 流程**：用户按下→等 3A→Pre-flash→主闪+曝光→ISP→出片，~350ms\n6. **AF 调教 5 层**：硬件 / 算法 / 模式 / 协同 / 用户体验，约 80-120 参数\n\n### 自我检查\n\n1. AF settle 的两个稳定条件？\n2. Continuous AF 状态机三个状态？\n3. 录像跟焦比预览跟焦的额外要求？\n4. 完整 Snapshot 拍照流程？\n5. AF 调教 5 层结构？\n\n### 笔记建议\n\n- 把 Continuous AF 状态机画一遍\n- 整理 Snapshot 流程（含 350ms 时间分配）\n- 思考你妹妹项目的 AF 复杂度\n\n### 明天预告\n\nDay 47：Precision Flash 完整流程。Day 6 + Day 38 学过基础，明天看 AF/AE/AWB 在闪光灯流程里的完整协同 + 高通 ISP 的 Flash 模块实现。",
+      "content": "### 今天打的核心地基\n\n1. **AF settle 双稳定判断**：DAC 位置稳 + score 稳 + 连续多帧\n2. **Continuous AF 状态机**：LOCKED/MONITORING/SEARCHING 三态避免频繁重对焦\n3. **Manual Focus + Focus Peaking**：专业模式给用户手动控制\n4. **AF 与 3A 协同**：共享 ROI、拍照等 all settled、录像跟焦平滑\n5. **Snapshot 流程**：用户按下→等 3A→Pre-flash→主闪+曝光→ISP→出片，~350ms\n6. **AF 调教 5 层**：硬件 / 算法 / 模式 / 协同 / 用户体验，约 80-120 参数\n\n### 自我检查\n\n1. AF settle 的两个稳定条件？\n2. Continuous AF 状态机三个状态？\n3. 录像跟焦比预览跟焦的额外要求？\n4. 完整 Snapshot 拍照流程？\n5. AF 调教 5 层结构？\n\n### 笔记建议\n\n- 把 Continuous AF 状态机画一遍\n- 整理 Snapshot 流程（含 350ms 时间分配）\n- 思考你将做的项目 AF 复杂度\n\n### 明天预告\n\nDay 47：Precision Flash 完整流程。Day 6 + Day 38 学过基础，明天看 AF/AE/AWB 在闪光灯流程里的完整协同 + 高通 ISP 的 Flash 模块实现。",
       "glossary": []
     }
   ],

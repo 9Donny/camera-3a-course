@@ -1,225 +1,172 @@
-# 📷 Camera 3A Tuning · 60 天转岗课程
+# 📷 Camera 3A · 60 天转岗课程
 
-> 个人学习用静态网站。所有内容都在浏览器本地运行，无需联网，无需服务器。
-> 课程目标：从手机测试工程师转 Camera Tuning 工程师。
+> 从手机测试工程师到高通平台 Camera Tuning 工程师的 60 天自学课程。
+> 纯静态 HTML/JS/CSS 网页，无需后端，**多终端云同步**，**离线可用**。
 
-## 当前可用范围
+[![部署状态](https://img.shields.io/badge/deploy-GitHub%20Pages-blue)](deploy/DEPLOY.md)
+[![测试](https://img.shields.io/badge/tests-72%20passing-brightgreen)](#开发)
+[![许可](https://img.shields.io/badge/license-MIT-green)](#许可)
 
-- ✅ Week 1（Day 1-7）：光学与 Camera 硬件入门 — 全部内容、配图、题库就绪
-- ✅ 艾宾浩斯记忆系统：40 张初始卡片 + SM-2 简化算法 + 强制复习闸门
-- ✅ 坚果云同步：多终端学习数据同步（笔记/进度/卡片/打卡/记录）
-- ✅ 手机响应式：汉堡菜单、紧凑布局、触摸优化
-- ✅ 密码门：进入需要密码（默认 `camera3a`，建议改）
-- 🚧 Week 2-8：陆续补充
+---
 
-## 如何启动
+## 它是什么
 
-### 在 Mac 上
-```bash
-cd /path/to/3A
-python3 server.py
-```
-浏览器打开 http://localhost:8080/，输入密码（默认 `camera3a`）。
+如果你想转行做手机相机调教（Camera Tuning）工程师，这套课程提供 60 天系统化学习：
 
-### 在 Windows 上
-1. 把整个 `3A` 文件夹复制到 Windows（U 盘 / 网盘 / OneDrive 都行）
-2. 装 Python（[官网下载](https://www.python.org/downloads/)，安装时勾选 "Add Python to PATH"）
-3. PowerShell 里 `cd` 到课程文件夹
-4. 运行 `python server.py`
-5. 浏览器打开 http://localhost:8080/
+- **目标岗位**：高通平台 Camera Tuning 工程师（AEC / AWB / AF 三个方向）
+- **学习节奏**：每天 4 小时 × 60 天 ≈ 240 小时
+- **覆盖内容**：光学基础 / 传感器 / ISP Pipeline / 3A 算法 / 色彩科学 / Chromatix 工具
+- **配套**：每日小测 + 每周周考 + 艾宾浩斯记忆曲线复习卡
 
-### 手机访问（同 Wi-Fi）
-1. Mac 跑着 `python3 server.py`
-2. 找 Mac 的局域网 IP：`ifconfig | grep "inet 192"`（一般是 `192.168.x.x`）
-3. 手机浏览器打开 `http://192.168.x.x:8080/`
-4. 输入密码进入
+## 当前进度
 
-> ⚠️ **不能直接双击 `index.html`**，浏览器对 ES Module 在 file:// 下有限制。
-> ⚠️ **必须用 `server.py`**（不是 `python3 -m http.server`），同步功能依赖它的 WebDAV 代理。
+**60 天全部完成** ✅
 
-## 改密码
+| Week | 主题 | 内容 |
+|---|---|---|
+| Week 1 | 光学与 Camera 硬件入门（Day 1-7）| ✅ 完整 |
+| Week 2 | ISP Pipeline 全链路（Day 8-14）| ✅ 完整 |
+| Week 3 | AEC 第一阶段（Day 15-21）| ✅ 完整 |
+| Week 4 | AEC 第二阶段（Day 22-28）| ✅ 完整 |
+| Week 5 | AWB 第一阶段（Day 29-35）| ✅ 完整 |
+| Week 6 | AWB 第二阶段（Day 36-42）| ✅ 完整 |
+| Week 7 | AF + Flash + Flicker（Day 43-49）| ✅ 完整 |
+| Week 8 | 色彩 + 工具 + 模拟面试（Day 50-60）| ✅ 完整 |
 
-默认密码是 `camera3a`，强烈建议改成你自己的：
+**总计**：约 25 万字 + 60 套日测（300 题）+ 8 套周考（120 题）+ 263 张记忆卡 + 23 道公开面试题完整答辩。
 
-```bash
-# 1. 算新密码的 hash
-echo -n "你的新密码" | shasum -a 256
-# 复制输出的 64 位 hex 字符串
+## 截图
 
-# 2. 编辑 assets/js/gate.js，找到 PASSWORD_SHA256 这一行
-#    把值替换成上面那个 hash
-
-# 3. 刷新页面，重新输入新密码
-```
-
-不想要密码门？把 `PASSWORD_SHA256` 设为空字符串即可。
-
-## 坚果云同步（多终端接力）
-
-### 第一次配置
-
-1. 登录 [坚果云](https://www.jianguoyun.com/) 网页 → 头像 → **账户信息**
-2. 左边菜单 → **安全选项** → **第三方应用管理** → **添加应用**
-3. 应用名填 `Camera 3A 课程`，复制生成的 **应用密码**（不是登录密码！）
-4. 课程页面侧栏点 **☁️ 同步** → 进入设置页
-5. 填邮箱 + 应用密码 + 设备名（如 "Mac" / "手机"）
-6. 勾选「启用自动同步」→ 保存
-7. 点「测试连接」确认 OK，再点「立即同步」首次同步
-
-### 多终端接力
-
-- 任何设备配好同步后，**写入数据后 2 秒自动上传**到坚果云
-- 切换到另一台设备打开课程 → 启动时**自动拉取**最新数据
-- 顶栏 ☁️ 按钮显示同步状态：☁ 待机 / ⟳ 进行中 / ☁️ 成功 / ⚠️ 失败
-- 远端文件路径：`/我的坚果云/camera-3a/sync.json`，可以在坚果云网页直接查看
-
-### 冲突策略
-
-按 **键级别 last-write-wins**：每个数据键带修改时间戳，谁新用谁。同时在两台设备改同一个笔记可能出现覆盖，建议**一台设备完成 → 同步 → 再切到另一台**。
-
-## 学习路径
-
-```
-每天打开 #/today
-  ↓
-读 5 个章节（每节末尾有「📚 延伸学习」可展开看 FAQ/视频/阅读）
-  ↓
-途中任意句子选中 → 弹「📌 收藏到笔记」按钮
-  ↓
-读完点底部「📝 写笔记」自己整理今日所得
-  ↓
-点「📊 今日小测」做 5 题（含简答题自评）
-  ↓
-点「✅ 完成本日学习」打卡 + 解锁明天 + 进日报
-  ↓
-周日做 Week 1 周考（15 题，含 4 道 PRD 面试题）
-```
+> _截图待补_。课程界面是深色专业风格，带顶栏 dashboard、左侧导航、阅读进度条、章节 SVG 图、笔记编辑器、复习卡片等。
 
 ## 主要功能
 
-| 模块 | 入口 | 用法 |
-|---|---|---|
-| 📚 总览 | 左侧导航 | 60 天地图，看整体进度，点 Day 看学习目标 |
-| 📅 今日 | 左侧导航 / 直接访问 | 今天的课程（如有到期卡片会先跳复习） |
-| 🧠 复习 | 左侧导航（红色角标显示到期数）| 艾宾浩斯卡片复习，三档评分 |
-| 📝 笔记 | 左侧导航 / 今日页底部 | Markdown 自动保存，按 Day 归档 |
-| 📊 考核 | 左侧导航 | 每日小测 + 每周周考 |
-| 📈 日报 | 左侧导航 / 完成本日后自动进 | 当天进度 + 笔记摘要 + 模块正确率 |
-| 🎯 薄弱项 | 左侧导航 | 7 个模块的正确率柱状图 + 复习推荐 |
+- 📚 **60 天学习地图**：按序解锁，进度可视化
+- 📅 **每日学习页**：Markdown 教学内容 + 内联 SVG 原理图 + 名词速查
+- 📝 **笔记自动保存**：Markdown 编辑器，划词一键收藏到笔记
+- 🔊 **语音播报**：浏览器内置 TTS，自适应中英文，可调速
+- 📊 **每日小测 + 每周周考**：自动判分（选择/填空），简答题三档自评
+- 🧠 **艾宾浩斯记忆系统**：SM-2 算法 + 三档评分，每天进入今日学习前强制复习到期卡片
+- 🎯 **薄弱项分析**：模块级正确率统计 + 自动推荐复习章节
+- ⏱ **学习时长追踪**：自动检测页面活跃，可视化每日打卡和总时长
+- ☁️ **坚果云同步**：多终端接力学习（Mac/Win/手机/平板）
+- 🔒 **密码门**：客户端 SHA-256 哈希，防止偶然泄露
+- 📲 **PWA-ready**：响应式布局，支持手机/平板
 
-### 🧠 复习模块（艾宾浩斯记忆曲线）
+## 快速开始
 
-每天卡片到期后**进入今日学习前自动跳到复习页**，复习完再进新课。
+### 在线访问（公网部署后）
 
-- **三档评分**：忘了（重置）/ 模糊（保持）/ 记得（间隔翻倍）
-- **键盘快捷键**：Space 翻面，1=忘了 2=模糊 3=记得
-- **间隔阶梯**：0 → 1 → 3 → 7 → 15 → 30 天（封顶）
-- **紧急跳过**：复习页底部「跳过本次复习」记录今日跳过标记，避免反复弹
-- **40 张初始卡片**：覆盖 Day 1-7 全部知识点 + 5 道 PRD 面试题
+部署到 GitHub Pages 后访问 `https://your-username.github.io/camera-3a-course/`，输入密码即可使用（默认 `camera3a`，建议自行修改）。
 
-### 今日学习页的小工具
+### 本地运行
 
-| 功能 | 触发方式 |
-|---|---|
-| 🔊 全文/单节朗读 | 顶部工具栏 / 每节标题旁的 🔊 |
-| 调节朗读速度 | 工具栏速度选择 0.8× ~ 2.0× |
-| 📌 划词收藏到笔记 | 选中任意文字（≥3 字） → 弹按钮 |
-| 📊 阅读进度 + 章节 TOC | 右侧悬浮（屏幕宽度 ≥ 1100px 显示） |
-| 📚 章节末延伸学习 | 每节最末「点击展开」蓝色抽屉 |
+```bash
+git clone https://github.com/your-username/camera-3a-course.git
+cd camera-3a-course
+python3 server.py
+```
 
-### 顶栏 dashboard
+打开 http://localhost:8080/ 输入密码（默认 `camera3a`）即可。
 
-显示：你好 [昵称] · 今天日期 · Day N/60 · 自适应鼓励语 · 🔥 连续打卡 · 今日打卡状态
+> 详细启动 / 改密码 / 同步配置请见 [USAGE.md](USAGE.md)
 
-第一次访问会询问昵称（可跳过用「学员」），之后点 ✎ 随时改。
+### 部署到自己的服务器（推荐）
 
-## 数据备份（重要）
+打包成 tarball 部署到任意 Linux/Mac/Windows 主机：
 
-所有学习进度、笔记、考核记录都存在**浏览器** localStorage 里。如果清浏览器缓存或换浏览器，数据会丢失。
+```bash
+# 1. 在本机打包
+bash deploy/self-host/pack.sh
+# 输出：dist/camera3a-course-<时间戳>.tar.gz
 
-**每周一次做这件事**：
-1. 进入「📝 笔记」页
-2. 点「📤 导出 JSON」下载备份文件
-3. 把备份文件放进网盘 / OneDrive 等
+# 2. 上传到主机 + 解压 + 一键安装
+scp dist/camera3a-course-*.tar.gz user@host:~/
+ssh user@host
+tar -xzf camera3a-course-*.tar.gz
+cd camera3a-course-*
+sudo bash deploy/self-host/install-linux.sh   # systemd 自启
+```
 
-恢复：在同一页点「📥 导入 JSON」选择备份文件。
+详细文档（含 Mac launchd / Windows 启动项）见 [deploy/self-host/README.md](deploy/self-host/README.md)。
 
-## 跨电脑（Mac → Windows）迁移
+### 备选：GitHub Pages + Cloudflare Worker
 
-1. 在 Mac 上点「📤 导出 JSON」备份笔记
-2. 把整个 `3A` 文件夹复制到 Windows
-3. 在 Windows 上启动课程，进入「笔记」页点「📥 导入 JSON」
-4. 进度 / 考核记录暂不支持导出（后续会补），建议**从一开始就只在 Win 上学**避免跨设备同步麻烦
+适合不想自己买服务器的场景。详见 [deploy/DEPLOY.md](deploy/DEPLOY.md)。注意：中国大陆环境下 Cloudflare Workers 的网络出口连接坚果云有时不稳定，建议优先用「自部署」方案。
+
+## 技术栈
+
+- **前端**：原生 ES Module，无构建工具，无框架
+- **状态**：浏览器 `localStorage`（带 namespace）
+- **路由**：自实现 hash router
+- **测试**：`node:test`（Node 22+ 内置），72 个单元测试
+- **本地服务器**：单文件 `server.py`，仅依赖 Python 3 标准库
+- **同步**：WebDAV 协议（坚果云）+ server.py 内置 CORS 代理
+- **部署**：自部署（Linux systemd / Mac launchd / Windows 启动项）；备选 GitHub Pages
 
 ## 目录结构
 
 ```
-3A/
-├── index.html                  # 入口
+.
+├── index.html                  # SPA 入口
+├── server.py                   # 本地开发服务器（含 WebDAV 代理）
+├── package.json
 ├── README.md                   # 本文件
-├── package.json                # ESM 配置（无依赖）
-├── PRD.txt                     # 项目最初的需求和面试题
+├── USAGE.md                    # 完整使用手册
+├── PRD.txt                     # 课程需求和面试题来源
 ├── assets/
-│   ├── css/                    # 样式（深色专业风）
-│   ├── js/                     # 应用代码（纯 ES Module）
+│   ├── css/                    # 深色专业风样式
+│   ├── js/
+│   │   ├── app.js              # 启动 + 路由
+│   │   ├── storage.js          # localStorage 命名空间封装
+│   │   ├── progress.js         # 解锁逻辑 + 连续打卡
+│   │   ├── quiz.js             # 题目判分 + 自评
+│   │   ├── srs.js              # SM-2 间隔重复算法
+│   │   ├── flashcards.js       # 卡片 CRUD + 到期查询
+│   │   ├── sync.js             # 坚果云同步引擎
+│   │   ├── particles.js        # 粒子特效系统
+│   │   ├── tracker.js          # 学习时长追踪
+│   │   ├── gate.js             # 密码门（SHA-256）
+│   │   └── views/              # 6 个功能页面
 │   ├── vendor/marked.esm.js    # 内联 Markdown 渲染器
 │   └── data/
-│       ├── curriculum.json     # 60 天大纲
-│       ├── days/day-NN.json    # 每日教学内容（含 SVG 图）
-│       └── quizzes/            # 题库
-├── tests/                      # node:test 单元测试（44 项）
+│       ├── curriculum.json     # 8 周大纲
+│       ├── days/day-NN.json    # 每日教学内容
+│       ├── quizzes/            # 题库
+│       └── flashcards/         # 记忆卡种子
+├── tests/                      # 72 个 node:test 单测
+├── deploy/
+│   ├── DEPLOY.md               # 部署到公网手把手指南
+│   └── cloudflare-worker.js    # CORS 代理 Worker 源码
+├── .github/workflows/pages.yml # GitHub Pages 自动部署
 └── docs/superpowers/
     ├── specs/                  # 设计文档
     └── plans/                  # 实施计划
 ```
 
-## 反馈
-
-学习过程中遇到错别字 / 内容错误 / 想加补充资料？
-
-直接编辑对应的 `assets/data/days/day-XX.json`，下次刷新页面立即生效。
-
-JSON schema 大致是：
-
-```json
-{
-  "id": "day-NN",
-  "week": 1,
-  "module": "M1",
-  "title": "...",
-  "estimatedMinutes": 240,
-  "sections": [
-    {
-      "id": "s1",
-      "title": "章节标题",
-      "type": "concept | procedure | example | recap",
-      "content": "Markdown 文本（可含 <figure><svg>...）",
-      "glossary": [{ "term": "EN", "zh": "中文", "explain": "..." }],
-      "extras": {
-        "faq": [{ "q": "...", "a": "..." }],
-        "videos": [{ "title": "...", "search": "...搜索词" }],
-        "reads": [{ "title": "...", "url": "..." }]
-      }
-    }
-  ],
-  "references": [{ "source": "...", "url": "..." }],
-  "dailyQuizId": "daily-day-NN"
-}
-```
-
-## 跑测试
+## 开发
 
 ```bash
+# 跑全部测试
 node --test tests/*.test.js
+
+# 启动本地服务器
+python3 server.py
+
+# 端口冲突时换一个
+python3 server.py 9000
 ```
 
-预期 44 pass / 0 fail（覆盖 storage / progress / quiz / weakness / validators / router）。
+## 致谢
 
-## 后续路线
+课程内容参考：
+- 高通官方 _Camera 3A 7.0 Tuning Guide (Simplified Chinese)_ —— 主要操作手册
+- 高通官方 _Qualcomm 3A 10 Deep Dive_ —— 架构详解
+- 维基百科图像处理相关条目
+- B 站、YouTube 上的相机原理科普视频
 
-| 阶段 | 内容 |
-|---|---|
-| 当前 | Week 1 完整可用 |
-| Plan 2（下一步） | 艾宾浩斯记忆系统（每日复习卡片）|
-| Plan 3-7 | Week 2-8 内容 |
-| Plan 8 | 月考 + 面试题专项 + Mac→Win 部署测试 |
+PDF 文档体积较大且有版权未包含在仓库中。学习者可自行从高通文档库获取。
+
+## 许可
+
+代码采用 [MIT](LICENSE) 许可。课程内容和教学文本仅供个人学习使用，请勿商用。

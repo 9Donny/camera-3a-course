@@ -78,6 +78,15 @@ export default {
       (cl && cl !== "0") || !!te
     );
 
+    // 诊断模式：?debug=1 时返回上游详细信息（含错误）
+    const isDebug = url.searchParams.get("debug") === "1";
+
+    // 强制 Worker fetch 用更标准的 User-Agent + 关闭 Cloudflare 缓存优化
+    // 防止某些 Cloudflare 节点（如 AMS）路由到坚果云时被误判为攻击源 IP 返回 520
+    if (!fwdHeaders.has("User-Agent")) {
+      fwdHeaders.set("User-Agent", "Camera3A-Sync-Proxy/1.0 (WebDAV)");
+    }
+
     let upstreamResp;
     try {
       upstreamResp = await fetch(upstreamUrl, {
@@ -85,11 +94,38 @@ export default {
         headers: fwdHeaders,
         body: hasBody ? request.body : undefined,
         redirect: "manual",
+        cf: {
+          // 不让 Cloudflare 边缘缓存这个 fetch 的结果
+          cacheTtl: 0,
+          cacheEverything: false,
+          // 不要让 Cloudflare 改写或注入额外的 headers
+          scrapeShield: false,
+          apps: false,
+          minify: { javascript: false, css: false, html: false },
+        },
       });
     } catch (e) {
-      return new Response(`Upstream error: ${e.message}`, {
+      return new Response(`Upstream fetch threw: ${e.name}: ${e.message}\nstack: ${e.stack}`, {
         status: 502,
         headers: { ...corsHeaders(origin), "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+
+    if (isDebug) {
+      const debugBody = await upstreamResp.text();
+      const debugHeaders = {};
+      upstreamResp.headers.forEach((v, k) => { debugHeaders[k] = v; });
+      return new Response(JSON.stringify({
+        upstreamUrl,
+        method: request.method,
+        hasBody,
+        upstreamStatus: upstreamResp.status,
+        upstreamStatusText: upstreamResp.statusText,
+        upstreamHeaders: debugHeaders,
+        upstreamBodyPreview: debugBody.slice(0, 500),
+      }, null, 2), {
+        status: 200,
+        headers: { ...corsHeaders(origin), "Content-Type": "application/json; charset=utf-8" },
       });
     }
 
