@@ -326,18 +326,27 @@ async function loadSeedFlashcards() {
     } catch (e) { /* 文件不存在或格式错时静默，继续下一周 */ }
   }
 
-  // 迁移：把用户已完成 day 的种子卡（dueAt=null）激活到今天
+  // 迁移 1：把用户已完成 day 的种子卡（dueAt=null）激活到今天
+  // 迁移 2：把「**没学过但被旧 bug 错误评分**」的卡重置回 null（清出复习队列）
   // 解决：第 1 天就要复习 263 张未学卡 / 学到 day 4 看到 day 50 内容
   try {
     const today = todayISO();
     const completed = progress.getState().completedDays || [];
+    const completedDayIds = completed.map(n => `day-${String(n).padStart(2, "0")}`);
+
+    // 反向：清理未学但已激活的卡（旧 bug 残留）
+    const resetN = flashcards.resetUnlearnedCards(completedDayIds);
+    if (resetN > 0) {
+      console.info(`[review] reset ${resetN} cards for unlearned days (legacy bug cleanup)`);
+    }
+
+    // 正向：激活已完成 day 的卡（如果是 dueAt=null 状态）
     let totalUnlocked = 0;
-    for (const dayNum of completed) {
-      const dayId = `day-${String(dayNum).padStart(2, "0")}`;
+    for (const dayId of completedDayIds) {
       totalUnlocked += flashcards.unlockBySrcDay(dayId, today);
     }
     if (totalUnlocked > 0) {
-      console.info(`[review] migrated ${totalUnlocked} seed cards (completed days only)`);
+      console.info(`[review] activated ${totalUnlocked} seed cards for completed days`);
     }
   } catch (e) { console.warn("seed migration failed:", e); }
 }

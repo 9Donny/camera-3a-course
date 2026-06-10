@@ -70,6 +70,35 @@ test("unlockBySrcDay() doesn't reset cards with existing dueAt", () => {
   assert.equal(c.dueAt, "2026-07-01"); // 未被覆盖
 });
 
+test("resetUnlearnedCards() clears legacy bad state from unstudied days", () => {
+  const fc = new Flashcards(makeFakeStorage());
+  // 已学过 day-01，卡已评分
+  fc.add({ id: "a", front: "a", back: "a", srcDay: "day-01", dueAt: "2026-06-10", reps: 2, interval: 7 });
+  // 未学过 day-04，但旧 bug 让卡有 dueAt
+  fc.add({ id: "b", front: "b", back: "b", srcDay: "day-04", dueAt: "2026-06-10", reps: 1, interval: 1 });
+  // 未学过 day-50，旧 bug 给卡评分
+  fc.add({ id: "c", front: "c", back: "c", srcDay: "day-50", dueAt: "2026-06-10", reps: 3, interval: 15 });
+  // 用户卡（无 srcDay）—— 不动
+  fc.add({ id: "u", front: "u", back: "u", srcDay: null, dueAt: "2026-06-10" });
+
+  const reset = fc.resetUnlearnedCards(["day-01"]);
+  assert.equal(reset, 2); // b, c 被重置
+
+  // a（已学）保留状态
+  assert.equal(fc.all().find(c => c.id === "a").dueAt, "2026-06-10");
+  assert.equal(fc.all().find(c => c.id === "a").reps, 2);
+  // b, c 重置
+  assert.equal(fc.all().find(c => c.id === "b").dueAt, null);
+  assert.equal(fc.all().find(c => c.id === "b").reps, 0);
+  assert.equal(fc.all().find(c => c.id === "c").dueAt, null);
+  // u（无 srcDay 用户卡）保留
+  assert.equal(fc.all().find(c => c.id === "u").dueAt, "2026-06-10");
+
+  // 复习队列只剩 a 和 u
+  const due = fc.dueToday("2026-06-10");
+  assert.deepEqual(due.map(c => c.id).sort(), ["a", "u"]);
+});
+
 test("dueToday() sorts oldest-first", () => {
   const fc = new Flashcards(makeFakeStorage());
   fc.add({ id: "newer", front: "x", back: "x", dueAt: "2026-06-05" });

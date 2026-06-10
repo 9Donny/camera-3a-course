@@ -61,6 +61,30 @@ export class Flashcards {
     return unlocked;
   }
 
+  // 反向迁移：srcDay 不在 completedDayIds 的卡 → 强制重置回 null（不进复习队列）
+  // 修复历史 bug：早期版本 dueToday 把 dueAt=null 当到期，让用户给未学的卡评了分，
+  // 那些卡有 dueAt 值，新版本 dueToday 还是会显示。这里把它们重置干净。
+  // 副作用：之前的评分丢失，但这本来就是基于「未学过的内容」的无效评分。
+  resetUnlearnedCards(completedDayIds) {
+    const list = this._load();
+    const completed = new Set(completedDayIds);
+    let reset = 0;
+    for (const c of list) {
+      if (!c.srcDay) continue; // 没 srcDay 的不动（用户自定义卡）
+      if (completed.has(c.srcDay)) continue; // 已学过，保留状态
+      // 没学过但有状态 → 重置
+      if (c.dueAt !== null && c.dueAt !== undefined) {
+        c.dueAt = null;
+        c.interval = 0;
+        c.ease = 2.5;
+        c.reps = 0;
+        reset += 1;
+      }
+    }
+    if (reset > 0) this._save();
+    return reset;
+  }
+
   add(partial) {
     const list = this._load();
     const id = partial.id ?? genId();
