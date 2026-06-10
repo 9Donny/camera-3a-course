@@ -36,6 +36,10 @@ function saveSession(session) {
     sessionStorage.setItem(SESSION_KEY, json);
     localStorage.setItem(SESSION_KEY, json); // 跨标签页同步
   } catch {}
+  // 通知侧边栏 badge 更新
+  try {
+    window.dispatchEvent(new CustomEvent("camera3a:reviewProgress"));
+  } catch {}
 }
 
 export function renderReview(content, { router }) {
@@ -201,6 +205,8 @@ export function destroyReview() {
 }
 
 // 帮助函数：判断今天是否需要强制复习
+// 「需要复习」= 今天到期 - 今天已经评过的（在 review 会话里记录）
+// 全部评过后 needsReview=false，进 #/today 不再被强制跳到 #/review
 export function needsReview() {
   const today = todayISO();
   // 检查跳过标记
@@ -208,9 +214,32 @@ export function needsReview() {
     const skipped = localStorage.getItem("camera3a:reviewSkippedAt");
     if (skipped === today) return false;
   } catch (e) { /* ignore */ }
-  return flashcards.dueToday(today).length > 0;
+  return remainingToday(today) > 0;
 }
 
+// 今天还要复习的数量 = 到期总数 - 今天已评过的
+// 侧边栏 badge / dashboard chip 都用这个
 export function dueCount() {
-  return flashcards.dueToday(todayISO()).length;
+  return remainingToday(todayISO());
+}
+
+function remainingToday(today) {
+  const total = flashcards.dueToday(today).length;
+  if (total === 0) return 0;
+  // 读 review 会话的 doneIds（与 review-view 内 saveSession 同 key）
+  let doneIds;
+  try {
+    const raw = sessionStorage.getItem("camera3a:reviewSession") ||
+                localStorage.getItem("camera3a:reviewSession");
+    if (raw) {
+      const obj = JSON.parse(raw);
+      if (obj && obj.date === today && Array.isArray(obj.doneIds)) {
+        doneIds = new Set(obj.doneIds);
+      }
+    }
+  } catch {}
+  if (!doneIds || doneIds.size === 0) return total;
+  // 过滤：到期卡里没在 doneIds 的就是「还要复习的」
+  const queue = flashcards.dueToday(today);
+  return queue.filter(c => !doneIds.has(c.id)).length;
 }

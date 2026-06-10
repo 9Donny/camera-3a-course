@@ -162,6 +162,35 @@ function escapeHTML(s) {
 // 每分钟刷新一次（跨过午夜时日期 / 打卡状态会变）
 setInterval(renderDashboard, 60_000);
 
+// 算今天还要复习的卡数（dueToday 总数 - 今天已评过的 doneIds）
+// 同步函数（renderSidebar 是同步的）
+function reviewDueCountSync() {
+  const today = todayISO();
+  const queue = flashcards.dueToday(today);
+  if (queue.length === 0) return 0;
+  let doneIds;
+  try {
+    const raw = sessionStorage.getItem("camera3a:reviewSession") ||
+                localStorage.getItem("camera3a:reviewSession");
+    if (raw) {
+      const obj = JSON.parse(raw);
+      if (obj && obj.date === today && Array.isArray(obj.doneIds)) {
+        doneIds = new Set(obj.doneIds);
+      }
+    }
+  } catch {}
+  if (!doneIds || doneIds.size === 0) return queue.length;
+  return queue.filter(c => !doneIds.has(c.id)).length;
+}
+
+// 评分时 review-view 会发这个事件 → 实时重渲 sidebar 让 badge 减少
+window.addEventListener("camera3a:reviewProgress", () => {
+  const sidebar = document.getElementById("sidebar");
+  if (sidebar && sidebar.querySelector(".nav-badge")) {
+    renderSidebar(window.location.hash || "#/today");
+  }
+});
+
 const NAV = [
   { hash: "#/overview",  label: "📚 总览" },
   { hash: "#/today",     label: "📅 今日" },
@@ -175,7 +204,10 @@ const NAV = [
 ];
 
 function renderSidebar(currentHash) {
-  const dueN = flashcards.dueToday(todayISO()).length;
+  // dueN：今天「还要复习的」数量（不是「到期总数」）
+  // = dueToday 总数 - 今天已经评过的（review-view 会话里记录的 doneIds）
+  // 评分时会发 'review:done' 事件来触发重渲，让 badge 实时减少
+  const dueN = reviewDueCountSync();
   const top = NAV.map(n => {
     let label = n.label;
     if (n.hash === "#/review" && dueN > 0) {
