@@ -14,10 +14,39 @@ function escapeHTML(s) {
 
 let keyHandler = null;
 
+// 复习会话状态：sessionStorage 保存「今天已经处理过的卡 ID」
+// 这样切走再回来不会从头开始；今天关闭浏览器再开也不会重做今天已评过的
+const SESSION_KEY = "camera3a:reviewSession";
+
+function loadSession(today) {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+    if (!raw) return { date: today, doneIds: [] };
+    const obj = JSON.parse(raw);
+    if (obj.date !== today) return { date: today, doneIds: [] }; // 跨天清空
+    return obj;
+  } catch { return { date: today, doneIds: [] }; }
+}
+
+function saveSession(session) {
+  try {
+    const json = JSON.stringify(session);
+    sessionStorage.setItem(SESSION_KEY, json);
+    localStorage.setItem(SESSION_KEY, json); // 跨标签页同步
+  } catch {}
+}
+
 export function renderReview(content, { router }) {
   const today = todayISO();
-  const queue = flashcards.dueToday(today);
-  const total = queue.length;
+  const session = loadSession(today);
+  const doneIds = new Set(session.doneIds);
+
+  // 全队列 + 待做队列（排除今天已经评过的）
+  const fullQueue = flashcards.dueToday(today);
+  const queue = fullQueue.filter(c => !doneIds.has(c.id));
+  const total = fullQueue.length;
+  const remaining = queue.length;
+  const doneCount = total - remaining;
 
   if (total === 0) {
     content.innerHTML = `
@@ -28,28 +57,39 @@ export function renderReview(content, { router }) {
     return;
   }
 
-  let idx = 0;
+  if (remaining === 0) {
+    // 全部做完了
+    content.innerHTML = `
+      <h1>🧠 复习完成 🎉</h1>
+      <p class="muted">本日 ${total} 张卡片复习完毕。</p>
+      <a class="btn" href="#/today">📅 进入今日学习</a>
+    `;
+    return;
+  }
+
+  let idx = 0; // 在 queue（待做队列）的索引
   let revealed = false;
 
   function render() {
-    if (idx >= total) {
+    if (idx >= remaining) {
       // 全部完成
       content.innerHTML = `
         <h1>🧠 复习完成 🎉</h1>
-        <p class="muted">本轮 ${total} 张卡片复习完毕，记忆曲线已更新。</p>
+        <p class="muted">本日 ${total} 张卡片复习完毕，记忆曲线已更新。</p>
         <a class="btn" href="#/today">📅 进入今日学习</a>
       `;
       return;
     }
 
     const card = queue[idx];
-    const progressPct = Math.round((idx / total) * 100);
+    const overallDone = doneCount + idx; // 整天已完成数（含此轮 + 上次切走前的）
+    const progressPct = Math.round((overallDone / total) * 100);
 
     content.innerHTML = `
       <div class="review-page">
         <div class="review-progress">
           <div class="review-progress-bar"><div class="review-progress-fill" style="width:${progressPct}%"></div></div>
-          <div class="review-counter">${idx + 1} / ${total}</div>
+          <div class="review-counter">${overallDone + 1} / ${total}${doneCount > 0 ? `（剩 ${remaining - idx}）` : ""}</div>
         </div>
 
         <div class="review-card ${revealed ? "revealed" : ""}">
@@ -92,11 +132,15 @@ export function renderReview(content, { router }) {
         }
         const next = schedule(card, rating, today);
         flashcards.update(card.id, next);
+        // 记到 session：今天这张卡已处理（即使 forgot/fuzzy dueAt 仍在今天，也不再出现）
+        doneIds.add(card.id);
+        session.doneIds = [...doneIds];
+        saveSession(session);
         idx += 1;
         revealed = false;
         render();
         // 全部复习完成时来一次烟花
-        if (idx >= total) {
+        if (idx >= remaining) {
           setTimeout(() => celebrateFireworks(window.innerWidth / 2, window.innerHeight / 3), 200);
         }
       });
@@ -131,10 +175,13 @@ export function renderReview(content, { router }) {
       }
       const next = schedule(card, rating, today);
       flashcards.update(card.id, next);
+      doneIds.add(card.id);
+      session.doneIds = [...doneIds];
+      saveSession(session);
       idx += 1;
       revealed = false;
       render();
-      if (idx >= total) {
+      if (idx >= remaining) {
         setTimeout(() => celebrateFireworks(window.innerWidth / 2, window.innerHeight / 3), 200);
       }
     }
