@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-40",
+  "title": "Day 40 日测：TGA + Smart Convergence",
+  "module": "M4",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "TGA（Triangle Gain Adjustment）解决什么问题？",
+      "options": [
+        "加速 AWB 收敛",
+        "「算法准确但用户不喜欢」的风格化需求",
+        "减少计算量",
+        "处理混合光源"
+      ],
+      "answer": "「算法准确但用户不喜欢」的风格化需求",
+      "explain": "AWB 估出 cct 完全正确但用户期望「钨丝灯下保留温度」。TGA 在 RG-BG 平面画三角形限制 gain，不让算法过度修正。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "TGA 三角形的三个顶点定义什么？",
+      "options": [
+        "三个最常见光源",
+        "「用户审美可接受的色温范围」（冷端 / 中性 / 暖端）",
+        "参考点位置",
+        "LWV 维度"
+      ],
+      "answer": "「用户审美可接受的色温范围」（冷端 / 中性 / 暖端）",
+      "explain": "三顶点定义产品「色彩底线」。AWB gain 落在三角形外 → 投影到最近边。warm 顶点决定钨丝灯下保留多少温度。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "Smart Convergence 相对传统 damping 的优势？",
+      "options": [
+        "更快",
+        "按 LWV 距离动态调 α（变化大快、变化小慢），平衡响应速度和稳定性",
+        "更省电",
+        "算法更简单"
+      ],
+      "answer": "按 LWV 距离动态调 α（变化大快、变化小慢），平衡响应速度和稳定性",
+      "explain": "传统两档（α=0.2 慢/0.6 快）不够。Smart Convergence 4 档（小变化稳定时 α=0.05、剧变 α=0.8），让画面绝对稳 + 真实变化时快响应。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: 苹果色彩风格相对中性，三星色彩 ___ 是产品风格差异",
+      "answer": [
+        "偏暖",
+        "鲜艳",
+        "偏暖通透"
+      ],
+      "explain": "TGA + style_bias 配置不同 → 同一物理场景不同手机出不同色彩。这是产品定位的「审美选择」不是 bug。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "「画面色彩抖」可能调 Smart Convergence 哪些参数？",
+      "referenceAnswer": "1) 阈值调大（让小变化用更小 α 不响应）；2) 多帧确认加强（confirmation_frames 3→5，区分真实变化和单帧异常）；3) 稳定时 α 减小（alpha_small 0.05→0.02，让画面绝对稳）；4) 时序平滑 window 增大。这些让 AWB「稳定时降速」让画面更干净。"
+    }
+  ]
+}

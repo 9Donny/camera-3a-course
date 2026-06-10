@@ -1,0 +1,83 @@
+{
+  "id": "day-46",
+  "week": 7,
+  "module": "M5",
+  "title": "AF 收敛 + Continuous AF 进阶",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "AF settle 状态判断",
+      "type": "concept",
+      "content": "### Day 19 复习：AF 等 AE settle\n\nAE 不稳时画面亮度变 → AF 算的对比度也跟着变 → AF 容易误判。所以 AF 必须等 AE settle 才启动。\n\n**反过来：AF settle 也是「**画面准备好拍照**」的最后信号**。\n\n### AF settle 的判断条件\n\n类似 AE settle（Day 19）但条件不同：\n\n```python\ndef is_af_settled(history_dac, history_score):\n    # 条件 1：DAC 位置稳定（不在移动）\n    dac_variance = variance(history_dac[-5:])\n    if dac_variance > 5:\n        return False\n    \n    # 条件 2：score 稳定（清晰度不在变化）\n    score_variance = variance(history_score[-5:])\n    if score_variance > 5:\n        return False\n    \n    # 条件 3：连续 N 帧（默认 3）都满足\n    return True\n```\n\n这是「**双稳定**」判断：DAC 位置 + 评分都稳。\n\n### 拍照触发等 AF settle\n\n用户按下拍照按钮时：\n\n- AF settled = true → 立即拍\n- AF settled = false → 等到 settled（最多 500ms）→ 拍；超时仍不 settled → 强制拍（接受失焦）\n\n这就是「**对焦没好就拍**」的 corner case。\n\n### Continuous AF 的稳定性挑战\n\nDay 43 我们说 Continuous AF 一直在跑。但**实际不能每帧都跑爬山**。需要状态机：\n\n```python\nclass ContinuousAFStateMachine:\n    states = ['LOCKED', 'MONITORING', 'SEARCHING']\n    \n    def transition(self):\n        if self.state == 'LOCKED':\n            # 监控当前 score 是否还高\n            if current_score < locked_score * refocus_threshold:\n                self.state = 'MONITORING'\n        \n        elif self.state == 'MONITORING':\n            # 多帧确认是否真的失焦\n            if consecutive_low_score_frames >= 3:\n                self.state = 'SEARCHING'\n            elif current_score >= locked_score * 0.9:\n                self.state = 'LOCKED'  # 误判，回锁\n        \n        elif self.state == 'SEARCHING':\n            # 在跑爬山\n            if found_new_peak:\n                self.locked_score = current_score\n                self.state = 'LOCKED'\n```\n\n三状态：\n\n- **LOCKED**：已对焦，监控状态\n- **MONITORING**：怀疑失焦，等多帧确认\n- **SEARCHING**：确认失焦，正在重对焦\n\n这样**避免单帧抖动触发频繁重对焦**。\n\n### Continuous AF 的「**预测**」**\n\n监控阶段如果发现 score 在持续下降（不是一帧抖），说明物体在移动。预测下一帧位置：\n\n```python\ndef predict_next_dac(score_history, dac_history):\n    # 看过去 5 帧 score 趋势\n    if all_decreasing(score_history[-5:]):\n        # score 一直降 → 物体在远离/靠近\n        # 看 disparity（PDAF）方向\n        next_dac = current_dac + estimated_velocity * frame_time\n        return next_dac\n    return current_dac  # 不动\n```\n\nPredictive AF 在 Continuous 模式下让 AF **提前移动**，跟焦更跟手。\n\n### 录像跟焦的额外要求\n\n录像中跟焦比预览跟焦更**严格**：\n\n- 不允许「**对焦呼吸**」（DAC 来回抖）\n- 不允许「**重对焦慢**」（用户能看到模糊→清晰过程）\n- 不允许「**跟丢**」（物体动了 AF 没跟上）\n\n应对：\n\n- DAC 平滑系数加大（damping_alpha 0.7+）\n- refocus_threshold 比预览更稳定（0.5 vs 预览 0.7）\n- 优先 PDAF + ToF（避免 CAF 的爬山过程）\n- Saliency 锁定主体不放（不让 AF 跑到背景）\n\n### Tuning 配置\n\n```xml\n<continuous_af>\n  <state_machine_enabled>true</state_machine_enabled>\n  <monitoring_frames>3</monitoring_frames>\n  <preview_refocus_threshold>0.7</preview_refocus_threshold>\n  <video_refocus_threshold>0.5</video_refocus_threshold>\n  <video_damping_alpha>0.8</video_damping_alpha>\n  <enable_predictive>true</enable_predictive>\n</continuous_af>\n```",
+      "glossary": [
+        { "term": "AF Settle", "zh": "AF 收敛", "explain": "DAC 稳定 + score 稳定 + 连续多帧的复合判断。" },
+        { "term": "AF State Machine", "zh": "AF 状态机", "explain": "LOCKED / MONITORING / SEARCHING 三态切换，避免频繁重对焦。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "拍照时 AF settle 超时怎么办？", "a": "强制拍（接受可能失焦）。用户期望「按下立即出片」，等太久比失焦更糟。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AF Convergence + State Machine" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Manual Focus 手动对焦支持",
+      "type": "concept",
+      "content": "### 专业模式支持手动对焦\n\n手机相机的「**专业模式 / Pro Mode**」让用户**手动调焦距**，不靠自动算法。\n\n实现：\n\n- 用户拖动「**焦距滑条**」 → 写 DAC 值\n- 焦距 0：无穷远（DAC 0）\n- 焦距 100：微距（DAC 1023）\n- 滑条非线性（用户友好）\n\n### 实现\n\n```python\ndef manual_focus(slider_value):\n    # slider 0-100 → DAC 0-1023\n    dac = int(slider_value / 100 * 1023)\n    move_vcm(dac)\n    \n    # 显示 \"焦点距离\" 给用户\n    distance = dac_to_distance(dac)\n    show_focus_distance(distance)\n```\n\n### Focus Peaking（峰值对焦）\n\n专业模式还提供「**Focus Peaking**」：在画面里**高亮当前清晰的边缘**，帮用户判断对焦位置。\n\n```python\ndef focus_peaking(image):\n    # 算每像素的对比度\n    contrast = sobel(image)\n    # 高对比度 = 当前焦点附近\n    overlay = mark_red_for_high_contrast(contrast > threshold)\n    return overlay_on_preview(image, overlay)\n```\n\n效果：用户看到画面里「**红色描边**」标出当前清晰的物体。\n\nFocus Peaking 不是 3A 算法的一部分，但是 AF 调教的「**用户体验加成**」。\n\n### Manual Focus + AF 切换\n\n```\n用户切到专业模式 → AF 关闭，手动滑条激活\n用户切回自动模式 → AF 启动，从手动设置的位置开始爬山\n用户拍照 → AF 锁定，用户可以微调（如果开了 Manual Override）\n```",
+      "glossary": [
+        { "term": "Manual Focus", "zh": "手动对焦", "explain": "专业模式让用户手动设置焦距，关闭 AF 算法。" },
+        { "term": "Focus Peaking", "zh": "峰值对焦", "explain": "在画面里高亮高对比度边缘，帮用户判断对焦。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "Manual Focus 比 AF 准吗？", "a": "在专业用户手中可能更准（自己判断主体）。普通用户不如 AF。所以默认是 AF + 选项给专业用户手动。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "维基百科 · Focus peaking", "url": "https://en.wikipedia.org/wiki/Focus_peaking" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "AF 与其他模块的协同",
+      "type": "concept",
+      "content": "### AF 与 AE 的协同\n\nDay 19 学过 AF 等 AE settle。**反过来 AE 也尊重 AF**：\n\n- 用户 Touch ROI 触发 AF + AE 联动\n- AF 锁定的位置 → AE 也用那块的亮度（Touch ROI 的位置）\n- AF 对焦的物体 → AE 给那个物体最佳曝光\n\n这就是「**点哪儿对焦哪儿曝光**」的来源。\n\n### AF 与 AWB 的协同\n\nAWB 不直接依赖 AF，但 **共享 ROI**：\n\n- Touch ROI / Face ROI / Saliency ROI 都被 3A 共享\n- AF 对焦的主体（Saliency / Face） → AWB 也用那块算肤色 / 色温\n\n这就是 Day 37 学的 FA（人脸辅助 AWB）的协同基础。\n\n### AF 与 ISP 后段的协同\n\nAF 锁定后，ISP 后段也用 AF 信息：\n\n- **景深虚化**（人像模式）：基于 ToF + AF 算景深，模糊背景\n- **HDR 多帧**：等 AF settle 才拍多帧（避免每帧焦点不同）\n- **闪光灯触发**：等 AF settle 才发主闪\n\n所以 AF 是「**拍照流程的最后一关**」 —— AE/AWB/AF 都 settled 才出片。\n\n### Snapshot 拍照流程（含 AF）\n\n```\n用户按下拍照按钮\n  ↓\n等待 3A 都 settled（最多 500ms）\n  ├── AE settled\n  ├── AF settled\n  └── AWB settled\n  ↓\n触发 Pre-Flash（如果需要）\n  ↓\nAF/AE/AWB 重新评估（含 LED 影响）\n  ↓\n触发主闪 + sensor 曝光\n  ↓\nISP 处理\n  ↓\n输出 JPEG / RAW\n```\n\nAF 在这流程里的作用：**保证锁定的焦点不动**，多帧拍摄时保持一致。\n\n### Tuning 协同参数\n\n```xml\n<3a_coordination>\n  <wait_all_settled>true</wait_all_settled>\n  <max_wait_ms>500</max_wait_ms>\n  <af_priority>last</af_priority>     <!-- AF 是 3A 里最后等的 -->\n  <touch_locks_all>true</touch_locks_all>  <!-- Touch 锁定 AE/AF/AWB -->\n</3a_coordination>\n```\n\n### 真实场景：Snapshot 流程\n\n```\nT+0ms：用户按拍照\nT+10ms：检查 AE/AF/AWB 状态\n  AE settled=true (lux 稳定)\n  AF settled=false (重新评估中)\n  AWB settled=true\nT+50ms：AF 完成爬山，settled=true\nT+60ms：Pre-Flash 触发\nT+110ms：3A 重新评估（Pre-Flash 反馈）\nT+150ms：主闪触发 + sensor 曝光（30ms）\nT+200ms：ISP 处理（150ms）\nT+350ms：JPEG 出片\n  → 用户看到「咔嚓 + 出片」\n```\n\n用户体验：**350ms 总流程**。其中 50ms 是 AF（最大瓶颈之一）。\n\n旗舰用 PDAF + ToF：AF 30ms → 总流程 < 300ms。",
+      "glossary": [
+        { "term": "3A Coordination", "zh": "3A 协调", "explain": "AE/AF/AWB 三者拍照时的协同流程，全部 settled 才出片。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "如果 AF 永远不 settle 呢？", "a": "超时 500ms → 强制拍（接受可能失焦）。比无限等好。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Snapshot Pipeline" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "AF 完整调教 cheat",
+      "type": "example",
+      "content": "### AF 调教 5 层\n\n```\n1. 硬件层（OTP + VCM 标定）\n   - VCM 距离-DAC 表\n   - PDAF disparity-DAC 表\n   - ToF 距离精度标定\n\n2. 算法层\n   - CAF 爬山（粗-细两阶段）\n   - PDAF 直接定位\n   - ToF 直接定位\n   - Saliency / Face ROI 加权\n\n3. 模式层\n   - Single AF（按下拍照）\n   - Continuous AF（预览/录像）\n   - Manual Focus（专业模式）\n   - 状态机（LOCKED/MONITORING/SEARCHING）\n\n4. 协同层\n   - 与 AE/AWB 共享 ROI\n   - 拍照流程等 settle\n   - 录像跟焦平滑\n\n5. 用户体验层\n   - Touch 触发\n   - Face 自动\n   - Predictive AF\n   - Focus Peaking\n```\n\n### 完整 AF 调教参数表\n\n大约 80-120 个参数。比 AE/AWB 少（200-400/100-150）。AF 调教比 AE/AWB **简单**。\n\n### 你妹妹的 AF 调教工作\n\n```\n阶段 1（硬件层）：\n  - VCM 标定（拍多距离测 DAC）\n  - PDAF/ToF 标定\n\n阶段 2（算法层）：\n  - CAF 爬山参数（coarse_step / fine_step）\n  - PDAF 阈值\n  - ROI 权重\n\n阶段 3（场景适配）：\n  - 弱光：多帧平均 + ToF fallback\n  - 运动：Predictive AF\n  - 微距：ToF 优先\n\n阶段 4（协同）：\n  - 录像跟焦平滑\n  - 拍照超时处理\n```\n\n3-4 个月一个项目（比 AE/AWB 短一倍）。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **AF settle 双稳定判断**：DAC 位置稳 + score 稳 + 连续多帧\n2. **Continuous AF 状态机**：LOCKED/MONITORING/SEARCHING 三态避免频繁重对焦\n3. **Manual Focus + Focus Peaking**：专业模式给用户手动控制\n4. **AF 与 3A 协同**：共享 ROI、拍照等 all settled、录像跟焦平滑\n5. **Snapshot 流程**：用户按下→等 3A→Pre-flash→主闪+曝光→ISP→出片，~350ms\n6. **AF 调教 5 层**：硬件 / 算法 / 模式 / 协同 / 用户体验，约 80-120 参数\n\n### 自我检查\n\n1. AF settle 的两个稳定条件？\n2. Continuous AF 状态机三个状态？\n3. 录像跟焦比预览跟焦的额外要求？\n4. 完整 Snapshot 拍照流程？\n5. AF 调教 5 层结构？\n\n### 笔记建议\n\n- 把 Continuous AF 状态机画一遍\n- 整理 Snapshot 流程（含 350ms 时间分配）\n- 思考你妹妹项目的 AF 复杂度\n\n### 明天预告\n\nDay 47：Precision Flash 完整流程。Day 6 + Day 38 学过基础，明天看 AF/AE/AWB 在闪光灯流程里的完整协同 + 高通 ISP 的 Flash 模块实现。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "AF Continuous + Coordination" }
+  ],
+  "dailyQuizId": "daily-day-46"
+}

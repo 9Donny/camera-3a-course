@@ -1,0 +1,73 @@
+{
+  "id": "day-44",
+  "week": 7,
+  "module": "M5",
+  "title": "CAF 反差对焦深入",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "CAF 完整工作流",
+      "type": "concept",
+      "content": "### Day 43 复习\n\n反差对焦的核心：**清晰图像 = 高对比度**。算每个候选位置的对比度分数，找最高分。\n\n今天看高通 ISP 实现里 CAF 的工程细节。\n\n### CAF 完整流程\n\n```\n1. 触发 AF（半按 / 用户点屏幕 / 检测到失焦）\n   ↓\n2. 评估当前位置 score_current\n   ↓\n3. 决定搜索方向（前/后）\n   - 试探性移马达 1-2 步\n   - 比较 score 变化\n   - 选 score 上升的方向\n   ↓\n4. 粗搜索阶段\n   - 大步长 step=20\n   - 每个位置评估 score\n   - 直到 score 开始下降（已过峰）\n   ↓\n5. 细搜索阶段\n   - 在粗峰附近 ±10 位置\n   - 小步长 step=2\n   - 找最高分位置\n   ↓\n6. 锁定（lock）\n   - 移到最佳位置\n   - 标记 settled=1\n   - 后续模块（拍照触发）可执行\n```\n\n这是 CAF 的标准 8-15 帧流程（300-500ms）。\n\n### 各阶段的难点\n\n**阶段 3：方向判断**\n\n在初始位置不知道往哪移。两种策略：\n\n- **a. 试探**：往前移 1 步，看 score 涨还是跌。涨 → 继续前；跌 → 反向。\n- **b. 用 PDAF 提示**：如果 sensor 支持 PDAF，先用 PDAF 算大致方向，CAF 不用试探。\n\n纯 CAF 用 a，PDAF + CAF 混合用 b（更快）。\n\n**阶段 4：粗搜索的「**早停**」**\n\n```python\ndef coarse_search(start_pos, direction):\n    positions_tried = []\n    last_score = evaluate(start_pos)\n    pos = start_pos\n    \n    while True:\n        pos += direction * coarse_step\n        if not in_range(pos):\n            break  # 到边界\n        score = evaluate(pos)\n        positions_tried.append((pos, score))\n        \n        if score < last_score:\n            # score 开始下降 → 已经过峰\n            break\n        last_score = score\n    \n    return positions_tried\n```\n\n关键是「**score 下降时早停**」。否则 CAF 会跑到最远端再回来。\n\n但有个 bug：如果有「**双峰**」（两个清晰区域），早停会卡在第一个峰。这种场景需要：\n\n- 全局粗搜索（不早停，跑遍整个范围）\n- 然后回到全局最高点做细搜索\n\n这种**保守策略**更稳但**慢一倍**。中端机型用 a，旗舰用 b 兜底。\n\n### 阶段 5：细搜索的精度\n\n细搜索精度由 step 决定：\n\n- step=1：极精确但要试 20 个位置（DAC 30 个位置 × 20-30ms 每帧 = 600ms）\n- step=2：精确 + 10 个位置（300ms）\n- step=5：粗 + 4 个位置（120ms，但精度差）\n\n常用 step=2-3 平衡。",
+      "glossary": [
+        { "term": "Coarse Search", "zh": "粗搜索", "explain": "AF 阶段 1：大步长扫描，找全局清晰度峰附近。" },
+        { "term": "Fine Search", "zh": "细搜索", "explain": "AF 阶段 2：在粗峰附近小步长，精确定位。" },
+        { "term": "Early Stop", "zh": "早停", "explain": "粗搜索时 score 开始下降就停止，节省时间但有局部峰风险。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么不直接全范围细搜索？", "a": "1023 个 DAC 位置 × 30ms = 30 秒，太慢。粗-细两阶段是工程平衡。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "CAF Search Algorithm" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Corner Cases：CAF 失败的场景",
+      "type": "concept",
+      "content": "### 1. 弱光场景\n\n```\n极暗下 (lux < 30)：\n  64×48 块的对比度被噪声主导\n  各位置 score 抖动严重，钟形曲线被噪声「**填平**」\n  CAF 找不到明确的峰\n```\n\n应对：\n\n- **多帧平均**：每个位置评估 score 时取 5-10 帧的平均（消噪）\n- **加大对比度滤波器**：用 5x5 Sobel 替代 3x3（更稳，但模糊）\n- **降低评估步长**：弱光下用更小的 step（避免错过峰）\n- **使用 PDAF / ToF 兜底**：弱光下用相位/深度检测代替 CAF\n\n### 2. 纯色 / 低纹理场景\n\n```\n拍纯色墙、白纸、晴朗天空：\n  没有边缘，所有位置 score 都接近 0\n  CAF 找不到峰\n```\n\n应对：\n\n- **检测「**纹理度**」**：score 标准差太小 → 不可靠 → 用兜底位置（无穷远）\n- **使用 ToF**：直接测距离\n- **保持上次锁定位置**（不动）\n\n### 3. 周期性图案\n\n```\n拍条纹衣服、棋盘格：\n  对焦时图案的「**对齐位置**」让 score 假高\n  CAF 锁定到错误的位置（图案对齐但物体没在焦平面）\n```\n\n应对：\n\n- **检测「**相邻位置 score 周期波动**」** → 知道有周期图案 → 用其他算法\n- **结合 PDAF**：相位检测不受周期图案影响\n\n### 4. 运动物体\n\n```\n拍跑动的小孩：\n  CAF 在评估期间物体已经动了\n  钟形曲线一直在「**移动**」 → CAF 卡在错误位置\n```\n\n应对：\n\n- **Predictive AF**（Day 43 学过）\n- **缩短评估时间**（用 PDAF 代替 CAF）\n- **Saliency AF**（Day 45 学）锁定主体\n\n### 5. 镜头脏 / 模糊\n\n```\n用户镜头沾了水/灰尘：\n  整张图一直模糊，没有任何位置能给高 score\n  CAF 反复爬山找不到峰\n```\n\n应对：\n\n- **detect 全局清晰度上限**：所有位置 score < 阈值 → 提示「**镜头脏**」\n- **tutorial 弹出提醒用户清镜头**\n\n### 6. 光圈快门联动（机械震动）\n\n```\n相机机身震动（手抖、走路）：\n  评估期间 sensor 抖了 → score 评估失真\n  CAF 算出错误的峰\n```\n\n应对：\n\n- **OIS 光学防抖配合**：稳定相机降低抖动影响\n- **防抖检测**：陀螺仪报抖动剧烈 → AF 等稳定再评估\n\n### Tuning 工程师的 corner case 调教\n\n```xml\n<af_corner_cases>\n  <low_light>\n    <enable_multi_frame_avg>true</enable_multi_frame_avg>\n    <multi_frame_count>5</multi_frame_count>\n    <fallback_to_pdaf>true</fallback_to_pdaf>\n  </low_light>\n  <low_texture>\n    <texture_threshold>0.05</texture_threshold>\n    <fallback_to_infinity>true</fallback_to_infinity>\n  </low_texture>\n  <periodic_pattern>\n    <detect_periodic>true</detect_periodic>\n    <use_pdaf_when_detected>true</use_pdaf_when_detected>\n  </periodic_pattern>\n  <motion>\n    <enable_predictive>true</enable_predictive>\n    <prediction_window_frames>5</prediction_window_frames>\n  </motion>\n</af_corner_cases>\n```\n\n这就是 CAF 的「**工程化**」 —— 处理各种 edge case 让算法在真实世界稳定。",
+      "glossary": [
+        { "term": "Texture Detection", "zh": "纹理检测", "explain": "判断画面是否有边缘可对焦。纯色场景纹理 = 0。" },
+        { "term": "Periodic Pattern", "zh": "周期性图案", "explain": "条纹/棋盘等图案让 CAF 评估失真。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "对焦失败时手机怎么办？", "a": "1) 提示用户重对焦；2) fallback 到无穷远（拍风景概率高）；3) 锁定上次成功位置。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AF Corner Cases" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "AF 评分的多区域加权",
+      "type": "concept",
+      "content": "### Touch ROI 优先\n\n用户在屏幕上点了一下 → AF 在那块区域优先：\n\n```python\ndef compute_focus_score_with_roi(stats_64x48, touch_roi):\n    score = 0\n    for i, block in enumerate(stats_64x48):\n        block_contrast = sobel_energy(block)\n        if block_in_roi(i, touch_roi):\n            weight = 5.0  # ROI 高权重\n        else:\n            weight = 0.1  # 非 ROI 低权重\n        score += block_contrast * weight\n    return score\n```\n\n效果：用户点哪 → AF 对哪。\n\n### Face ROI 自动\n\n检测到人脸 → AF 自动对人脸：\n\n```python\nif face_detected:\n    face_box = main_face\n    weight_table = make_face_weight_table(face_box)\n    score = compute_focus_score_with_roi(stats, weight_table)\n```\n\n这就是「**对脸优先**」的来源。手机预览时人脸框旁的「绿色对焦框」就是 Face ROI。\n\n### 中心默认\n\n没有 ROI、没有人脸：用中心权重表（类似 AE 中心测光）。\n\n### 多 ROI 优先级\n\n```\nTouch ROI（用户主动）：最高优先\nFace ROI（人脸检测）：次高\nSaliency ROI（AI 主体）：中\n中心默认：低\n```\n\nAF 按这个优先级选 ROI。Touch 一旦激活就压制其他。\n\n### Tuning\n\n```xml\n<af_roi>\n  <touch_weight>5.0</touch_weight>\n  <face_weight>3.0</face_weight>\n  <saliency_weight>2.0</saliency_weight>\n  <default_center_weight>1.0</default_center_weight>\n  <touch_radius_blocks>4</touch_radius_blocks>\n</af_roi>\n```\n\n这跟 Day 24 学过的 AE ROI 加权相似（不重复细节），AF/AE/AWB 三个算法**共享同一套 ROI 配置**。",
+      "glossary": []
+    },
+    {
+      "id": "s4",
+      "title": "CAF 调教 cheat",
+      "type": "example",
+      "content": "### log 字段\n\n```\n[AF-CAF] mode=continuous trigger=lost_focus\n[AF-CAF] direction_test: pos+1=score_55, pos-1=score_42 → forward\n[AF-CAF] coarse search: positions=[100,120,140,160,180,200] scores=[..,..,90,75]\n[AF-CAF] coarse peak at pos=160\n[AF-CAF] fine search: pos=[150-170] best=162 score=98\n[AF-CAF] locked at pos=162 score=98 settled=1\n```\n\n### bug 排查\n\n**「点击屏幕后焦点对不准」**\n\n```\n[AF-CAF] touch_roi=true at (320, 240)\n[AF-CAF] roi block range: x=[24-30] y=[12-18]\n[AF-CAF] coarse search → pos 200 score 95\n[AF-CAF] locked at 200\n```\n\n但用户感觉对的不是触摸点而是中间。可能：\n\n- touch_radius_blocks 设太小（只 1 块，覆盖不到主体）\n- ROI 权重不够（其他块还有贡献，把焦点拉到中心）\n\n修：touch_radius_blocks 4→6；touch_weight 5→8。\n\n**「录像中焦点拉风箱」**\n\n```\n[AF-CAF] frame 100: locked at 200\n[AF-CAF] frame 105: refocus_triggered (score dropped to 65%)\n[AF-CAF] frame 108: locked at 220\n[AF-CAF] frame 112: refocus_triggered (score dropped to 70%)\n[AF-CAF] frame 115: locked at 200\n```\n\n症状：在两个位置之间跳。原因：refocus_threshold 太敏感（70%）+ 物体小动一下就重对焦。\n\n修：refocus_threshold 0.7 → 0.5；max_refocus_per_second=2 限制频率；smooth_dac=true 让 DAC 变化平滑。\n\n**「夜景对焦失败」**\n\n```\n[AF-CAF] mode=low_light\n[AF-CAF] all positions score < threshold 5\n[AF-CAF] fallback to last_locked_position=180\n```\n\n弱光下没有任何位置给高分。已经走 fallback 但用户感觉「**对不上**」。\n\n修：启用多帧平均（multi_frame_count 5→10）；启用 PDAF fallback；增大 sobel 滤波器尺寸（3x3 → 5x5）。\n\n### 总 cheat\n\n| 反馈 | 调什么 |\n|---|---|\n| 点击对焦不准 | touch_radius / touch_weight 增大 |\n| 录像拉风箱 | refocus_threshold 减小 + max_refocus 限频 |\n| 弱光失焦 | 多帧平均 + PDAF fallback |\n| 纯色场景失焦 | texture_threshold 检测 + fallback 到无穷远 |\n| 运动物体跟丢 | enable_predictive_af + Saliency AF |\n| 对焦慢 | 优先 PDAF；coarse_step 增大 |\n| 对焦呼吸（录像） | smooth_dac + damping_alpha 0.7 |",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **CAF 8 步流程**：触发 → 评估初始 → 方向判断 → 粗搜索（早停）→ 细搜索 → 锁定\n2. **6 个 corner case**：弱光 / 纯色 / 周期图案 / 运动 / 镜头脏 / 机械震动\n3. **应对策略**：多帧平均 / 纹理检测 / PDAF fallback / Predictive AF / Saliency / OIS\n4. **AF 多 ROI 优先级**：Touch > Face > Saliency > Center\n5. **3A 共享 ROI 配置**：AF/AE/AWB 用同一套\n\n### 自我检查\n\n1. CAF 粗-细两阶段为什么必要？早停的代价是什么？\n2. 列出 4 个 CAF 失败场景 + 应对策略。\n3. Touch ROI / Face ROI / Saliency ROI 在 AF 里的优先级排序？\n4. 录像 AF 拉风箱怎么调？\n5. 弱光对焦的标准 fallback 链是什么？\n\n### 笔记建议\n\n- 把 CAF 流程图抄下来（8 步）\n- 整理 corner case 应对表\n- 思考你妹妹项目里 AF 的常见问题\n\n### 明天预告\n\nDay 45：PDAF + Saliency AF + Depth AF。看 PDAF 的硬件实现细节、AI 显著性怎么辅助 AF、ToF 深度对焦的应用场景。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "CAF Implementation" }
+  ],
+  "dailyQuizId": "daily-day-44"
+}

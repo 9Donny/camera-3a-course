@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-39",
+  "title": "Day 39 日测：双摄 AWB 同步",
+  "module": "M4",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "AWB 比 AE 同步难的根本原因？",
+      "options": [
+        "算法更复杂",
+        "sensor 颜色响应差异 + 不同视场看到不同画面 + CCM 联动",
+        "sensor 数量更多",
+        "色温变化更快"
+      ],
+      "answer": "sensor 颜色响应差异 + 不同视场看到不同画面 + CCM 联动",
+      "explain": "AE 同步只是 lux/target；AWB 还要应对每个 sensor 不同的颜色响应（OTP 校准的差异）+ 视场看到的画面不同。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "副摄不能直接抄主摄 gain 的原因？",
+      "options": [
+        "sensor 不同",
+        "同一 cct 在不同 sensor 上对应不同 RG/BG，gain 必须按本 sensor OTP 校准",
+        "算法不同",
+        "硬件性能不同"
+      ],
+      "answer": "同一 cct 在不同 sensor 上对应不同 RG/BG，gain 必须按本 sensor OTP 校准",
+      "explain": "cct 是物理量（跨 sensor 一致），但 sensor 输出的 RG/BG 不同。所以副摄跟主摄 cct，gain 按自己 OTP 算。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "Reverse Sync 解决什么问题？",
+      "options": [
+        "切换更快",
+        "切回主摄时主摄用副摄最新 cct 不用 NVRAM 旧值，避免画面渐变发暖",
+        "节省功耗",
+        "减少计算"
+      ],
+      "answer": "切回主摄时主摄用副摄最新 cct 不用 NVRAM 旧值，避免画面渐变发暖",
+      "explain": "用户在长焦上拍 10 秒后切回主摄，如果主摄用 NVRAM 5 秒前的 cct，会有 ramp 让画面渐变 → 用户看到色调慢慢变。Reverse Sync 让切换瞬间就对。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: 主摄 cct 4500 切到长焦独立估计 3000K，差距 1500K，触发 ___ damping",
+      "answer": [
+        "extra_long",
+        "long",
+        "长"
+      ],
+      "explain": "差距 > 阈值（1500K）触发 extra_long_damping（60 帧 vs 普通 30 帧），让画面慢慢过渡，避免突变。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "「主摄切超广角时画面色彩突变」怎么排查？",
+      "referenceAnswer": "1) 这不是 AE 问题（亮度可能没变），是 AWB / 色彩问题；2) 检查 AWB 多摄同步：超广角是否独立决策没拿主摄 cct；3) 检查多摄 CCM 标定：每个 sensor 出厂特性不同，CCM 矩阵需校准让色彩一致；4) 抓 log 看主摄和超广角各自的 AWB gain 和 CCM 矩阵；5) 修：让超广角 AWB 跟随主摄 + 重新校 CCM。「双摄一致性」涉及 AE/AWB/CCM 都要联动。"
+    }
+  ]
+}

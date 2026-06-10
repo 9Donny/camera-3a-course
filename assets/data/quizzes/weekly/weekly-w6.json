@@ -1,0 +1,23 @@
+{
+  "id": "weekly-w6",
+  "title": "Week 6 周考：AWB 第二阶段综合",
+  "module": "M4",
+  "scope": "weekly",
+  "questions": [
+    {"id":"q1","type":"choice","prompt":"AGW 的核心改进？","options":["更精准","RG-BG 平面分多个 zone，每 zone 独立运行灰世界","更快","用 AI"],"answer":"RG-BG 平面分多个 zone，每 zone 独立运行灰世界","explain":"AGW 处理混合光源场景。"},
+    {"id":"q2","type":"choice","prompt":"FA 用什么作色彩锚点反推光源？","options":["背景","人脸肤色（先验范围 RG≈1.20, BG≈0.62）","主体颜色","天空"],"answer":"人脸肤色（先验范围 RG≈1.20, BG≈0.62）","explain":"肤色相对稳定，从观测肤色和先验偏差反推光源。"},
+    {"id":"q3","type":"choice","prompt":"YCbCr 肤色规则的作用？","options":["美颜","在 face_box 里过滤掉头发/眼睛/嘴唇，只用真肤色","白平衡","对焦"],"answer":"在 face_box 里过滤掉头发/眼睛/嘴唇，只用真肤色","explain":"77<Cb<127, 133<Cr<173 是经典肤色范围。"},
+    {"id":"q4","type":"choice","prompt":"双白平衡（Dual WB）的核心？","options":["两个 LED","前景区用 LED gain、背景区用环境光 gain","两次 AWB","两个 sensor"],"answer":"前景区用 LED gain、背景区用环境光 gain","explain":"闪光灯只照前景，前景背景需要不同 gain 处理。"},
+    {"id":"q5","type":"choice","prompt":"双摄 AWB 同步副摄怎么处理？","options":["完全独立","跟随主摄 cct，gain 按本 sensor OTP 校准","完全照抄","用 AI"],"answer":"跟随主摄 cct，gain 按本 sensor OTP 校准","explain":"cct 是物理量跨 sensor 一致，gain 需 sensor 专属。"},
+    {"id":"q6","type":"choice","prompt":"Reverse Sync 解决什么？","options":["切换更快","切回主摄时主摄用副摄最新 cct，避免画面渐变","节能","降噪"],"answer":"切回主摄时主摄用副摄最新 cct，避免画面渐变","explain":"避免「切回主摄后画面慢慢调」的体验问题。"},
+    {"id":"q7","type":"choice","prompt":"TGA 三角形定义什么？","options":["参考点","用户审美可接受的色温范围（冷/中性/暖三顶点）","CCM 区域","sensor 范围"],"answer":"用户审美可接受的色温范围（冷/中性/暖三顶点）","explain":"AWB gain 落在三角形外 → 投影到最近边。warm 顶点决定钨丝灯下保留多少温度。"},
+    {"id":"q8","type":"choice","prompt":"Smart Convergence 的核心机制？","options":["固定 α","按 LWV 距离动态调 α（变化大快、变化小慢）","加快收敛","降噪"],"answer":"按 LWV 距离动态调 α（变化大快、变化小慢）","explain":"4 档自适应 damping。让画面绝对稳 + 真实变化时快响应。"},
+    {"id":"q9","type":"choice","prompt":"FCM 什么时候启用？","options":["总是","测试场景下，禁用风格化让色彩严格匹配标准","闪光时","录像时"],"answer":"测试场景下，禁用风格化让色彩严格匹配标准","explain":"ISO 测试要求中性，FCM 让风格 + 测试两得。"},
+    {"id":"q10","type":"choice","prompt":"Bias Compensation 修正什么？","options":["用户偏好","sensor 在「两个 OTP 标定点之间」的非线性偏移","算法 bug","AI 误差"],"answer":"sensor 在「两个 OTP 标定点之间」的非线性偏移","explain":"OTP 内插点可能弯曲，Bias Table 加偏移修正。"},
+    {"id":"q11","type":"fill","prompt":"AWB 调教的 4 层是：算法层 / 校准层 / 场景层 / ___","answer":["风格层","风格"],"explain":"算法（DWV/LWV）+ 校准（OTP/Bias）+ 场景（AGW/FA/Flash）+ 风格（TGA/FCM）。"},
+    {"id":"q12","type":"fill","prompt":"AWB 调教参数总数大约 ___ 个","answer":["170","100-150","100-200"],"explain":"AWB 比 AE（200-400）少但更间接。"},
+    {"id":"q13","type":"fill","prompt":"印度市场肤色偏深，FA skin_prior_rg 应调到约 ___","answer":["1.28","1.25","1.28-1.30"],"explain":"中国默认 1.20，印度 1.28，欧美 1.22。本地化调整。"},
+    {"id":"q14","type":"short","prompt":"默写 AGW 处理混合光源（钨丝 + 窗外日光）的完整流程。","referenceAnswer":"1) 64×48 块按 RG/BG 位置分到 warm/neutral/cool zone；2) 每 zone 独立计算平均 R/G/B，得各 zone 光源估计；3) 输出多峰 LWV（warm zone 贡献钨丝参考点 + cool zone 贡献 D65）；4) Decision Aggregator 检测到混合光源（main + auxiliary 都有效）→ is_mixed_lighting=true；5) 应对：mixed_correction_strength=0.7（修正减弱 30%），让钨丝区不过修 + 窗户区不过冷；6) 旗舰用 Local WB 让两区域分别用不同 gain。这是处理客厅人像「钨丝灯 + 窗外」典型场景的方案。"},
+    {"id":"q15","type":"short","prompt":"用 AWB 视角分析「自拍肤色偏白」场景。","referenceAnswer":"原因：FA skin_prior_rg 设太大（如 1.20），但用户实际肤色偏冷偏白（RG≈1.16）。FA 把「真实白皙」的肤色当「偏暖」 → 估出光源偏暖 → 加偏冷 gain → 看起来更白。修：1) 减小 skin_prior_rg（1.20 → 1.16）让 FA 把更冷的肤色当「正常」；2) 或专门给中国市场配本地化参数；3) 或减弱 fa_lwv_weight 让其他算法主导。这是「肤色先验地区差异」的工程问题，解决靠数据驱动的本地化标定。"}
+  ]
+}

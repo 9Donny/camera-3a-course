@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-38",
+  "title": "Day 38 日测：AWB Flash 闪光灯白平衡",
+  "module": "M4",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "闪光灯下 AWB 三大挑战？",
+      "options": [
+        "亮度太亮",
+        "色温瞬变 + LED 色温变量 + 只照前景",
+        "sensor 过曝",
+        "色彩饱和"
+      ],
+      "answer": "色温瞬变 + LED 色温变量 + 只照前景",
+      "explain": "闪光瞬间色温从环境光（如 3000K）切到 LED+环境混合（5500K）。LED 色温本身可调（暖/冷比例）。LED 衰减按距离平方反比，前景被照、背景没受影响。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "双白平衡（Dual WB）的核心思路？",
+      "options": [
+        "用两个 LED",
+        "前景区用 LED gain、背景区用环境光 gain，过渡区内插",
+        "拍两张合成",
+        "两次 AWB 决策"
+      ],
+      "answer": "前景区用 LED gain、背景区用环境光 gain，过渡区内插",
+      "explain": "AWB 必须按区域用不同 gain，让前景被 LED 校准 + 背景保留环境色调。旗舰才支持 Local WB。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "前景检测的核心方法？",
+      "options": [
+        "Face 检测",
+        "对比预闪前 vs 预闪中亮度，亮度大幅增加 = 前景",
+        "深度检测",
+        "颜色识别"
+      ],
+      "answer": "对比预闪前 vs 预闪中亮度，亮度大幅增加 = 前景",
+      "explain": "LED 照到的块亮度大幅上升（30%+），LED 照不到的块几乎没变。这是预闪测光的核心作用。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: 中端机型不支持 Local WB 时，用「___ 加权全局 gain」折中",
+      "answer": [
+        "前景占比",
+        "前景",
+        "foreground"
+      ],
+      "explain": "按前景块占比加权 LED gain 和 ambient gain。前景占多 → 偏 LED；前景占少 → 偏 ambient。两边都不完美但都凑合。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "Precision Flash 流程里 Pre-Flash 同时做哪几件事？",
+      "referenceAnswer": "Pre-Flash 50ms 弱光期间同时做：1) AE 测光（算主闪需要的强度）；2) AWB 双 WB（识别前景/背景区，分别算 LED gain 和 ambient gain）；3) AF 用 LED 照亮的画面重新对焦（Face ROI 优先）；4) Flash 算 LED 暖冷比例（让 LED 跟随环境色温避免突变）。所有决策在 Pre-Flash 阶段完成，主闪触发时直接应用 → 预测式 AWB。"
+    }
+  ]
+}

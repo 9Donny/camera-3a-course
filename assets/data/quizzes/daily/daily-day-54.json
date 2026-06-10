@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-54",
+  "title": "Day 54 日测：模拟面试 1 - AE 流程类",
+  "module": "M7",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "PRD-Q1 AE 算法 3 步流程？",
+      "options": [
+        "启动 / 运行 / 停止",
+        "亮度获取 / 计算 Target / 曝光调节",
+        "输入 / 处理 / 输出",
+        "测光 / 决策 / 拍照"
+      ],
+      "answer": "亮度获取 / 计算 Target / 曝光调节",
+      "explain": "三步分别对应 64×48 加权得 final_luma → safe_target 推导 → 写 sensor。这是 AE 类面试的入门题。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "PRD-Q5 lux_index 公式三项？",
+      "options": [
+        "基准 / 增益 / 亮度",
+        "基准 + log2(曝光偏差) + log2(亮度偏差)",
+        "曝光时间 + ISO + 数字增益",
+        "luma_target + 修正 + 偏移"
+      ],
+      "answer": "基准 + log2(曝光偏差) + log2(亮度偏差)",
+      "explain": "反馈控制：看「当前曝光的反应」反推「环境到底多亮」。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "PRD-Q15 safe_target 三步？",
+      "options": [
+        "基础 / 修正 / 限幅",
+        "luma_target → adjusted_target（加 Scene 修正）→ safe_target（减 ADRC 预扣）",
+        "输入 / 处理 / 输出",
+        "开始 / 中间 / 结束"
+      ],
+      "answer": "luma_target → adjusted_target（加 Scene 修正）→ safe_target（减 ADRC 预扣）",
+      "explain": "最高频面试题。必背。让 AE 和 ADRC 协同避免过曝。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: AE 一帧最多调 ___ EV（曝光 ×2 + ISO ×2 = 4 倍亮度）",
+      "answer": [
+        "2",
+        "2.0",
+        "两"
+      ],
+      "explain": "物理限幅。AE 收敛要分多帧。这是 damping + settle 机制的物理基础。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "默写 AE 算法完整流程（含 8 子步）。",
+      "referenceAnswer": "第一步亮度获取：1) OB/LSC 处理；2) 64×48 块统计 (Y, R, G, B)；3) 中心测光权重 + ROI 加权得 final_luma。第二步计算 Target：4) luma_target 按 lux 查表（基础值 80）；5) 10 个 Scene Analyzer 修正得 adjusted_target；6) 减 ADRC 预扣得 safe_target。第三步曝光调节：7) lux_index 公式 → exp_index 查表 → 曝光表得 linecount + gain_index → 写 sensor 寄存器（Coarse Time + Analog Gain）；8) damping 平滑 + Antibanding 吸附（曝光时间锁 50/60Hz 整数倍）。整个流程一帧 33ms 完成。"
+    }
+  ]
+}

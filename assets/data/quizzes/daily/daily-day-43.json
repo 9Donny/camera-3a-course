@@ -1,0 +1,63 @@
+{
+  "id": "daily-day-43",
+  "title": "Day 43 日测：AF 总览 + 三种模式",
+  "module": "M5",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "AF 三种主要模式？",
+      "options": [
+        "全自动 / 半自动 / 手动",
+        "CAF（反差对焦）/ PDAF（相位对焦）/ ToF Depth AF（深度对焦）",
+        "单点 / 多点 / 智能",
+        "单次 / 连续 / 跟踪"
+      ],
+      "answer": "CAF（反差对焦）/ PDAF（相位对焦）/ ToF Depth AF（深度对焦）",
+      "explain": "CAF 用对比度爬山法；PDAF 用 sensor 内特殊像素直接算视差；ToF 用红外测距。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "CAF 的核心算法是？",
+      "options": [
+        "梯度下降",
+        "爬山法（粗-细两阶段搜索）",
+        "深度学习",
+        "遍历搜索"
+      ],
+      "answer": "爬山法（粗-细两阶段搜索）",
+      "explain": "每个位置算清晰度（Sobel/Laplacian），找最高分。粗搜索大步长 + 细搜索小步长。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "PDAF 的优势？",
+      "options": [
+        "硬件便宜",
+        "一帧到位（不用爬山）+ 暗光相对稳",
+        "纯色场景仍工作",
+        "远距离精度高"
+      ],
+      "answer": "一帧到位（不用爬山）+ 暗光相对稳",
+      "explain": "sensor 内特殊像素读出视差直接算焦点偏移。1-2 帧 vs CAF 的 8-15 帧，快 5 倍。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: VCM 用 ___ 控制电流大小，决定镜头位置（10-bit 1024 个位置）",
+      "answer": [
+        "DAC",
+        "数模转换"
+      ],
+      "explain": "AF 算法输出 DAC 值（0-1023），VCM 线圈电流让镜头到对应位置。每个 VCM 出厂 OTP 标定。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "现代旗舰手机的 AF「三件套」是什么？为什么这么组合？",
+      "referenceAnswer": "PDAF + CAF + ToF 三件套：1) ToF 一帧测距 → 大致定位（~10ms）；2) PDAF 一帧 → 精修方向（~30ms）；3) CAF 1-2 帧 → 精修最终位置（~60ms）。总 100-150ms 搞定。组合原因：ToF 弱光最稳但远距离差；PDAF 快但纯色失效；CAF 通用但慢。三者互补覆盖各种场景。中端机型只有 PDAF + CAF。"
+    }
+  ]
+}

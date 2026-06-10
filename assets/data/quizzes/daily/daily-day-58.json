@@ -1,0 +1,66 @@
+{
+  "id": "daily-day-58",
+  "title": "Day 58 日测：模拟面试 5 - PRD Q20-Q23",
+  "module": "M7",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "PRD-Q20 闪光过曝排查？",
+      "options": [
+        "只看一个原因",
+        "Pre-Flash 强度估算错 / 双 LED 比例偏激 / AE 没考虑 Flash / 背景过曝",
+        "sensor 坏了",
+        "软件 bug"
+      ],
+      "answer": "Pre-Flash 强度估算错 / 双 LED 比例偏激 / AE 没考虑 Flash / 背景过曝",
+      "explain": "4 种可能原因。最常见 Pre-Flash 估算偏高 → 调 main_flash_intensity_curve。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "PRD-Q21 Video 拍人脸偏亮？",
+      "options": [
+        "关闭人脸检测",
+        "降低 video 模式 face_roi_weight + 增强 Face Analyzer 过亮修正 + 动态权重 + video 专属配置",
+        "关闭闪光",
+        "降低分辨率"
+      ],
+      "answer": "降低 video 模式 face_roi_weight + 增强 Face Analyzer 过亮修正 + 动态权重 + video 专属配置",
+      "explain": "4 种解决思路。实际工程：方案 1+4 组合（video 模式 face_roi_weight 偏低 + 减弱 Face Analyzer 影响）。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "PRD-Q22 flux 越大越暗？",
+      "options": [
+        "物理通量",
+        "flux 是工程参数（Pre-Flash 阈值）：越大触发主闪强度越保守 → 实际打闪较弱 → 画面较暗",
+        "sensor 反应",
+        "算法 bug"
+      ],
+      "answer": "flux 是工程参数（Pre-Flash 阈值）：越大触发主闪强度越保守 → 实际打闪较弱 → 画面较暗",
+      "explain": "反直觉但有道理：flux 是「保护参数」，避免过度打闪。具体含义看公司 tuning 文档定义。"
+    },
+    {
+      "id": "q4",
+      "type": "choice",
+      "prompt": "PRD-Q23 Metering 两模块（与 Q18 重复）？",
+      "options": [
+        "只有 AE",
+        "AE 数据统计模块 + evtable 曝光表",
+        "只有 AWB",
+        "一个"
+      ],
+      "answer": "AE 数据统计模块 + evtable 曝光表",
+      "explain": "PRD 重复出题强调重要性。一定要熟练答出。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "行为题：「为什么转行 Camera Tuning？」答题模板？",
+      "referenceAnswer": "用真实经历 + 4 个支撑：1) 个人兴趣（喜欢摄影 / 对色彩敏感）；2) 职业匹配（耐心 / 审美 / 工程能力 / 测试经验）；3) 行业前景（手机摄影持续创新 / 计算摄影机会）；4) 行动证据（自学 60 天 + 看高通 PDF + 答 PRD 23 题）。例：「我做了 X 年手机测试，期间发现自己对算法层特别感兴趣。妹妹做高通 Tuning 后我深入了解，发现我有耐心 + 审美 + 工程能力。为转行自学 60 天 Camera 3A 课程，现在能完整答 PRD 23 题。我相信能在新岗位快速上手。」"
+    }
+  ]
+}

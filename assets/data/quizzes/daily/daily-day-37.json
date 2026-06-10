@@ -1,0 +1,65 @@
+{
+  "id": "daily-day-37",
+  "title": "Day 37 日测：FA 人脸辅助 AWB",
+  "module": "M4",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "FA（Face Assist）的核心想法？",
+      "options": [
+        "用人脸检测精度提升 AWB",
+        "用人脸肤色作为「色彩锚点」反推光源",
+        "只在自拍时启用",
+        "和 AE Face ROI 完全相同"
+      ],
+      "answer": "用人脸肤色作为「色彩锚点」反推光源",
+      "explain": "肤色有相对稳定的先验范围（RG≈1.20, BG≈0.62），从观测肤色和先验偏差反推光源。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "YCbCr 肤色规则的作用是？",
+      "options": [
+        "人脸识别",
+        "在 face_box 里过滤掉头发/眼睛/嘴唇，只用真肤色",
+        "颜色空间转换",
+        "美颜算法"
+      ],
+      "answer": "在 face_box 里过滤掉头发/眼睛/嘴唇，只用真肤色",
+      "explain": "face box 里很多非肤色像素干扰 FA。YCbCr 规则（77<Cb<127, 133<Cr<173）过滤出真肤色。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "FA confidence 的 4 个因子？",
+      "options": [
+        "亮度、对比度、清晰度、色度",
+        "人脸大小、肤色像素数、检测置信度、朝向",
+        "姿态、表情、性别、年龄",
+        "光照、距离、角度、模糊度"
+      ],
+      "answer": "人脸大小、肤色像素数、检测置信度、朝向",
+      "explain": "4 个因子相乘得到 FA confidence。脸大、正脸、肤色完整 → confidence 高。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: 印度市场肤色偏深，FA 的 ___ 参数应该本地化调整",
+      "answer": [
+        "skin_prior",
+        "skin_prior_rg",
+        "肤色先验",
+        "skin_prior_rg/bg"
+      ],
+      "explain": "中国默认 skin_prior_rg=1.20，印度调到 1.28（适配深肤色），让 FA 把更深的肤色当「正常」。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "「亚洲女性自拍偏黄」怎么排查 + 修？",
+      "referenceAnswer": "排查：默认 skin_prior_rg=1.20 是全球默认，但中国女性肤色偏白偏冷（R/G≈1.15-1.18）。FA 把「真实白皙」的肤色当「正常」 → 估出光源偏暖 → 加偏暖 gain → 看起来更黄。修：中国市场专用 skin_prior_rg=1.16；或美颜模式时拉 RGB Gain 整体偏冷。"
+    }
+  ]
+}

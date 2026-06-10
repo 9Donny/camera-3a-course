@@ -1,0 +1,49 @@
+{
+  "id": "day-60",
+  "week": 8,
+  "module": "M7",
+  "title": "Day 60：最终冲刺 + 60 天总结",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "60 天的回顾",
+      "type": "concept",
+      "content": "### 你走过的路\n\n```\nDay 1-7（Week 1）：光学硬件\n  曝光三要素 → Bayer → CMOS → 镜头 → 快门 → 闪光灯\n  从 0 学到看懂硬件原理\n\nDay 8-14（Week 2）：ISP Pipeline\n  22 模块流水线 → Spectra 架构 → 各模块作用\n  能画完整 ISP 流程图\n\nDay 15-21（Week 3）：AEC 第一阶段\n  AE 总览 → 64×48 → lux_index → target → 收敛 → Bright/Dark Region\n  能答 PRD-Q1/Q5/Q15/Q17/Q19\n\nDay 22-28（Week 4）：AEC 第二阶段\n  10 个 Scene Analyzer → ADRC → 3-EXP HDR → 多摄 AEC\n  能答 PRD-Q10/Q18/Q21/Q23（共 13 道 AE 类题）\n\nDay 29-35（Week 5）：AWB 第一阶段\n  AWB 总览 → OTP → 参考点 → LWV/DWV → 决策聚合\n  完整 AWB 算法流程\n\nDay 36-42（Week 6）：AWB 第二阶段\n  AGW → FA → AWB Flash → 多摄同步 → TGA + Smart Conv → FCM\n  能答 14 道 AWB 类面试题\n\nDay 43-49（Week 7）：AF + Flash + Flicker\n  CAF → PDAF → ToF → AF 收敛 → Precision Flash → Auto Flicker\n  完整 AF + Flash + Flicker 知识\n\nDay 50-58（Week 8 前半）：色彩 + 工具 + 模拟面试\n  色彩科学 → Chromatix → 多摄一致性 → 5 场模拟面试\n  PRD 23 题完整答辩\n\nDay 59-60：简历 + 上路\n  简历润色 + 心态调整\n```\n\n这是 60 天的全部。\n\n### 你拥有的能力\n\n**硬实力：**\n\n```\n✅ 看懂高通 7.0 + 10 Deep Dive PDF（~250 页）\n✅ 答出 PRD 23 道核心面试题（90% 以上）\n✅ 答出 30+ 行业相关题（AWB / AF / Flash / Flicker / 色彩）\n✅ 答出软实力问题（转行 / 学习 / 5 年规划）\n✅ 用 Chromatix 做基础调教\n✅ 知道 Camera Tuning 工程师工作流程\n✅ 165 个核心概念 + 200+ 张记忆卡\n```\n\n**软实力：**\n\n```\n✅ 学习能力（60 天系统学习的证据）\n✅ 工程方法（标定 / 测试 / 迭代）\n✅ 跨团队思维（AE/AWB/AF 协同）\n✅ 行业视野（计算摄影 / AI / 跨平台）\n```\n\n### 你跟没学的人的差距\n\n```\n没学过的人：\n  - 听到 AE/AWB/AF 一脸懵\n  - 不知道 64×48 / lux_index / LWV / CCM\n  - 不会调 Chromatix\n  - 看不懂高通 PDF\n  - 面试 PRD 题答不出\n\n你（学完 60 天）：\n  - 完整理解 3A 算法\n  - 知道每个参数含义\n  - 看 Chromatix 不迷糊\n  - 能用专业术语沟通\n  - 答出 PRD 23 题\n```\n\n这是 60 天换来的「**质变**」。",
+      "glossary": []
+    },
+    {
+      "id": "s2",
+      "title": "60 天最重要的 10 个 takeaways",
+      "type": "concept",
+      "content": "### 这 10 个是面试 + 工作的「**金子**」\n\n**1. AE 算法 3 步流程**：亮度获取 → 计算 Target → 曝光调节\n\n这是 PRD-Q1 的标准答案。基础但**必须流畅**。\n\n**2. safe_target 三步推导**：\n\n```\nluma_target → adjusted_target (加 Scene 修正) → safe_target (减 ADRC 预扣)\n```\n\nPRD-Q15 的核心。**必背**。\n\n**3. lux_index 公式**：\n\n```\nlux_index = 基准 + log2(曝光偏差) + log2(亮度偏差)\n```\n\nPRD-Q5 的核心。**必背**。\n\n**4. 64×48 + 中心测光 + ROI 加权**：\n\nPRD-Q17 的标准答案。AE 的输入基础。\n\n**5. 10 个 Scene Analyzer**：\n\n```\nBrighten / Saturation Prevention（priority 90 最高）/\nDark Prevention / Extreme Color / Face / Touch /\nSaliency / Depth / Frame Average / LLS（priority 85）\n```\n\n**「保护 > 增强」哲学**：Saturation Prevention > Brighten。\n\n**6. AWB 完整流程**：\n\n```\n64×48 → DWV → current → LWV → 聚合 → 时序 → 异常 → \nTGA → FCM → Bias → Smart Conv → 多摄同步 → 写 ISP\n```\n\nWeek 5+6 的全部。\n\n**7. AWB 4 个核心数据结构**：\n\n```\nDWV：3072 维（每块权重）\nLWV：8-15 维（参考点概率）\nReference Points：每个含 (cct, rg, bg, prior_weight)\nMLC 多边形：5-10 顶点（有效色温区域）\n```\n\n**8. Precision Flash 400ms 流程**：\n\n```\nT+0：用户按下 → T+20：Pre-Flash 测光 → T+100：等待 → \nT+200：主闪 + 曝光 → T+250：ISP → T+400：JPEG\n```\n\nDay 47 的核心。\n\n**9. AF 三种模式**：\n\n```\nCAF（爬山法，慢但通用）\nPDAF（相位检测，一帧到位）\nToF Depth AF（红外测距，弱光最稳）\n```\n\n现代手机 PDAF + CAF + ToF 三件套。\n\n**10. Tuning 调教 4 层（AWB 视角，AE 类似）**：\n\n```\n算法层（DWV / LWV）\n校准层（OTP / Bias Compensation）\n场景层（AGW / FA / Flash）\n风格层（TGA / FCM）\n```\n\n这是 Tuning 工程师的「**思维框架**」。\n\n### 这 10 个是你面试的「**核心货**」\n\n面试时只要这 10 个答得流畅 + 关键词精确，**80% 的面试题都能应付**。\n\n剩下 20% 的细节题（如「**Gr/Gb 区别**」「**flux 反直觉**」）作为加分项。\n\n### 60 天可能没覆盖到的\n\n```\n- Camera HAL 接口细节（驱动层）\n- 高通 SOC 的具体寄存器\n- 不同 sensor 厂家的 OTP 格式差异\n- ROM/Firmware 烧录流程\n- 手机量产线的 QA 流程\n- 摄影构图艺术（用户体验）\n```\n\n这些**项目实操才学**。入职后跟前辈学 1-3 个月即可。",
+      "glossary": []
+    },
+    {
+      "id": "s3",
+      "title": "上路前的最后准备",
+      "type": "concept",
+      "content": "### 投递简历策略\n\n**目标公司分级**：\n\n```\nA 级（一线大厂，难进）：\n  - 小米、华为、OPPO、vivo\n  - 通过率 5-10%\n  - 投 2-3 家\n\nB 级（二线，相对容易）：\n  - 中兴、TCL、魅族、Realme\n  - 通过率 15-25%\n  - 投 5-8 家\n\nC 级（中小厂，最容易）：\n  - 杂牌手机厂家\n  - 通过率 30-50%\n  - 投 5-10 家\n```\n\n**策略**：B 级先入职 → 1-2 年经验 → 跳 A 级。**不要**只投 A 级。\n\n### 投递渠道\n\n```\n猎头（最有效）：\n  - 1.5x 工资是常见承诺\n  - 让猎头帮包装简历\n  - 5-7 个猎头同时投\n\n内推（次有效）：\n  - 让妹妹帮内推（如果可能）\n  - LinkedIn / 朋友圈找前同事\n  - 内推通过率比海投高 3-5 倍\n\n海投（兜底）：\n  - 招聘网站（拉勾 / Boss / 智联）\n  - 公司官网\n  - 通过率低（< 5%）但量大\n```\n\n3 个渠道同时投。\n\n### 面试准备\n\n第一次面试前：\n\n```\n☐ Day 54-58 模拟面试再过一遍\n☐ 简历最终版定稿\n☐ 6 道行为题答案打印\n☐ 反问问题准备好\n☐ 公司背景调研（1 小时）\n☐ 衣服 / 设备 / 简历准备\n```\n\n面试后：\n\n```\n☐ 记下面试官问题\n☐ 写感谢邮件\n☐ 复盘弱点\n☐ 等结果（一般 1-2 周）\n```\n\n### 心态\n\n```\n第 1-3 次面试：紧张 + 答砸（正常）\n第 4-6 次面试：渐入佳境\n第 7-10 次面试：基本能拿 offer\n```\n\n面试是**练出来的技能**。前几次答砸**是必经过程**。\n\n### 拿到 offer 后\n\n谈薪：\n\n```\n你的预期：[X] 万\n  - 基于市场行情（初级 30-50 万）\n  - 基于你的经验（3 年测试 + 60 天学习）\n  - 高 10-20% 试探（HR 通常砍价）\n\n如果 offer 偏低：\n  - 礼貌讨价（说有其他 offer / 同行水平）\n  - 不一定加薪但能要其他（年假 / 远程 / 设备）\n  - 极端低就拒绝（找下一个）\n```\n\n### 入职后\n\n第 1-3 个月：\n\n```\n☐ 跟着前辈学 Chromatix 操作\n☐ 看公司内部 wiki / 项目文档\n☐ 跟 sensor 厂家技术对接\n☐ 跟着前辈做小改动（不主导调教）\n☐ 主动问 + 主动学\n```\n\n3 个月后能独立调一个简单场景。1 年后能独立调一个 sensor。\n\n### 长期\n\n```\n1 年：初级 → 巩固基础\n2-3 年：跳一线 / 升中级\n3-5 年：高级 + 跨平台经验\n5+ 年：影响产品方向\n```\n\n这是你的 5 年路线。",
+      "glossary": []
+    },
+    {
+      "id": "s4",
+      "title": "60 天结业 + 鼓励",
+      "type": "concept",
+      "content": "### 你做到了\n\n60 天前你：\n- 不知道 AE/AWB/AF 是什么\n- 看不懂 lux_index 的公式\n- 听到 LWV / DWV 一脸懵\n- 不知道 Tuning 工程师每天做什么\n\n60 天后你：\n- 完整理解 3A 算法\n- 答出 PRD 23 题\n- 知道 Tuning 工程师工作流\n- 准备好简历 + 心态\n\n这是「**质变**」。\n\n### 你比 80% 的转行人走得远\n\n大多数转行人：\n- 看几篇博客就停\n- 不做系统学习\n- 没真实代码 / 工具实操\n- 简历只写「**意向 Camera Tuning**」\n- 面试时无话可说\n\n你不一样：\n- **60 天系统学习**\n- **Chromatix 实操**\n- **PRD 23 题答辩**\n- **简历有「**60 天学习项目**」量化指标**\n- **面试有专业术语和深度**\n\n这种**真实努力**会被 HR 看到。\n\n### 给你的建议\n\n**1. 自信但不傲慢**\n\n你做到 60 天系统学习是真本事，但你**仍是初级工程师**。面试时：\n\n- 自信地讲你学的内容\n- 谦虚地说不懂的部分\n- 主动表达「**入职后会快速学**」\n\n**2. 不要等「**完全准备好**」才投**\n\n没人完全准备好。你现在能答 PRD 80% + 行为题准备好 = **可以投了**。\n\n投完 5-10 家后，根据面试反馈再调。**实战是最好的学习**。\n\n**3. 接受拒绝**\n\n第 1-3 次面试可能被刷。这是正常的。\n\n```\n失败的不是你，是「**特定公司 + 特定时机**」的不匹配\n下一次面试是新的开始\n```\n\n保持心态稳定。\n\n**4. 持续学习**\n\n入职后还要继续学：\n- 公司项目特定知识\n- 新算法 + AI\n- 跨平台经验\n- 行业趋势\n\nCamera 是「**长期学习**」的领域。60 天只是起点。\n\n**5. 享受过程**\n\n摄影是有趣的，色彩是美的。**Camera Tuning 工程师的乐趣**：\n\n- 看用户用你调的相机拍照\n- 朋友圈晒「**你调出来的色彩**」\n- 跟前辈讨论复杂场景\n- 调好一个 bug 的成就感\n- 用专业知识帮家人选手机\n\n这些是工作之外的「**福利**」。\n\n### 60 天的总结\n\n```\n```\n```\n你做到了。继续走。\n```\n\n### 一份「**结业证书**」（自己签）\n\n```\n  ╔════════════════════════════╗\n  ║                            ║\n  ║    Camera 3A 60 天结业证书   ║\n  ║                            ║\n  ║  [你的名字] 完成了 60 天     ║\n  ║  系统学习 Camera 3A 算法     ║\n  ║                            ║\n  ║  能力达标：                  ║\n  ║  ✓ PRD 23 题完整答辩          ║\n  ║  ✓ 高通 PDF 250 页阅读        ║\n  ║  ✓ Chromatix 工具基础         ║\n  ║  ✓ 5 场模拟面试通过           ║\n  ║                            ║\n  ║  下一步：找 Tuning 工程师工作 ║\n  ║                            ║\n  ║  日期：[完成日期]             ║\n  ║                            ║\n  ╚════════════════════════════╝\n```\n\n打印出来贴墙上。\n\n### 谢谢\n\n谢谢你坚持 60 天。这是你给自己的礼物。\n\n往前走 :)",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 60 天的最后 takeaway\n\n1. **60 天学完整 3A 算法**：从 0 到能答 PRD 23 题\n2. **10 个核心 takeaway**：AE 流程 / safe_target / lux_index / 64×48 / 10 Analyzer / AWB 流程 / 数据结构 / Precision Flash / AF 三种 / 调教 4 层\n3. **投递简历策略**：分级（A/B/C），渠道（猎头/内推/海投）\n4. **面试是技能**：前几次答砸正常，5-10 次后能拿 offer\n5. **心态**：自信但不傲慢、接受拒绝、持续学习、享受过程\n\n### 你毕业了\n\n做完 60 天 = 「初级 Camera Tuning 工程师」能力。\n\n### 下一步\n\n```\n☐ 简历最终版定稿\n☐ 投递 10-15 家公司（A/B/C 级混合）\n☐ 准备 5 场面试（每周 1-2 场）\n☐ 拿到第一个 offer（1-2 个月内）\n☐ 入职 + 持续学习\n```\n\n### 课程结束语\n\n你已经做了「**绝大多数人做不到的事**」 —— 60 天系统学习一个全新领域，并准备好上岗。\n\n这种**学习能力 + 转行决心**会持续给你带来回报。不仅在 Tuning 工作上，在未来其他职业转型时也一样。\n\n谢谢你完成 60 天。\n\n现在，**出去找工作吧** :)",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "60 天全部 Day 内容" },
+    { "source": "PRD 23 题完整答案" }
+  ],
+  "dailyQuizId": "daily-day-60"
+}

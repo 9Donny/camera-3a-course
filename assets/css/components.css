@@ -525,6 +525,15 @@ details.extras > summary:hover {
   min-width: 140px;
 }
 .review-flip { width: 100%; }
+.review-shortcut-hint {
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
 .review-skip {
   margin-top: 24px;
   text-align: center;

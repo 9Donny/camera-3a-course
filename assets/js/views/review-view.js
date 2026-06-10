@@ -62,12 +62,13 @@ export function renderReview(content, { router }) {
 
         <div class="review-actions">
           ${!revealed ? `
-            <button class="btn review-flip" data-action="flip">翻面看答案 (Space)</button>
+            <button class="btn review-flip" data-action="flip" title="或按 Space 键">翻面看答案</button>
           ` : `
-            <button class="btn secondary review-rate" data-rate="forgot">😵 忘了 (1)</button>
-            <button class="btn secondary review-rate" data-rate="fuzzy">🤔 模糊 (2)</button>
-            <button class="btn review-rate" data-rate="known">😎 记得 (3)</button>
+            <button class="btn secondary review-rate" data-rate="forgot" title="或按数字键 1">😵 忘了</button>
+            <button class="btn secondary review-rate" data-rate="fuzzy" title="或按数字键 2">🤔 模糊</button>
+            <button class="btn review-rate" data-rate="known" title="或按数字键 3">😎 记得</button>
           `}
+          <div class="review-shortcut-hint">⌨️ 快捷键：Space 翻面 · 1 忘了 · 2 模糊 · 3 记得</div>
         </div>
 
         <div class="review-skip">

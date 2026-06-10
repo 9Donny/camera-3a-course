@@ -1,0 +1,303 @@
+[
+  {
+    "id": "fc-w6-01",
+    "front": "AGW（Advanced Gray World）核心改进？",
+    "back": "把 RG-BG 平面分多个 zone（warm/neutral/cool），每 zone 独立运行灰世界再综合。处理混合光源场景（钨丝灯 + 窗外日光）。",
+    "tags": [
+      "Day 36",
+      "AGW",
+      "AWB"
+    ],
+    "srcDay": "day-36"
+  },
+  {
+    "id": "fc-w6-02",
+    "front": "AGW 输出的 LWV 特点？",
+    "back": "多峰分布（多个参考点同时有概率），反映混合光源。单峰 LWV 是单一光源场景。",
+    "tags": [
+      "Day 36",
+      "LWV"
+    ],
+    "srcDay": "day-36"
+  },
+  {
+    "id": "fc-w6-03",
+    "front": "FA（Face Assist）AWB 的核心想法？",
+    "back": "用人脸肤色作为「色彩锚点」反推光源。肤色有相对稳定的先验范围（RG≈1.20, BG≈0.62）。",
+    "tags": [
+      "Day 37",
+      "FA"
+    ],
+    "srcDay": "day-37"
+  },
+  {
+    "id": "fc-w6-04",
+    "front": "YCbCr 肤色规则？",
+    "back": "77<Cb<127, 133<Cr<173 是经典肤色范围。在 face_box 里过滤掉头发/眼睛/嘴唇，只用真肤色。",
+    "tags": [
+      "Day 37",
+      "YCbCr"
+    ],
+    "srcDay": "day-37"
+  },
+  {
+    "id": "fc-w6-05",
+    "front": "FA confidence 的 4 个因子？",
+    "back": "人脸大小因子 + 肤色像素数 + 检测置信度 + 朝向。4 个因子相乘得 confidence。",
+    "tags": [
+      "Day 37",
+      "confidence"
+    ],
+    "srcDay": "day-37"
+  },
+  {
+    "id": "fc-w6-06",
+    "front": "印度市场肤色偏深，FA 怎么调？",
+    "back": "skin_prior_rg 调大（默认 1.20 → 1.28），让 FA 把更深肤色当「正常」。这是「肤色先验地区差异」。",
+    "tags": [
+      "Day 37",
+      "本地化"
+    ],
+    "srcDay": "day-37"
+  },
+  {
+    "id": "fc-w6-07",
+    "front": "双白平衡（Dual WB）的核心？",
+    "back": "前景区用 LED gain（5500K）、背景区用环境光 gain（如 3000K），过渡区内插。处理闪光灯只照前景的混合场景。",
+    "tags": [
+      "Day 38",
+      "Dual WB"
+    ],
+    "srcDay": "day-38"
+  },
+  {
+    "id": "fc-w6-08",
+    "front": "前景检测的核心方法？",
+    "back": "对比预闪前 vs 预闪中亮度。亮度大幅增加（30%+）= 前景；几乎没变 = 背景。这是 Pre-Flash 测光的核心作用。",
+    "tags": [
+      "Day 38",
+      "Foreground"
+    ],
+    "srcDay": "day-38"
+  },
+  {
+    "id": "fc-w6-09",
+    "front": "中端机型不支持 Local WB 怎么办？",
+    "back": "用「前景占比加权全局 gain」折中：按前景块占比加权 LED gain 和 ambient gain。两边都不完美但都凑合。",
+    "tags": [
+      "Day 38",
+      "Local WB"
+    ],
+    "srcDay": "day-38"
+  },
+  {
+    "id": "fc-w6-10",
+    "front": "双摄 AWB 比 AE 难同步的原因？",
+    "back": "sensor 颜色响应差异 + 不同视场看到不同画面 + CCM 联动。AE 只是 lux/target，AWB 涉及色彩多个维度。",
+    "tags": [
+      "Day 39",
+      "双摄"
+    ],
+    "srcDay": "day-39"
+  },
+  {
+    "id": "fc-w6-11",
+    "front": "副摄不能直接抄主摄 gain 的原因？",
+    "back": "同一 cct 在不同 sensor 上对应不同 RG/BG。cct 是物理量（跨 sensor 一致），gain 是 sensor 输出修正系数（每 sensor 不同，按 OTP 校准）。",
+    "tags": [
+      "Day 39",
+      "主从同步"
+    ],
+    "srcDay": "day-39"
+  },
+  {
+    "id": "fc-w6-12",
+    "front": "Reverse Sync 解决什么？",
+    "back": "切回主摄时主摄用副摄最新 cct，不用 NVRAM 旧值。避免画面渐变发暖（用户看到色调慢慢变）。",
+    "tags": [
+      "Day 39",
+      "Reverse Sync"
+    ],
+    "srcDay": "day-39"
+  },
+  {
+    "id": "fc-w6-13",
+    "front": "多摄一致性 4 个级别？",
+    "back": "A 旗舰（无感切换）/ B 高端（切换有感但流畅）/ C 中端（明显但可接受）/ D 中低端（突变）。中端项目目标 B/C 级。",
+    "tags": [
+      "Day 39",
+      "一致性"
+    ],
+    "srcDay": "day-39"
+  },
+  {
+    "id": "fc-w6-14",
+    "front": "TGA（Triangle Gain Adjustment）解决什么？",
+    "back": "「算法准确但用户不喜欢」的风格化需求。在 RG-BG 平面画三角形限制 gain，三角形外投影到最近边。让钨丝灯下保留温度感等。",
+    "tags": [
+      "Day 40",
+      "TGA"
+    ],
+    "srcDay": "day-40"
+  },
+  {
+    "id": "fc-w6-15",
+    "front": "TGA 三角形的三个顶点？",
+    "back": "冷端（如 D75 7500K）+ 中性（D65 6500K）+ 暖端（比真实钨丝略暖，~2400K）。定义产品「色彩底线」。",
+    "tags": [
+      "Day 40",
+      "三角形"
+    ],
+    "srcDay": "day-40"
+  },
+  {
+    "id": "fc-w6-16",
+    "front": "Smart Convergence 4 档自适应 α？",
+    "back": "距离 < 0.3 → α=0.05（极小变化稳定时）；< 1.0 → 0.20（标准）；< 3.0 → 0.50（光源切换）；≥ 3.0 → 0.80（剧变）。让画面绝对稳 + 真实变化时快响应。",
+    "tags": [
+      "Day 40",
+      "Smart Convergence"
+    ],
+    "srcDay": "day-40"
+  },
+  {
+    "id": "fc-w6-17",
+    "front": "FCM（Fixed Color Matching）什么时候用？",
+    "back": "测试场景下（标准光源 + 标准色卡）启用，禁用所有风格化（TGA/style_bias），让色彩严格匹配标准。让 ISO 测试 + 风格化两得。",
+    "tags": [
+      "Day 41",
+      "FCM"
+    ],
+    "srcDay": "day-41"
+  },
+  {
+    "id": "fc-w6-18",
+    "front": "FCM auto_detect 误识别会怎样？",
+    "back": "如把家里钨丝灯下的白墙当作色卡 → 启用 FCM → 钨丝灯被强行修中性 → 用户看到「画面冷且无温度」。所以要严格判定（多重条件）。",
+    "tags": [
+      "Day 41",
+      "FCM"
+    ],
+    "srcDay": "day-41"
+  },
+  {
+    "id": "fc-w6-19",
+    "front": "AWB Bias Compensation 修正什么？",
+    "back": "sensor 在「两个 OTP 标定点之间」的非线性。OTP 标定 D65/D50/A/H 4 点，两点间用线性内插但 sensor 实际响应可能弯曲。",
+    "tags": [
+      "Day 41",
+      "Bias"
+    ],
+    "srcDay": "day-41"
+  },
+  {
+    "id": "fc-w6-20",
+    "front": "AWB 调教 4 层结构？",
+    "back": "算法层（DWV/LWV/MLC）+ 校准层（OTP/Bias Compensation/CCM）+ 场景层（AGW/FA/Flash/多摄）+ 风格层（TGA/Smart Conv/FCM）。约 170 个参数。",
+    "tags": [
+      "Day 41",
+      "调教层"
+    ],
+    "srcDay": "day-41"
+  },
+  {
+    "id": "fc-w6-21",
+    "front": "AWB 完整流程的最后一步？",
+    "back": "写 ISP（WB module + CCM module）。WB 应用 R/G/B gain，CCM 按 cct 选 3×3 矩阵 + 内插。",
+    "tags": [
+      "Day 42",
+      "流程"
+    ],
+    "srcDay": "day-42"
+  },
+  {
+    "id": "fc-w6-22",
+    "front": "AWB 14 道面试题覆盖范围？",
+    "back": "AWB 流程 / 色温坐标系 / OTP / 灰世界 / 参考点 / LWV / DWV / MLC / 决策聚合 / AGW / FA / 双 WB / 多摄同步 / TGA / FCM / 风格化 vs 准确性。",
+    "tags": [
+      "Day 42",
+      "面试"
+    ],
+    "srcDay": "day-42"
+  },
+  {
+    "id": "fc-w6-23",
+    "front": "AWB 调教参数总数 vs AE？",
+    "back": "AWB ~170 个 / AE ~200-400 个。AWB 少但更间接（通过 LWV/DWV 影响色彩）。AE 多但每参数效果直观。",
+    "tags": [
+      "Day 42",
+      "参数"
+    ],
+    "srcDay": "day-42"
+  },
+  {
+    "id": "fc-w6-24",
+    "front": "风格 vs 准确的工程哲学？",
+    "back": "手机大多选风格化（用户体验优先），FCM 在测试场景切换到准确。完全准确的画面会让用户觉得「死板没氛围」，故意保留色温让用户感觉「自然」。",
+    "tags": [
+      "Day 42",
+      "哲学"
+    ],
+    "srcDay": "day-42"
+  },
+  {
+    "id": "fc-w6-25",
+    "front": "客厅人像（混合光源）调教重点？",
+    "back": "AGW 检测到混合光源 → mixed_correction_strength 0.7 让两边都凑合 + 时序平滑 window 增大避免色彩抖 + 旗舰启用 Local WB。",
+    "tags": [
+      "Day 36",
+      "客厅"
+    ],
+    "srcDay": "day-36"
+  },
+  {
+    "id": "fc-w6-26",
+    "front": "自拍偏黄怎么调？",
+    "back": "FA skin_prior_rg 调大（让 FA 把更黄肤色当「正常」 → 反向修暖）。或地区本地化（中国市场偏白调小）。",
+    "tags": [
+      "Day 37",
+      "自拍"
+    ],
+    "srcDay": "day-37"
+  },
+  {
+    "id": "fc-w6-27",
+    "front": "切换镜头画面突变怎么调？",
+    "back": "transition_frames 增大（30→60）+ 启用 Reverse Sync + CCM 同步 + 极端场景 long damping（cct 差 >1500K 时 60 帧）。",
+    "tags": [
+      "Day 39",
+      "切换"
+    ],
+    "srcDay": "day-39"
+  },
+  {
+    "id": "fc-w6-28",
+    "front": "录像中 AWB 抖怎么调？",
+    "back": "Smart Convergence 阈值调大（让小变化用更小 α）+ 多帧确认加强 + 时序平滑 window 增大 + alpha_small 减小。",
+    "tags": [
+      "Day 40",
+      "录像"
+    ],
+    "srcDay": "day-40"
+  },
+  {
+    "id": "fc-w6-29",
+    "front": "ISO 测试 ΔE > 5 怎么办？",
+    "back": "启用 FCM（测试场景禁用 style_bias）→ 让色彩严格匹配标准 → ΔE 降到 3。日常调教仍可保留风格。",
+    "tags": [
+      "Day 41",
+      "ISO 测试"
+    ],
+    "srcDay": "day-41"
+  },
+  {
+    "id": "fc-w6-30",
+    "front": "Tuning 工程师调 AWB 一个项目多久？",
+    "back": "约 6 个月。Month 1 标定 → 2 单摄调教 → 3 多摄一致性 → 4 风格化 → 5 测试 + 修补 → 6 上线 + 用户反馈迭代。",
+    "tags": [
+      "Day 42",
+      "项目"
+    ],
+    "srcDay": "day-42"
+  }
+]

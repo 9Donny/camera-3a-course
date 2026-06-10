@@ -1,0 +1,45 @@
+{
+  "id": "day-55",
+  "week": 8,
+  "module": "M7",
+  "title": "模拟面试 2：色彩 + TMC（PRD Q6-Q10）",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Q6：色彩相关",
+      "type": "example",
+      "content": "### 题目\n\n「**手机 ISP 的色彩处理涉及哪些模块？请说说**」\n\n### 思考要点\n\n色彩管线全流程 + 关键模块。\n\n### 参考答案\n\n> 手机 ISP 的色彩处理是一个完整管线，涉及 6 个核心模块：\n> \n> **1. WB（White Balance，白平衡）**：在 ISP 早期，对每像素三通道（R/G/B）乘不同 gain。AWB 算法估出光源色温后输出 R_gain/G_gain/B_gain，让画面里「白色物体」还原成中性白。\n> \n> **2. CCM（Color Correction Matrix，色彩矩阵）**：在 WB 之后。3×3 矩阵把 sensor 原生 RGB 转标准 sRGB（或 Display P3）色彩空间。每个色温配一组 CCM（D65/D50/A/H），实际 cct 在两档之间用线性内插。\n> \n> **3. Gamma 校正**：把 sensor 输出的「线性亮度」转「sRGB Gamma」（γ ≈ 2.2）。线性是物理量，Gamma 是人眼感知。\n> \n> **4. Tone Mapping**：把高动态范围（如 14-bit RAW）压到显示位深（8-bit JPEG）。GTM 全局曲线，LTM 局部曲线（旗舰用）。\n> \n> **5. ADRC（Adaptive Dynamic Range Compression）**：暗部加 gain 让暗部细节可见，亮部不动。简化的 LTM。\n> \n> **6. 后期色彩调整**：饱和度提升、对比度增强、肤色优化等。这是「风格化」环节。\n> \n> 这套管线决定了照片最终色彩。每个模块的参数都是 Tuning 工程师调教的对象。"
+    },
+    {
+      "id": "s2",
+      "title": "Q7：影响对比度的模块",
+      "type": "example",
+      "content": "### 题目\n\n「**ISP 里影响画面对比度的模块有哪些？请详细说**」\n\n### 思考要点\n\n对比度 = 亮度差异。多个模块影响。\n\n### 参考答案\n\n> ISP 里影响对比度的核心模块有 5 个：\n> \n> **1. Gamma 校正**\n> Gamma 是非线性曲线（γ ≈ 2.2），改变各亮度档位的输出值。Gamma 越大 → 暗部越暗 / 亮部越亮 → 对比度越强。Gamma 越小 → 对比度越弱。这是对比度的「**基础调节器**」。\n> \n> **2. Tone Mapping (GTM/LTM)**\n> Tone Mapping 把 14-bit 压到 8-bit 输出时，可以「**任意分配**」亮度档位。GTM 用全局曲线，LTM 用局部曲线。GTM 一条曲线决定整图对比度；LTM 不同区域用不同曲线（暗部加亮 + 亮部压低 → 整体对比度低 + 局部对比度高）。\n> \n> **3. ADRC（自适应动态范围压缩）**\n> 暗部加 gain，亮部不动。直接改暗-中亮区的对比度。\n> \n> **4. CCM 矩阵**\n> 矩阵的 9 个数也间接影响对比度。某些矩阵让色彩饱和度高（看起来对比度强）。\n> \n> **5. 锐化（Sharpening / USM）**\n> 锐化增加边缘对比度（局部高频）。强锐化让边缘像「**画的**」，对比度强。\n> \n> 这 5 个模块都是 Tuning 工程师调风格化时会动的。比如「**奶油风格**」（低对比 + 偏暖）会调 Gamma 小、Tone Mapping 平、锐化弱；「**通透风格**」相反。\n> \n> PRD 第 7 题答案就是这 5 个核心模块。"
+    },
+    {
+      "id": "s3",
+      "title": "Q8：曝光方程",
+      "type": "example",
+      "content": "### 题目\n\n「**默写曝光方程 + 解释每个变量含义**」\n\n### 思考要点\n\nDay 1 学过的核心方程。\n\n### 参考答案\n\n> 曝光方程：\n> \n> ```\n> AV + TV = BV + SV = EV\n> ```\n> \n> 各变量含义：\n> \n> - **AV (Aperture Value)**：光圈值。手机光圈固定（如 f/1.6 → AV ≈ 1.4），一般不调。\n> - **TV (Time Value)**：曝光时间。AE 调这个（如 1/30 秒）。\n> - **BV (Brightness Value)**：场景亮度（环境光强度的对数）。AWB / 用户控不了，是物理量。\n> - **SV (Sensitivity Value)**：sensor 感光度（ISO）。AE 调这个。\n> - **EV (Exposure Value)**：曝光值（最终结果）。EV = AV + TV，反映「相机吸入多少光」。\n> \n> 等式含义：\n> \n> > 相机吸光量（AV+TV）= 场景反射光量（BV+SV）= 最终曝光值（EV）\n> \n> 实际应用：用户场景 BV 是固定的（环境给定），AE 调 TV 和 SV 让 AV+TV = BV+SV → 画面正确曝光。\n> \n> 例如：\n> - 户外 BV=10, SV=ISO 100 → BV+SV = 12（参考曝光值）\n> - AE 选 TV=1/250 + 固定 AV=1.4 → AV+TV = 12 ✓\n> - 室内 BV=4, SV=ISO 100 → 6\n> - AE 选 TV=1/15 + 固定 AV=1.4 → 6 ✓\n> \n> EV 越大画面越亮。每差 1 EV 亮度差 2 倍。这是 lux_index、Antibanding 等所有 AE 参数的基础。"
+    },
+    {
+      "id": "s4",
+      "title": "Q9：LTM 算法 4 步 + Q10：TMC 4.0 vs 3.0",
+      "type": "example",
+      "content": "### 题 9：LTM 算法 4 步（PRD-Q9）\n\n**思考要点**：Day 12 学过的 LTM。\n\n**参考答案**：\n\n> LTM（Local Tone Mapping）局部色调映射，4 步流程：\n> \n> **1. 把图像分成多个块**：通常 64×48 或 128×96 网格。每块独立处理。\n> \n> **2. 算每块的「局部直方图」**：统计该块内亮度分布。\n> \n> **3. 给每块算「映射曲线」**：基于局部直方图的均衡化（histogram equalization）算每块的 Tone Mapping 曲线。暗块用「**陡曲线**」（拉亮）；亮块用「**平曲线**」（压暗或不动）。\n> \n> **4. 像素级内插应用**：每像素的 Tone Mapping 值基于「邻近块的曲线」内插（避免块边界突变）。\n> \n> 关键点：LTM **不同区域用不同曲线**。这是它比 GTM（全图一条曲线）好的根本原因 —— 暗部和亮部分别处理。\n> \n> 副作用：LTM 计算成本高（每帧都要算 N 个直方图 + 内插），中端 ISP 跑不起，所以中端用 GTM。\n\n### 题 10：TMC 4.0 vs 3.0（PRD-Q10）\n\n**参考答案**：\n\n> 7250 平台（SM7250 / 骁龙 765G 中端）用 TMC 3.0。和 4.0 区别：\n> \n> **1. 算法本质**：\n> - TMC 3.0：GTM（全局色调映射），整图共用一条曲线\n> - TMC 4.0：LTM（局部色调映射），按区域分块各自映射\n> \n> **2. 实现成本**：\n> - 3.0：计算简单（一条 LUT）\n> - 4.0：计算复杂（N 个块 + 内插），需要 NPU 协助\n> \n> **3. 效果**：\n> - 3.0：动态范围处理一般\n> - 4.0：动态范围处理精细，暗部和亮部分别优化\n> \n> **4. 调教成本**：\n> - 3.0：调一条曲线\n> - 4.0：调多条曲线 + 内插策略，工作量 3-5 倍\n> \n> **5. 平台对应**：\n> - TMC 3.0：SM7250 等中端\n> - TMC 4.0：SM8350+ 旗舰（骁龙 8 Gen 1 之后）\n> \n> 给面试官的 caveat：「具体平台版本可能因 BSP 而异，建议 verify 一下」。\n\n### 这场面试结束\n\n做完 Q6-Q10，你应该：\n\n- ✅ ISP 色彩管线 6 个模块流畅口述\n- ✅ 影响对比度的 5 个模块详细说\n- ✅ 曝光方程 + 每变量含义\n- ✅ LTM 4 步\n- ✅ TMC 3.0 vs 4.0 区别\n\n这是 ISP 类问题的核心。\n\n### 弱点排查\n\n如果答不出来：\n\n```\nQ6 → 重看 Day 8-13（Week 2 ISP 整章）\nQ7 → 重看 Day 13（影响对比度模块）\nQ8 → 重看 Day 1（曝光方程）\nQ9 → 重看 Day 12（LTM/GTM/ADRC）\nQ10 → 重看 Day 26（TMC 3.0/4.0）\n```\n\n这是「**模拟面试 → 学习反馈**」的循环。"
+    },
+    {
+      "id": "s5",
+      "title": "本日小结 + Day 55 进度",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **PRD Q6-Q10 全部完成**：色彩管线 + 对比度模块 + 曝光方程 + LTM 4 步 + TMC 3.0/4.0\n2. **ISP 类口语化复述**：色彩 / Tone Mapping / Gamma 流程能流畅说\n3. **平台版本认识**：7250 中端用 3.0，旗舰用 4.0\n\n### 自我检查\n\n1. ISP 色彩管线 6 模块你能口述吗？\n2. LTM 4 步你能默写吗？\n3. 曝光方程 AV+TV=BV+SV=EV 你理解每个变量吗？\n4. 哪几个模块影响对比度？\n\n### 笔记建议\n\n- 把 ISP 色彩管线图画一遍\n- 整理 PRD Q6-Q10 答题模板（**每题 1-2 分钟版本**）\n- 弱点重看：Q6→Day 8-13；Q9→Day 12；Q10→Day 26\n\n### 明天预告\n\nDay 56：模拟面试 3 - 曝光 + Target（PRD Q11-Q15）。\n\n```\nQ11：240fps 曝光时间\nQ12：高通曝光表（Day 5 + 16）\nQ13：TMC 作用\nQ14：Gamma vs LTM 优先级\nQ15：Safe target 推导 3 步\n```\n\n这一场是 AE 实战题。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "Day 8-13, Day 26 复习" },
+    { "source": "PRD-Q6 ~ PRD-Q10 真题" }
+  ],
+  "dailyQuizId": "daily-day-55"
+}

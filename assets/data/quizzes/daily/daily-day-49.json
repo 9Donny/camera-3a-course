@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-49",
+  "title": "Day 49 日测：Week 7 总结",
+  "module": "M5",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "AF + Flash + Flicker 三大主题的核心？",
+      "options": [
+        "都是相机基础",
+        "AF 是图像分析对焦；Flash 是 3A 协同最复杂场景；Flicker 是物理硬约束",
+        "互不相关",
+        "算法简单"
+      ],
+      "answer": "AF 是图像分析对焦；Flash 是 3A 协同最复杂场景；Flicker 是物理硬约束",
+      "explain": "AF 用图像（CAF）/ sensor 视差（PDAF）/ 红外（ToF）找焦点。Flash 触发让 AE/AWB/AF 都重决策。Flicker 是电网频率的物理特性。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "AF 调教参数比 AE/AWB 少多少？",
+      "options": [
+        "一半",
+        "约 80-120 个，比 AE 200-400 少一半，比 AWB 100-150 少一些",
+        "差不多",
+        "AF 更多"
+      ],
+      "answer": "约 80-120 个，比 AE 200-400 少一半，比 AWB 100-150 少一些",
+      "explain": "AF 算法相对独立（不像 AE/AWB 各种 Sub-Algorithm），调教项目 3-4 个月（比 AE/AWB 短）。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "Predictive AF 的核心机制？",
+      "options": [
+        "固定预测",
+        "看 disparity 变化预测下一帧位置，VCM 提前移动",
+        "AI 训练",
+        "加快 VCM"
+      ],
+      "answer": "看 disparity 变化预测下一帧位置，VCM 提前移动",
+      "explain": "用户拍跑动小孩，AF 看过去几帧的距离变化估速度，提前把 VCM 移到下一帧位置。让 AF「跟得上」运动物体。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: 现代手机的 AF 三件套是 PDAF + CAF + ___",
+      "answer": [
+        "ToF",
+        "ToF Depth AF",
+        "Depth AF"
+      ],
+      "explain": "ToF 弱光最稳，PDAF 快，CAF 通用。三者互补 3-5 帧搞定对焦，旗舰才有完整三件套。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "你能完整画出 Snapshot 拍照流程的时间轴吗？",
+      "referenceAnswer": "400ms 完整流程：T+0 用户按下；T+10 检查 3A settle（最多等 500ms）；T+20 Pre-Flash 50ms 弱光（AE 测光 + AWB 双 WB + AF 重对焦 + Flash 强度估算）；T+100 等 100ms（LED 冷却）；T+200 主闪 + sensor 曝光（30ms）；T+250 ISP 处理（150ms，应用预算好的 3A 参数）；T+400 输出 JPEG。各模块协同：AF 等 AE settle，AWB 双 WB 处理 LED+ambient 混合，CCM 按 cct 选矩阵，ADRC 拉暗部。这是手机摄影的全套流水线。"
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "id": "day-40",
+  "week": 6,
+  "module": "M4",
+  "title": "TGA 三角增益调整 + Smart Convergence",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "为什么需要「精细调教」工具",
+      "type": "concept",
+      "content": "### Day 29-39 学到的能力\n\n到目前为止你学的 AWB 算法已经能：\n\n- 估计当前光源色温（参考点 + LWV + DWV + MLC）\n- 处理混合光源（AGW）\n- 用人脸辅助（FA）\n- 处理闪光灯（双 WB）\n- 多摄同步\n\n这些算法**估出 cct 后输出 gain，让画面色彩还原**。\n\n但实际产品里有一类**「算对了用户不喜欢」**的问题：\n\n```\n场景：钨丝灯下拍人\nAWB 估出 cct=3000K（**完全正确**）\nAWB 输出 R_gain=0.6, B_gain=1.6（**完全正确的 gain**）\n用户拍出来：画面**完全中性**（白纸是白、肤色是中性）\n用户反馈：「**没有钨丝灯的温暖感觉，太冷了**」\n```\n\n这不是算法 bug，是「**审美需求**」。用户在钨丝灯下**期望画面保留一点暖意**（这是「氛围感」）。\n\n各家手机有不同的「**白平衡风格**」：\n\n- 苹果：相对中性，钨丝灯下接近真实白\n- 三星：偏暖（钨丝灯下保留温度）\n- 小米：根据机型不同（旗舰中性、性价比偏暖）\n\n这种「**风格调整**」就是 TGA 的工作。\n\n### TGA 的核心想法\n\n> **TGA = Triangle Gain Adjustment**：在 RG-BG 平面上**画一个三角形**，AWB 算出的 gain 落在三角形内时**保留**，落在三角形外时**强行修正到三角形内**。\n\n直觉：\n\n- 三角形定义「**审美允许的色温范围**」\n- 算出极端 gain（比如 R=0.4 大幅压红）→ 强制限制到三角形\n- 这样钨丝灯不会被「**过度修正**」，画面保留温度\n\n### TGA 的几何\n\nRG-BG 平面上画一个三角形：\n\n```\n  BG\n   ↑\n1.5 +     /────\\\n    |    /      \\\n    |   /        \\\n1.0 +  /  ← 顶点 D65 (1.0, 1.0)\n    | / 三角内 = OK   \\\n    |/                 \\\n0.6 +────  ← 钨丝边界    \\\n    |                     \\\n    +---+---+---+---+--→ RG\n    0.7 1.0 1.3 1.6 1.9\n```\n\n（这是简化示意；实际三角形可能更复杂）\n\n三个顶点定义「**用户审美可接受的 cct 范围**」：\n\n- 顶点 A：极冷端（如 D75 7500K）\n- 顶点 B：中性端（D65 6500K）\n- 顶点 C：极暖端（**比 A 钨丝略暖**，如 2400K）\n\n**注意 C 顶点比真实钨丝灯（A 2856K）略暖**。意思：钨丝灯场景下 AWB 不要修到完全中性，要**留一点暖**。\n\n### TGA 的应用\n\n```python\ndef apply_tga(estimated_gain_rg, estimated_gain_bg, triangle):\n    \"\"\"如果 estimated 在三角内 → 用原值；在外 → 投影到三角形最近边\"\"\"\n    if point_in_triangle(estimated_gain_rg, estimated_gain_bg, triangle):\n        return estimated_gain_rg, estimated_gain_bg\n    \n    # 在三角形外 → 投影到最近的边\n    closest_point = closest_point_on_triangle(estimated_gain_rg, estimated_gain_bg, triangle)\n    return closest_point.rg, closest_point.bg\n```\n\n效果：\n\n```\n钨丝灯场景：\n  AWB 估 R_gain=0.55, B_gain=1.65 (cct ~2900K)\n  三角形 C 顶点：R_gain=0.65, B_gain=1.50 (cct ~3500K)\n  → 估出值在三角形外（太极端）\n  → 投影到三角形边：R_gain=0.65, B_gain=1.50\n  → 画面比完全修正略暖（保留温度感）\n```\n\nTGA 让 AWB「**有底线**」：极端场景下不会过度修正。\n\n### Tuning 调三角形\n\n```xml\n<tga>\n  <triangle>\n    <vertex name=\"cool\" rg=\"0.85\" bg=\"1.30\"/>     <!-- 冷端 -->\n    <vertex name=\"neutral\" rg=\"1.00\" bg=\"1.00\"/>  <!-- 中性 -->\n    <vertex name=\"warm\" rg=\"1.40\" bg=\"0.55\"/>     <!-- 暖端 -->\n  </triangle>\n  <enabled>true</enabled>\n  <projection_smoothness>0.7</projection_smoothness>  <!-- 投影渐变（避免硬边）-->\n</tga>\n```\n\n三个顶点位置 = AWB 风格的「**底线**」。\n\n### TGA 不只是「限制」\n\nTGA 还可以**主动偏移**：\n\n- 默认风格：算出 gain 保持原值（除非超出三角形）\n- 暖风格：在三角形内**也轻微偏暖**（让画面整体暖一点）\n- 冷风格：相反\n\n```python\ndef apply_tga_with_bias(rg, bg, triangle, bias=\"warm\"):\n    if not point_in_triangle(rg, bg, triangle):\n        rg, bg = closest_point_on_triangle(rg, bg, triangle)\n    \n    # 偏向暖端\n    if bias == \"warm\":\n        warm_vertex = triangle.warm\n        rg = rg * 0.9 + warm_vertex.rg * 0.1\n        bg = bg * 0.9 + warm_vertex.bg * 0.1\n    \n    return rg, bg\n```\n\n这是 「**偏暖风格**」的实现。\n\n### TGA 在调教中的位置\n\n```\nLWV → final_rg/bg → TGA → final_R_gain / final_B_gain → 写 ISP\n                    ↑\n               最后一道审美关卡\n```\n\nTGA 是 AWB 决策的**最后一步**，在 damping 之前。**不论前面算法估出什么，TGA 都会做最后调整**。",
+      "glossary": [
+        { "term": "TGA", "zh": "Triangle Gain Adjustment 三角增益调整", "explain": "AWB 输出 gain 的「审美约束」：限制在 RG-BG 平面的三角形内。" },
+        { "term": "Style Bias", "zh": "风格偏移", "explain": "在 TGA 三角形内主动偏暖/冷，调整产品的色彩风格。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "TGA 会让 AWB 不准吗？", "a": "技术上是「**不准**」，但用户感受更好。TGA 是「审美 vs 物理准确」的妥协。" },
+          { "q": "三角形顶点怎么定？", "a": "Tuning 工程师 + 产品经理一起决定。比如「**调到苹果的风格**」需要测苹果在各场景的 RG/BG，然后画一个相似三角形。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Triangle Gain Adjustment" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Smart Convergence：让 AWB 收敛更智能",
+      "type": "concept",
+      "content": "### Day 30 复习 + 不足\n\nDay 30 我们学过 AWB 收敛：damping α=0.2 + 光源切换检测（α=0.6 fast_converge）。\n\n这种「**两档**」收敛太粗糙：\n\n- α=0.2 太慢（用户进室内 30 帧才反应）\n- α=0.6 太快（小变化也大幅响应，画面抖）\n- 光源切换检测要么触发要么不触发，没有中间状态\n\n### Smart Convergence 的想法\n\n> **不用固定 α，而是按当前帧情况动态算 α**：变化大时 α 大、变化小时 α 小。\n\n```python\ndef smart_alpha(current_lwv, prev_lwv, history):\n    \"\"\"按当前 LWV 与历史的差距算合适的 α\"\"\"\n    # 距离 0：完全没变 → α=0.05（几乎不动）\n    # 距离 1：略变 → α=0.20（标准）\n    # 距离 3：大变 → α=0.50（半收敛）\n    # 距离 5+：剧变 → α=0.80（fast）\n    \n    distance = lwv_distance(current_lwv, prev_lwv)\n    \n    if distance < 0.3:\n        return 0.05  # 极小变化，跟着抖动平滑掉\n    elif distance < 1.0:\n        return 0.20  # 正常变化，标准 damping\n    elif distance < 3.0:\n        return 0.50  # 大变化（光源切换）\n    else:\n        return 0.80  # 极端变化（突然遮挡 / 闪光）\n```\n\n这是「**自适应 damping**」。\n\n### 多帧确认\n\n但单纯按当前帧算 α 仍有问题：单帧异常（旁人闪光灯）可能让 α 突然 0.80 →画面跳。\n\n→ 需要「**多帧确认**」：\n\n```python\ndef smart_alpha_with_confirmation(current_lwv, history):\n    # 看最近 3 帧 LWV 距离\n    recent_distances = [lwv_distance(history[-i], history[-i-1]) for i in range(1, 4)]\n    \n    # 如果只是单帧异常（其他帧距离小）\n    if recent_distances[0] > 2.0 and recent_distances[1] < 0.5 and recent_distances[2] < 0.5:\n        return 0.05  # 当成异常，几乎不响应（让单帧异常被丢掉）\n    \n    # 如果连续多帧都在变\n    if all(d > 1.0 for d in recent_distances):\n        return 0.50  # 真实场景变化，加快收敛\n    \n    return 0.20  # 默认\n```\n\n这种**多帧确认**让 Smart Convergence 区分「**单帧异常**」和「**真实场景变化**」。\n\n### Smart Convergence 的另一面：「**目标稳定时降速**」\n\n场景：用户在户外稳定拍照 30 秒，AWB 已经收敛到 cct=6300K，每帧波动 cct ±50K（噪声）。\n\n传统 damping α=0.2 让 cct 跟着波动 → 画面色彩有微小抖动。\n\nSmart Convergence：检测到「**距离 < 0.3**」（极小变化）→ α=0.05 → 极小波动被几乎完全吸收 → 画面**绝对稳定**。\n\n```\n传统：cct 在 6250-6350K 之间抖动\nSmart：cct 稳定在 6300K，几乎不动\n```\n\n这是「**稳定时降速**」，让画面更**干净**。\n\n### Tuning 调 Smart Convergence\n\n```xml\n<smart_convergence>\n  <enabled>true</enabled>\n  <distance_thresholds>\n    <small>0.3</small>     <!-- 小于 0.3 用 α=0.05 -->\n    <medium>1.0</medium>   <!-- 0.3-1.0 用 α=0.20 -->\n    <large>3.0</large>     <!-- 1.0-3.0 用 α=0.50 -->\n    <!-- 大于 3.0 用 α=0.80 -->\n  </distance_thresholds>\n  <alpha_values>\n    <small>0.05</small>\n    <medium>0.20</medium>\n    <large>0.50</large>\n    <extreme>0.80</extreme>\n  </alpha_values>\n  <confirmation_frames>3</confirmation_frames>      <!-- 多帧确认 -->\n  <single_frame_anomaly_alpha>0.05</single_frame_anomaly_alpha>\n</smart_convergence>\n```\n\n### Smart Convergence + 时序聚合（Day 34）协同\n\n```\n时序聚合：保留最近 10 帧 LWV 加权平均（已经做时序平滑）\nSmart Convergence：在「时序平均后的 LWV」 → 「下一帧 gain」这一步用智能 α\n\n两层平滑：\n  时序聚合 → 让 LWV 输入更稳\n  Smart Convergence → 让 gain 输出更稳\n```\n\n两者协同，画面色彩**绝对干净 + 真实变化时快速响应**。\n\n### 实战例子\n\n场景：用户拍户外人像，云慢慢挡太阳。\n\n```\n第 0 帧（晴天）：cct=6300K，alpha=0.05（稳定）\n第 1 帧（云开始挡）：cct=6500K，距离 0.4 → alpha=0.20\n第 5 帧（云遮一半）：cct=7000K，连续变化 → 多帧确认通过 → alpha=0.50\n第 10 帧（云遮满）：cct=7500K\n第 30 帧（稳定）：cct=7500K，距离 < 0.3 → alpha=0.05（稳定）\n```\n\n用户感觉：「太阳慢慢被云遮挡，画面色调跟着变冷」 —— 自然且不抖。\n\n相比传统 damping 固定 α=0.2 的效果：\n\n```\n传统：每帧调 20%，第 10 帧才到 6800K，第 30 帧才到 7300K（慢）\nSmart：第 10 帧已到 7000K（连续变化时加速）+ 稳定后绝对稳（没有抖动）\n```\n\n两者关键差距：**Smart 在变化大时快、稳定时慢**。",
+      "glossary": [
+        { "term": "Smart Convergence", "zh": "智能收敛", "explain": "按当前帧 LWV 距离自动调 damping α，动态平衡响应速度和稳定性。" },
+        { "term": "Adaptive Damping", "zh": "自适应阻尼", "explain": "Smart Convergence 的核心机制：变化大用大 α，变化小用小 α。" },
+        { "term": "Multi-frame Confirmation", "zh": "多帧确认", "explain": "区分单帧异常和真实场景变化的机制：连续多帧都变才算「真实变化」。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "Smart Convergence 计算贵吗？", "a": "不贵。每帧计算 LWV 距离 + 查阈值表，几个微秒。完全不影响性能。" },
+          { "q": "为什么不一直用 fast_converge？", "a": "fast_converge α=0.8 让画面响应快，但**任何小变化也会大响应** → 噪点导致画面色彩频繁抖。Smart Convergence 让响应速度按场景自动调。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Smart Convergence" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "TGA + Smart Convergence 协同实战",
+      "type": "example",
+      "content": "### log 字段\n\n```\n[AWB-TGA] estimated rg=0.55 bg=1.65 (cct 2900)\n[AWB-TGA] in_triangle=false → projecting...\n[AWB-TGA] projected rg=0.65 bg=1.50 (cct 3300)\n[AWB-TGA] style_bias=warm → final rg=0.66 bg=1.49\n\n[AWB-SC] current_lwv distance from prev=0.4\n[AWB-SC] threshold=medium → alpha=0.20\n[AWB-SC] last 3 frames distances: [0.4, 0.5, 0.3] → all moderate\n[AWB-SC] confirmation passed → use medium alpha\n```\n\n### 排查实例\n\n**问题 1：「钨丝灯下偏冷」**\n\n```\n[AWB-TGA] estimated cct=2900\n[AWB-TGA] in_triangle=false (太冷端三角形不到 2900)\n[AWB-TGA] projected cct=3500（被三角形限制）\n```\n\n问题：TGA 三角形「**warm**」顶点在 cct=3500K，AWB 估的 2900K 被强行修到 3500K → 钨丝灯下不够暖。\n\n修：\n\n- 移动 warm 顶点到 cct=2700K（更暖端）\n- 或者关闭 TGA（`enabled=false`）让 AWB 自由输出\n\n**问题 2：「画面色彩抖」**\n\n```\n[AWB-SC] current distance=2.5（中等）\n[AWB-SC] alpha=0.50\n→ 但场景没真实变化，是噪点\n```\n\n问题：Smart Convergence 在中等距离（2.5）就用 α=0.50，但实际是噪点。\n\n修：\n\n- 阈值调整：medium 1.0→2.0（让 1.0-2.0 距离仍用 alpha=0.20）\n- 加强多帧确认：confirmation_frames 3→5\n\n**问题 3：「光源切换响应慢」**\n\n```\n[AWB-SC] frame 0: distance=2.0 → alpha=0.50（半收敛）\n[AWB-SC] frame 1-5: 仍然 alpha=0.50\n[AWB-SC] frame 5: 仍未到目标（5 帧才走 87%）\n```\n\n问题：α=0.50 在大变化时还是慢。\n\n修：\n\n- 阈值 large 3.0→2.0（让 distance >2 直接用 alpha=0.80）\n- 或者光源切换检测降低阈值（更敏感）\n\n### TGA + Smart Convergence 调教 cheat\n\n| 反馈 | 调什么 |\n|---|---|\n| 钨丝灯下偏冷 | TGA warm 顶点更极端（cct 2700K）|\n| 阴天偏冷 | TGA cool 顶点更极端 |\n| 整体偏暖 | TGA 加 style_bias=warm 在三角形内偏暖 |\n| 整体偏冷 | TGA 加 style_bias=cool |\n| 画面色彩抖 | Smart Convergence 阈值调大；多帧确认加强 |\n| 光源切换响应慢 | Smart Convergence 阈值调小（更敏感）|\n| 稳定时仍有微抖 | Smart Convergence 的 alpha_small 减小（0.05→0.02）|\n\n### 不同产品的风格调教\n\n```\n苹果风格（中性）：\n  TGA 三角形几乎覆盖整个 RG-BG 平面（不限制 AWB）\n  style_bias=neutral\n  Smart Convergence 偏稳定（alpha_small=0.03）\n\n三星风格（偏暖通透）：\n  TGA warm 顶点收紧到 3000K（钨丝灯不修到中性）\n  style_bias=warm（三角形内向暖端偏 5-10%）\n  Smart Convergence 标准\n\n小米旗舰（中性接近苹果）：\n  TGA 类似苹果\n  style_bias=neutral\n  \n中端机型（偏暖讨好用户）：\n  TGA warm 顶点 2700K\n  style_bias=warm（5%）\n```\n\n这就是为什么不同手机「**同样场景拍出不同色调**」。\n\n### Tuning 工程师调风格的工作\n\n```\n阶段 1：算法层调到「物理准确」\n  - LWV / DWV / FA / AGW 都正常工作\n  - cct 估计误差 < 5%\n  - 这是「**算法基础**」\n\n阶段 2：用户体验层调风格\n  - TGA 三角形定义产品「**色彩底线**」\n  - style_bias 给整体偏向\n  - Smart Convergence 让画面绝对稳定\n  - 这是「**产品风格**」\n\n阶段 3：上线 + 用户反馈\n  - 看用户负面反馈的色彩问题\n  - 反向调 TGA / style_bias\n  - 这是「**风格迭代**」\n```\n\n你妹妹做的应该是阶段 1+2。阶段 3 是产品经理 + 用户研究的工作（产品出货后）。",
+      "glossary": []
+    },
+    {
+      "id": "s4",
+      "title": "完整 AWB 流程（Day 29-40 复习）",
+      "type": "concept",
+      "content": "### 完整流程\n\n```\n┌── 64×48 块（Day 30）─────────────────┐\n└──────────┬──────────────────────────┘\n           ↓\n┌── DWV 计算（Day 33）────────────┐\n│ 位置 + 颜色合理性 + MLC          │\n└──────────┬──────────────────────┘\n           ↓\n┌── DWV 加权 → current ──┐\n└──────────┬──────────────┘\n           ↓\n┌── 多 sub-algorithm（Day 32, 36, 37）──┐\n│ 灰世界 / AGW（Day 36）/ 参考点 / FA（Day 37）/ AI │\n│ 各自输出 LWV + confidence              │\n└──────────┬──────────────────────────────┘\n           ↓\n┌── AWB Flash 特殊处理（Day 38）─┐\n│ 闪光时双 WB                      │\n└──────────┬──────────────────────┘\n           ↓\n┌── 决策聚合 + 时序（Day 34）──┐\n│ confidence 加权 + 滑动窗口    │\n└──────────┬─────────────────────┘\n           ↓\n┌── final_lwv → cct/rg/bg ──┐\n└──────────┬───────────────────┘\n           ↓\n┌── TGA（Day 40 学）──────┐\n│ 限制到三角形 + 风格偏移   │\n└──────────┬───────────────┘\n           ↓\n┌── Smart Convergence（Day 40 学）──┐\n│ 自适应 α 平滑过渡                  │\n└──────────┬─────────────────────────┘\n           ↓\n┌── 多摄同步（Day 39）──┐\n│ 副摄跟随主摄 cct        │\n└──────────┬─────────────┘\n           ↓\n┌── 写 ISP ──────────────┐\n│ WB module + CCM module  │\n└────────────────────────┘\n```\n\n### Tuning 调教参数总数\n\n```\nDWV：~15\n参考点：~75\nLWV sigma：~5\nAGW：~10\nFA：~10\nAWB Flash：~10\n多摄同步：~10\nTGA：~5\nSmart Convergence：~10\n聚合 + 异常：~10\nCCM 联动：~10\n────────\n总计：~170 个参数\n```\n\nWeek 5+6 学完，AWB 调教基本完整覆盖。\n\n### Week 6 进度\n\n你今天 Day 40 完成。还剩 Day 41 + Day 42。\n\n```\n████████████████████████████████████████████████░░░  80%\n```\n\nWeek 6 接近尾声。明天 Day 41 学 FCM + AWB Bias Compensation。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **TGA = 审美约束**：在 RG-BG 平面画三角形限制 AWB gain，避免「**算对了但用户不喜欢**」的极端修正\n2. **TGA 还能做风格偏移**：三角形内主动偏暖/冷，定义产品色彩风格\n3. **Smart Convergence**：按当前 LWV 距离动态调 α（变化大快、变化小慢）\n4. **多帧确认**：区分单帧异常和真实场景变化\n5. **稳定时降速**：α 极小（0.05）让画面绝对稳，避免噪点导致色彩抖\n6. **风格调教**：苹果中性 / 三星偏暖 / 小米中性 → TGA + style_bias 控制\n\n### 自我检查\n\n1. TGA 解决什么问题？三个顶点定义什么？\n2. style_bias 和 TGA 限制有什么区别？\n3. Smart Convergence 相比传统 damping 的优势？\n4. 「画面色彩抖」可能是 Smart Convergence 哪个参数没调好？\n5. 不同手机品牌的 AWB 风格差异源自什么？\n\n### 笔记建议\n\n- 把 TGA 三角形 + 三个顶点画一遍\n- 整理 Smart Convergence 4 档阈值（small/medium/large/extreme）\n- 思考你妹妹项目用的是「**中性风格**」还是「**偏暖风格**」\n\n### 明天预告\n\nDay 41：FCM（Fixed Color Matching）+ AWB Bias Compensation。FCM 让特殊场景（如标准光源箱）下色彩**严格匹配标准**（用于 ISO 测试 / 工业标定）；Bias Compensation 让 AWB 在特定 cct 下做「**补偿性偏移**」处理某些 sensor 的非线性。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "TGA + Smart Convergence" }
+  ],
+  "dailyQuizId": "daily-day-40"
+}

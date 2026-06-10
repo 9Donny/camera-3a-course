@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-36",
+  "title": "Day 36 日测：AGW 高级灰世界",
+  "module": "M4",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "AGW（Advanced Gray World）相对简单灰世界的核心改进？",
+      "options": [
+        "用 AI 模型替代",
+        "把 RG-BG 平面分多个 zone，每 zone 独立运行灰世界再综合",
+        "只在暗光场景启用",
+        "用更多参考点"
+      ],
+      "answer": "把 RG-BG 平面分多个 zone，每 zone 独立运行灰世界再综合",
+      "explain": "AGW 把 64×48 块按 RG/BG 位置分到 warm/neutral/cool zone，各 zone 独立估光源，处理混合光源场景。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "混合光源场景（钨丝灯 + 窗外日光）下，传统单一全局 gain 处理不好的根本原因？",
+      "options": [
+        "算法太老",
+        "单一 gain 无法同时满足两个不同色温的区域",
+        "sensor 性能不够",
+        "光源切换太快"
+      ],
+      "answer": "单一 gain 无法同时满足两个不同色温的区域",
+      "explain": "钨丝区需要 R_gain=0.6 修暖；窗户区需要 R_gain=1.0 不修。一组 gain 不能同时满足。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "AGW 输出 LWV 的特点是？",
+      "options": [
+        "单峰分布（一个参考点占 90%+）",
+        "多峰分布（多个参考点同时有概率），反映混合光源",
+        "和参考点法相同",
+        "维度更高"
+      ],
+      "answer": "多峰分布（多个参考点同时有概率），反映混合光源",
+      "explain": "AGW 多 zone 各贡献 LWV 让多个参考点同时有概率，单峰 LWV 是单一光源场景。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: 旗舰用「___ WB」让前景钨丝区和后景窗户区分别用不同 gain",
+      "answer": [
+        "Local",
+        "局部",
+        "局部 White Balance"
+      ],
+      "explain": "Local White Balance 是旗舰特性，按 64×48 网格内插 gain。中端用全局加权折中。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "「客厅人像（钨丝 + 窗外）画面色彩抖」可能怎么调？",
+      "referenceAnswer": "1) 检查 AGW 是否检测到混合光源（is_mixed_lighting=true）；2) mixed_correction_strength 减小（0.7→0.5，更温和）；3) 时序平滑 window 增大让色彩抖动平均；4) 旗舰启用 Local WB 让两区域分别处理。"
+    }
+  ]
+}

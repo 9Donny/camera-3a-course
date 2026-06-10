@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-52",
+  "title": "Day 52 日测：多摄一致性总结 + 工程方法",
+  "module": "M7",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "多摄一致性涉及哪几层？",
+      "options": [
+        "只有 ISP",
+        "硬件 + 驱动 + ISP + 3A + CCM + 后处理 共 6 层",
+        "只有 3A",
+        "只有色彩"
+      ],
+      "answer": "硬件 + 驱动 + ISP + 3A + CCM + 后处理 共 6 层",
+      "explain": "任何一层出 bug 都影响一致性。这是为什么多摄调教这么难。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "多摄一致性 4 个级别？",
+      "options": [
+        "只有 A 和 B",
+        "A 旗舰 / B 高端 / C 中端 / D 中低端",
+        "3 级",
+        "5 级"
+      ],
+      "answer": "A 旗舰 / B 高端 / C 中端 / D 中低端",
+      "explain": "A 级切换无感，B 级切换有感但流畅，C 级切换明显但可接受，D 级有突变。中端项目目标 B/C 级。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "Tuning 工程方法 5 步？",
+      "options": [
+        "标定 / 调教 / 测试 / 上线 / 迭代",
+        "开发 / 测试 / 发布",
+        "学习 / 实践",
+        "输入 / 处理 / 输出"
+      ],
+      "answer": "标定 / 调教 / 测试 / 上线 / 迭代",
+      "explain": "每步都需要工具 + 方法 + 反馈。这是 Camera Tuning 行业的标准工作流。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: Tuning 客观指标里 24 色卡平均 ___ < 5 算合格",
+      "answer": [
+        "ΔE",
+        "Delta E",
+        "色差"
+      ],
+      "explain": "ΔE 是 Lab 距离，反映色差。<3 优秀，<5 合格，>8 需重做。是 ISO 测试的核心指标。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "Tuning 工程师 3 条职业发展路线？",
+      "referenceAnswer": "1) 技术线：Tuning → Camera 算法 → 部门技术专家 → CTO 候选。深度专精，做技术大牛。2) 管理线：Tuning → 小组 leader → 部门经理 → 产品总监。从带几个人到一个部门。3) 创业线：Tuning → 自己开 Camera 创业公司（罕见但有人成功，如 DXOMark 创始人）。三条路无优劣，看个人偏好。多数人技术线 3-5 年后跨管理（中级 → 高级管理混合）。"
+    }
+  ]
+}

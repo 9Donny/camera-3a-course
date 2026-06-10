@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-44",
+  "title": "Day 44 日测：CAF 反差对焦深入",
+  "module": "M5",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "CAF 粗-细两阶段为什么必要？",
+      "options": [
+        "提高精度",
+        "大步长扫遍范围 + 小步长精确定位，避免「全范围细搜索 30 秒」的成本",
+        "降低功耗",
+        "适应不同 sensor"
+      ],
+      "answer": "大步长扫遍范围 + 小步长精确定位，避免「全范围细搜索 30 秒」的成本",
+      "explain": "1023 个 DAC 位置 × 30ms 每帧 = 30 秒太慢。两阶段是工程平衡：粗搜索 6-8 帧 + 细搜索 4-5 帧。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "CAF 在「拍纯色墙」场景失败的原因？",
+      "options": [
+        "光线太暗",
+        "纯色没边缘 → 对比度趋零 → 各位置 score 都接近 0 → 找不到峰",
+        "马达坏了",
+        "算法 bug"
+      ],
+      "answer": "纯色没边缘 → 对比度趋零 → 各位置 score 都接近 0 → 找不到峰",
+      "explain": "CAF 依赖边缘对比度。纯色（白纸/天空）没边缘 → 失败。这种场景需要 PDAF 或 ToF 兜底。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "对焦呼吸（Focus Breathing）的根本原因？",
+      "options": [
+        "镜头质量差",
+        "CAF 持续微调让 DAC 值小幅震荡，画面看起来前后晃",
+        "sensor 抖动",
+        "软件 bug"
+      ],
+      "answer": "CAF 持续微调让 DAC 值小幅震荡，画面看起来前后晃",
+      "explain": "录像时 Continuous AF 持续运行，哪怕物体没动也会微调 → 画面前后晃。解决：smooth_dac + damping_alpha 0.7+ + refocus_threshold 减小。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: 录像 AF 跟焦的 refocus_threshold 应该比拍照 ___（更稳定）",
+      "answer": [
+        "更小",
+        "更低",
+        "低"
+      ],
+      "explain": "拍照 0.7（容易触发重对焦），录像 0.5（更稳定，避免拉风箱）。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "「点击屏幕后焦点对不准」怎么排查 + 修？",
+      "referenceAnswer": "排查：1) touch_radius_blocks 设太小（只覆盖 1 块，主体可能跨多块）；2) ROI 权重不够，其他块还有贡献把焦点拉到中心。修：1) touch_radius_blocks 4→6（覆盖更多主体周围）；2) touch_weight 5→8（更主导）；3) 检查映射坐标是否正确（屏幕坐标 → 64×48 网格）。"
+    }
+  ]
+}

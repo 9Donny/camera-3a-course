@@ -1,0 +1,23 @@
+{
+  "id": "weekly-w7",
+  "title": "Week 7 周考：AF + Flash + Flicker 综合",
+  "module": "M5",
+  "scope": "weekly",
+  "questions": [
+    {"id":"q1","type":"choice","prompt":"AF 三种主要模式？","options":["全自动/半自动/手动","CAF（反差对焦）/ PDAF（相位对焦）/ ToF Depth AF（深度对焦）","单点/多点/智能","单次/连续/跟踪"],"answer":"CAF（反差对焦）/ PDAF（相位对焦）/ ToF Depth AF（深度对焦）","explain":"CAF 通用爬山法；PDAF sensor 视差直接算；ToF 红外测距。"},
+    {"id":"q2","type":"choice","prompt":"PDAF 的优势？","options":["最便宜","一帧到位 + 暗光相对稳","纯色场景仍工作","远距离精度高"],"answer":"一帧到位 + 暗光相对稳","explain":"sensor 内特殊像素直接算视差，1-2 帧 vs CAF 的 8-15 帧。"},
+    {"id":"q3","type":"choice","prompt":"ToF Depth AF 的优势？","options":["最便宜","不靠图像分析（红外测距），纯色 + 弱光仍工作","sensor 简单","算法快"],"answer":"不靠图像分析（红外测距），纯色 + 弱光仍工作","explain":"ToF 用红外光来回时间测距，与可见光无关。"},
+    {"id":"q4","type":"choice","prompt":"CAF 在「拍纯色墙」失败的根本原因？","options":["光线太暗","纯色没边缘 → 对比度趋零 → 找不到峰","马达坏了","软件 bug"],"answer":"纯色没边缘 → 对比度趋零 → 找不到峰","explain":"CAF 依赖边缘对比度。这种场景需要 PDAF 或 ToF 兜底。"},
+    {"id":"q5","type":"choice","prompt":"Continuous AF 状态机三个状态？","options":["INIT/RUNNING/DONE","LOCKED/MONITORING/SEARCHING","ON/OFF/READY","START/WAIT/END"],"answer":"LOCKED/MONITORING/SEARCHING","explain":"避免单帧抖动触发频繁重对焦。"},
+    {"id":"q6","type":"choice","prompt":"Precision Flash 完整流程总时长？","options":["~100ms","~400ms","~1秒","~2秒"],"answer":"~400ms","explain":"T+0 按下 → T+20 Pre-Flash → T+200 主闪 → T+400 出片。"},
+    {"id":"q7","type":"choice","prompt":"Pre-Flash 同时做的 4 件事？","options":["只测光","AE 测光 + AWB 双 WB + AF 重对焦 + Flash 强度估算","只对焦","只调色"],"answer":"AE 测光 + AWB 双 WB + AF 重对焦 + Flash 强度估算","explain":"预测式 AWB，主闪只是应用预算好的参数。"},
+    {"id":"q8","type":"choice","prompt":"Auto Flicker Detection 算法核心？","options":["AI 模型","短曝光多帧 → FFT 频谱分析 → 找 50Hz 或 60Hz 峰","测温度","用陀螺仪"],"answer":"短曝光多帧 → FFT 频谱分析 → 找 50Hz 或 60Hz 峰","explain":"banding 周期反推电网频率。"},
+    {"id":"q9","type":"choice","prompt":"录像跟焦比预览跟焦的额外要求？","options":["更准","不允许对焦呼吸 + 不允许重对焦慢 + 不允许跟丢","更快","简单"],"answer":"不允许对焦呼吸 + 不允许重对焦慢 + 不允许跟丢","explain":"录像视觉敏感，需要 smooth_dac + damping_alpha 0.7+。"},
+    {"id":"q10","type":"choice","prompt":"Stationary vs Rolling Banding 区别？","options":["位置不同","曝光时间不是周期整数倍 = stationary（条纹固定）；帧读出时间不是周期整数倍 = rolling（条纹滚动）","颜色不同","宽度不同"],"answer":"曝光时间不是周期整数倍 = stationary（条纹固定）；帧读出时间不是周期整数倍 = rolling（条纹滚动）","explain":"Stationary 调曝光时间锁；Rolling 调 sensor frame_readout 锁。"},
+    {"id":"q11","type":"fill","prompt":"现代手机 AF 三件套是 PDAF + CAF + ___","answer":["ToF","ToF Depth AF","Depth AF"],"explain":"三者互补，3-5 帧搞定对焦。"},
+    {"id":"q12","type":"fill","prompt":"AF settle 的双稳定条件：DAC 位置稳 + ___ 稳","answer":["score","清晰度","分数"],"explain":"两个变量都稳定 + 连续 N 帧（默认 3）才算 settled。"},
+    {"id":"q13","type":"fill","prompt":"Auto Flicker 检测出 50Hz 后，AE 锁曝光时间到 1/___ 整数倍","answer":["50","50Hz","100"],"explain":"中国 50Hz，Antibanding 周期是 1/50, 1/100, 1/200。"},
+    {"id":"q14","type":"short","prompt":"默写 Snapshot 拍照流程（含 6 个时间点）。","referenceAnswer":"T+0 用户按下；T+10 检查 3A settle（最多等 500ms）；T+20 Pre-Flash 50ms 弱光（AE 测光 + AWB 双 WB + AF 重对焦 + Flash 强度估算）；T+100 等 100ms（LED 冷却 + 决策固化）；T+200 主闪 + sensor 曝光（30ms）；T+250 ISP 处理 150ms（应用预算好的 3A 参数）；T+400 输出 JPEG。各模块协同：AF 等 AE settle，AWB 双 WB 处理 LED+ambient 混合，CCM 按 cct 选矩阵，ADRC 拉暗部。这是手机摄影的全套流水线。"},
+    {"id":"q15","type":"short","prompt":"用户报「录视频时人脸偏亮 + 偶尔横条纹 + AF 拉风箱」，怎么排查？","referenceAnswer":"3 个独立 bug 分别处理：1) 人脸偏亮（PRD-Q21）：降低 video 模式 face_roi_weight（5.0→3.5）+ 增强 Face Analyzer 过亮修正（factor 0.92→0.85）+ video 专属配置；2) 横条纹（Auto Flicker）：检查 fallback_to_region 是否为 50（中国），detection_freq_seconds 减小让更频繁更新，sensor frame_readout 锁周期整数倍处理 Rolling Banding；3) AF 拉风箱（CAF）：refocus_threshold 0.7→0.5（更稳定）+ max_refocus_per_second 限频 + smooth_dac + damping_alpha 0.7+。三个修复同时做，每次改一个测一遍，避免多变量搅在一起。"}
+  ]
+}

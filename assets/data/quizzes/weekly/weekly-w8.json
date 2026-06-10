@@ -1,0 +1,23 @@
+{
+  "id": "weekly-w8",
+  "title": "Week 8 周考：色彩 + 工具 + 面试综合",
+  "module": "M7",
+  "scope": "weekly",
+  "questions": [
+    {"id":"q1","type":"choice","prompt":"CIE 1931 色度图是什么？","options":["色卡","国际照明委员会 1931 年定的「人眼可见颜色」马蹄形图","屏幕标准","JPEG 编码"],"answer":"国际照明委员会 1931 年定的「人眼可见颜色」马蹄形图","explain":"所有色彩空间都在这个马蹄形里。"},
+    {"id":"q2","type":"choice","prompt":"色彩空间大小排序？","options":["都一样","sRGB < Display P3 / DCI-P3 < BT.2020 < ProPhoto","sRGB 最大","BT.2020 最小"],"answer":"sRGB < Display P3 / DCI-P3 < BT.2020 < ProPhoto","explain":"sRGB 最普及最小，BT.2020 用于 4K HDR。"},
+    {"id":"q3","type":"choice","prompt":"Lab 色彩空间的核心特点？","options":["最鲜艳","空间距离 = 人眼色差感觉（ΔE 来源）","只有 3 个值","转换简单"],"answer":"空间距离 = 人眼色差感觉（ΔE 来源）","explain":"色彩科学的「人眼标尺」。"},
+    {"id":"q4","type":"choice","prompt":"Chromatix 是什么？","options":["手机 app","高通官方 Tuning 工具：参数编辑 + RAW 预览 + 数据可视化","开源软件","sensor 测试"],"answer":"高通官方 Tuning 工具：参数编辑 + RAW 预览 + 数据可视化","explain":"Tuning 工程师每天用的核心工具。"},
+    {"id":"q5","type":"choice","prompt":"Tuning 调教 5 步工作流？","options":["开发/测试/发布","项目初始化 / 拍图 / 调教 / 测试 / 导出烧录","学习/实践","需求/设计/实现"],"answer":"项目初始化 / 拍图 / 调教 / 测试 / 导出烧录","explain":"标准 Camera Tuning 流程，3-6 个月一个项目。"},
+    {"id":"q6","type":"choice","prompt":"高通 vs 联发科 ISP 关系？","options":["完全不同","核心算法相似（80% 通用），工具和参数命名不同","联发科是子公司","只有联发科"],"answer":"核心算法相似（80% 通用），工具和参数命名不同","explain":"Tuning 工程师跨平台不是从 0 开始。"},
+    {"id":"q7","type":"choice","prompt":"PRD-Q1 AE 算法 3 步？","options":["启动/运行/停止","亮度获取 / 计算 Target / 曝光调节","输入/处理/输出","测光/决策/拍照"],"answer":"亮度获取 / 计算 Target / 曝光调节","explain":"必背的 PRD 题。"},
+    {"id":"q8","type":"choice","prompt":"PRD-Q15 safe_target 三步？","options":["基础/修正/限幅","luma_target → adjusted_target → safe_target","输入/处理/输出","开始/中间/结束"],"answer":"luma_target → adjusted_target → safe_target","explain":"最高频面试题之一。"},
+    {"id":"q9","type":"choice","prompt":"PRD-Q17 高通 AE 多少数据块？","options":["32×24","64×48 = 3072 + 中心测光 + ROI 加权","128×96","可配置"],"answer":"64×48 = 3072 + 中心测光 + ROI 加权","explain":"高通 ISP 的硬件设计。"},
+    {"id":"q10","type":"choice","prompt":"PRD-Q18 Metering 两个模块？","options":["只有 AE","AE 数据统计模块 + evtable 曝光表","只有 AWB","sensor + ISP"],"answer":"AE 数据统计模块 + evtable 曝光表","explain":"前者决定 target，后者决定 sensor 寄存器。"},
+    {"id":"q11","type":"fill","prompt":"色彩面试题里 ΔE < ___ 算肉眼几乎无差","answer":["5","5.0","五"],"explain":"ΔE 是 Lab 距离，ISO 测试合格线。"},
+    {"id":"q12","type":"fill","prompt":"STAR 法则 = Situation + Task + Action + ___","answer":["Result","结果"],"explain":"行为面试的标准模板。"},
+    {"id":"q13","type":"fill","prompt":"投递简历策略：A 一线 2-3 家 + B 二线 5-8 家 + C 中小厂 ___ 家","answer":["5-10","5","8"],"explain":"分级投递，B 级先入职更现实。"},
+    {"id":"q14","type":"short","prompt":"默写完整 ISP 色彩管线（6 模块）。","referenceAnswer":"1) WB（白平衡）：去光源色温，三通道 gain。AWB 算法估出 cct → 输出 R/G/B gain；2) CCM（色彩矩阵）：sensor RGB → 标准 sRGB，3×3 矩阵，按 cct 分段配置；3) Gamma 校正：线性亮度 → sRGB Gamma，γ≈2.2；4) Tone Mapping：14-bit RAW 压到 8-bit JPEG，GTM/LTM 两种实现；5) ADRC：暗部加 gain，简化 LTM；6) 后期色彩调整：饱和度 + 对比度 + 肤色优化。这套管线决定照片最终色彩，每个模块都是 Tuning 工程师调教的对象。AWB 输出 cct 后，CCM 按 cct 选矩阵，Tone Mapping 按 lux 选曲线，ADRC 按场景动态调，6 模块协同。"},
+    {"id":"q15","type":"short","prompt":"行为题：「为什么转行 Camera Tuning？」用 STAR 答。","referenceAnswer":"Situation：我做了 X 年手机测试，期间深入参与 Camera 模块测试（AE/AWB/HDR），对算法层产生兴趣。Task：决定转行 Tuning，但需要 0 到 1 系统学习。Action：1) 自学 60 天 Camera 3A 课程（含 PRD 23 题）；2) 看完高通 250 页 PDF（7.0 + 10 Deep Dive）；3) 用 Chromatix 实操调 CCM/Tone Mapping；4) 跟现职 Tuning 工程师讨论。Result：达到初级 Tuning 工程师能力，能完整答出 PRD 23 题 + 30 道行业题，做了 5 场模拟面试。我相信能在 Tuning 岗位快速上手 + 持续成长，结合测试经验（懂客观指标 + 用户场景）这是我的优势。我对技术线感兴趣，5 年内目标做到中级到高级。"}
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-51",
+  "title": "Day 51 日测：Chromatix 工具实操",
+  "module": "M7",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "Chromatix 是什么？",
+      "options": [
+        "手机 app",
+        "高通官方 Tuning 工具：参数编辑 + RAW 预览 + 数据可视化",
+        "开源软件",
+        "sensor 测试软件"
+      ],
+      "answer": "高通官方 Tuning 工具：参数编辑 + RAW 预览 + 数据可视化",
+      "explain": "Tuning 工程师每天用 Chromatix 调教参数。授权给客户（手机厂家），需要付费 + NDA。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "Chromatix 调教的 5 步工作流？",
+      "options": [
+        "学习 / 调试 / 测试 / 上线 / 维护",
+        "项目初始化 / 拍图 / 调教 / 测试 / 导出烧录",
+        "分析 / 设计 / 实现 / 验证 / 部署",
+        "需求 / 开发 / 测试 / 发布 / 反馈"
+      ],
+      "answer": "项目初始化 / 拍图 / 调教 / 测试 / 导出烧录",
+      "explain": "1) 创建项目绑定 sensor；2) 标定光源箱拍 100+ RAW；3) Chromatix 调参反复迭代；4) 跑测试集算 ΔE/SNR；5) 导出 XML 写到 firmware 烧机。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "CCM 调教的迭代过程？",
+      "options": [
+        "一次定型",
+        "打开 D65 RAW → 看 24 色卡 ΔE → 改矩阵元素 → 重新处理 → 看 ΔE → 反复迭代到 < 5",
+        "只看一个色块",
+        "用 AI 生成"
+      ],
+      "answer": "打开 D65 RAW → 看 24 色卡 ΔE → 改矩阵元素 → 重新处理 → 看 ΔE → 反复迭代到 < 5",
+      "explain": "每天可能调 10+ 次迭代。每个色块的 ΔE 都要平衡，不能只看一个。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: Tuning 工程师初级到中级一般要 ___ 年",
+      "answer": [
+        "1-3",
+        "一到三",
+        "一-三"
+      ],
+      "explain": "初级（0-1 年）懂参数；中级（1-3 年）能独立调教；高级（3-5 年）能定风格；资深（5+ 年）能影响产品方向。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "Tuning 工程师 4 个软实力是什么？",
+      "referenceAnswer": "1) 沟通能力：跟 PM/QA/sensor 厂家/UX 沟通需求和反馈；2) 审美：色彩调教艺术性强，需要看大量好照片培养审美 + 懂「奶油色调」「电影感」「胶片感」等风格；3) 工程方法：知道怎么拍标定 RAW、怎么测客观指标、怎么 A/B 测试、怎么 git 管理 XML；4) 耐心：调一个参数测 10 张图，3 个月项目跑几千次「改→测→对比」循环。这是 tuning 工作的「软底子」。"
+    }
+  ]
+}

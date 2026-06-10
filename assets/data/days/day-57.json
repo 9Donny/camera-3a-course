@@ -1,0 +1,46 @@
+{
+  "id": "day-57",
+  "week": 8,
+  "module": "M7",
+  "title": "模拟面试 4：PRD Q16-Q19",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Q16：Dark Boost / ADRC gain 推导",
+      "type": "example",
+      "content": "### 题目\n\n「**Dark Boost gain 怎么算？写出公式 + 解释**」\n\n### 思考要点\n\nDay 12 学过的核心公式。\n\n### 参考答案\n\n> Dark Boost / ADRC 的暗部 gain 公式：\n> \n> ```\n> dark_gain = (target_lum / safe_lum) × adrc_gain\n> ```\n> \n> 各项含义：\n> \n> **target_lum**：AE 想要画面达到的目标亮度（adjusted_target，加 Scene Analyzer 修正后）\n> \n> **safe_lum**：safe_target，给 AE 的反馈值（已减 ADRC 预扣）\n> \n> **adrc_gain**：ADRC 曲线在某 luma 上的查表值（暗部高、亮部低）\n> \n> 公式分两部分：\n> \n> 1. **(target_lum / safe_lum)**：「AE 没补到 adjusted_target 的部分」 —— 因为 safe_lum 已经预扣了 ADRC，AE 只补到 safe_lum，剩下需要 ADRC 拉的就是这个比例\n> 2. **adrc_gain**：ADRC 曲线给暗部的额外 gain（如暗部 1.5x），是「**风格化的强度**」\n> \n> 两者相乘 = ISP 实际应用到暗部的总 gain。\n> \n> **数字例子**：\n> \n> ```\n> 用户拍夜景：\n>   adjusted_target = 80\n>   ADRC 预扣 8 → safe_lum = 72（AE 补到这个）\n>   target_lum = 80\n>   adrc_gain（暗部）= 1.4（ADRC 曲线 luma=30 处的值）\n>   \n>   dark_gain = (80/72) × 1.4 = 1.111 × 1.4 = 1.55\n>   \n>   即：暗部最终被 ISP 加 1.55x 的 gain\n>   AE 让暗部从 30 → 33（×1.11，到 safe_lum）\n>   ADRC 让暗部从 33 → 50（×1.5，达到目标）\n> ```\n> \n> 关键：**这个公式让 AE 和 ADRC 协同**。AE 知道「**ADRC 会再拉**」所以 safe_lum 比 target_lum 低；ADRC 知道「**AE 已经补到 safe_lum**」所以只需要拉 (target/safe) × adrc_gain。\n> \n> 没有这种协同，开 ADRC 后画面会过曝（AE 把暗部拉到 80，ADRC 又拉 → 总效果远超 80）。"
+    },
+    {
+      "id": "s2",
+      "title": "Q17：64×48 + Q18：Metering 两模块",
+      "type": "example",
+      "content": "### 题 17：高通 AE 多少数据块？什么测光模式？（PRD-Q17）\n\n**参考答案**（必背）：\n\n> 64×48 = 3072 个数据块。中心测光模式 + Touch ROI / Face ROI / Saliency ROI 加权。\n> \n> **64×48 是高通 ISP 的硬件设计**：\n> - 横向 64 格 × 纵向 48 格\n> - 每格约 1200 万 / 3072 ≈ 4000 像素\n> - 每格输出 1 个亮度值 + RGB 平均（给 AWB 用）\n> - 硬件并行算出（不占 CPU）\n> \n> **中心测光的核心是 64×48 权重表**：中间权重高（最大 8）边缘低（最小 1）。\n> \n> **ROI 加权**让特殊区域（用户点击 / 人脸 / AI 主体）权重大幅提升（人脸 ROI 权重 5）。\n> \n> 这套架构 AE / AWB 共用，是 3A 决策的输入基础。\n\n### 题 18：Metering 怎么实现？分哪两个模块？（PRD-Q18）\n\n**参考答案**（必背）：\n\n> Metering 由两个模块组成：\n> \n> **1. AE 数据统计模块**（sensor-independent）：\n> \n> 包括：\n> - 64×48 块统计\n> - 中心测光权重表\n> - ROI 加权（Touch / Face / Saliency / Depth）\n> - Bright/Dark Region 测光\n> - 10 个 Scene Analyzer（Brighten / Saturation Prevention / Dark Prevention / Extreme Color / Face / Touch / Saliency / Depth / Frame Average / LLS）\n> \n> **输入**：sensor 像素\n> **输出**：adjusted_target / safe_target\n> \n> **2. evtable（曝光表）**（sensor-dependent）：\n> \n> 包括：\n> - 主曝光表（拐点 + 各 lux 档位的 linecount + gain）\n> - HDR 多曝光表（长 / 短 / 超短）\n> - lux_to_exp 映射桥\n> \n> **输入**：lux_index\n> **输出**：sensor 寄存器配置（Coarse Integration Time + Analog Gain + Digital Gain）\n> \n> **设计理由**：解耦让换 sensor 时只改 evtable，统计模块跨 sensor 通用。\n> \n> 这两者协作完成完整 Metering 决策：统计模块决定**目标**，evtable 决定**怎么走过去**。"
+    },
+    {
+      "id": "s3",
+      "title": "Q19：高通曝光表怎么调试",
+      "type": "example",
+      "content": "### 题目（PRD-Q19）\n\n「**高通曝光表怎么调试**」\n\n### 参考答案（必背 + Day 20 + Day 56 综合）\n\n> 高通曝光表调试涵盖 5+ 层次：\n> \n> **1. 基础曝光表**：\n> - 拐点位置：一般 lux 200 / 1/30 秒（防手抖原则），OIS 机型可放到 1/8 秒\n> - Analog Gain 上限：6400-12800（决定暗光画质上限）\n> - Digital Gain 是否启用（一般作为 Analog Gain 满后的兜底）\n> \n> **2. lux_to_exp 映射**：\n> - lux_index 到曝光表行号的桥接\n> - 不同亮度场景下用哪行（暗光 → 大行号 → 长曝光 + 高 ISO）\n> \n> **3. Bright/Dark Region**：\n> - dark_high（默认 ~50）和 bright_low（默认 ~210）边界\n> - dark_weight 和 bright_weight 修正系数（注意方向）\n> - 暗区超标 → 降 target；亮区超标 → 也降 target（保护亮部细节）\n> \n> **4. ROI 加权**：\n> - Touch / Face / Saliency / Depth 4 类的权重和半径\n> - Face weight 5.0（最高），Touch 3.0，Saliency 2-3\n> \n> **5. HDR sensor 多曝光表**：\n> - 长 / 短 / 超短分别调（3-EXP HDR）\n> - long_short_ratio 决定动态范围扩展\n> - merge_threshold 决定亮部用短、暗部用长\n> \n> **6. 抗带状（Antibanding）**：\n> - Auto Detect 50/60Hz\n> - 曝光时间锁周期整数倍\n> - sensor frame_readout 也锁（处理 Rolling Banding）\n> \n> **调教方法**：\n> \n> 1. 标定光源箱 + 灰板从亮到暗扫一遍\n> 2. 验证每个 lux 下亮度收敛到 target（误差 < 5%）\n> 3. 拐点过渡平滑测试（避免「**曝光跳变**」）\n> 4. 真实场景验证：夜景 / 室内 / 户外 / 雪景 / 夕阳 / 逆光人像\n> \n> **常见 bug + 调法**：\n> \n> - 「夜景过暗」 → strength 增大（Brighten）+ 降低 ISO 上限放宽\n> - 「钨丝灯下偏暖」 → A 参考点 weight 增大\n> - 「视频条纹」 → Auto Flicker Detection 启用 + fallback_to_region\n> - 「雪景灰」 → bright_weight 减弱 + Saturation Prevention strength 减小\n> \n> 一个项目曝光表调教大约 200-400 个参数（最复杂的 AE 模块）。"
+    },
+    {
+      "id": "s4",
+      "title": "实战 bug 排查题（综合）",
+      "type": "example",
+      "content": "### 综合题：用户报「**晚上室内人像偏黄**」\n\n场景：用户在客厅（钨丝灯）拍朋友，画面整体偏黄（脸 + 墙都偏黄）。\n\n### 你的排查步骤\n\n**Step 1：理解场景**\n\n- 钨丝灯（A 2856K）下\n- 人像（FA 应该工作）\n- 整体偏黄 → AWB 没修足，或 TGA 让它保留温度\n\n**Step 2：抓 log + 看现状**\n\n```\n[AWB] cct=4500 (估出 4500K，但实际是 3000K)\n[AWB] r_gain=0.85 b_gain=1.18\n→ 实际钨丝（3000K）需要 r_gain=0.62, b_gain=1.55\n→ AWB 修不够\n```\n\n**Step 3：定位**\n\n3 个可能：\n\n1. AWB 估出 cct 不准（应该 3000K，估了 4500K）\n2. TGA 三角形限制，不让 cct 到 3000K\n3. style_bias 让画面偏暖\n\n**Step 4：分别检查**\n\n```\n[AWB-FA] face conf=0.85 light_estimate cct=2900\n[AWB-RefPoint] cct=3500 conf=0.65\n[AWB-AGW] cct=4200 conf=0.75 (warm zone 主导)\n```\n\nFA 估 2900K（最准），但聚合后变 4500K。说明：\n\n- 聚合时 AGW 和 RefPoint 拉高了 cct\n- 应该让 FA 主导（conf=0.85 最高）\n\n**Step 5：调参数**\n\n- fa_lwv_weight 0.5 → 0.8（让 FA 更主导）\n- 或者 AGW conf 算法加强（让其在 face 场景下置信度低）\n\n**Step 6：测试**\n\n```\n调整后 [AWB] cct=3100 r_gain=0.66 b_gain=1.48\n→ 接近实际 3000K\n→ 画面色调正常\n```\n\n这就是「**实战 bug 排查**」的标准流程。\n\n### 综合题：「**视频画面有横条纹 + 偶尔色彩抖**」\n\n两个独立 bug：\n\n**bug 1：横条纹**\n- Antibanding 没生效\n- 检查 Auto Flicker Detection\n- 检查 fallback_to_region（中国应该是 50Hz）\n\n**bug 2：色彩抖**\n- AWB Smart Convergence 阈值太敏感\n- 多 sub-algorithm 冲突\n- 检查 conflict_threshold + 时序 window\n\n两 bug 同时出现要分别处理。\n\n### Day 57 总结\n\n做完 Q16-Q19 + 实战题：\n\n- ✅ Dark Boost gain 公式\n- ✅ 64×48 + Metering 两模块（必背）\n- ✅ 高通曝光表 6 层调试\n- ✅ 实战 bug 排查思维\n\n剩 3 天（Day 58-60）。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **Dark Boost gain 公式**：(target_lum / safe_lum) × adrc_gain\n2. **64×48 + Metering 两模块**：必背的 PRD-Q17/Q18\n3. **高通曝光表 6 层调试**：基础 / lux_to_exp / Region / ROI / HDR / Antibanding\n4. **实战 bug 排查 6 步**：理解 → 抓 log → 定位 → 检查 → 调参 → 测试\n5. **综合 bug**：分别处理多个独立问题\n\n### 自我检查\n\n1. Dark Boost gain 公式你能默写吗？\n2. PRD Metering 两模块（PRD-Q18）你能流畅说吗？\n3. 高通曝光表 6 层你能列出吗？\n4. 「**晚上室内人像偏黄**」你怎么排查？\n\n### 笔记建议\n\n- Dark Boost gain 公式默写 5 遍\n- 整理 PRD Q16-Q19 答题模板\n- 实战 bug 排查 6 步抄到笔记\n\n### 明天预告\n\nDay 58：模拟面试 5 - PRD Q20-Q23 + 综合 + 行为题。最后一场模拟面试，覆盖剩余 PRD 题 + 软实力。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "Day 12, Day 15, Day 20, Day 22 复习" },
+    { "source": "PRD-Q16 ~ PRD-Q19 真题" }
+  ],
+  "dailyQuizId": "daily-day-57"
+}

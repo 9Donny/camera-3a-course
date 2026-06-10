@@ -1,0 +1,74 @@
+{
+  "id": "day-52",
+  "week": 8,
+  "module": "M7",
+  "title": "多摄一致性总结 + 行业工程方法",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "多摄一致性的全景",
+      "type": "concept",
+      "content": "### 60 天里学过的多摄知识点\n\n```\nDay 4：镜头模组 + 多摄结构\nDay 27：多摄 AE 同步（主从架构）\nDay 39：多摄 AWB 同步（Reverse Sync + CCM 联动）\nDay 41：CCM 各 sensor 标定\nDay 51：Chromatix 调多摄一致性\n```\n\n今天把这些串起来。\n\n### 多摄一致性涉及的层次（重温）\n\n```\n硬件层：\n  - sensor 选型（同代避免响应差异）\n  - 镜头选型（焦距 / 视场 / 色彩偏向）\n  - OTP 校准\n\n驱动层：\n  - sensor 初始化时序\n  - 多摄硬件流水线\n\nISP 层：\n  - 资源分配\n  - 切换时硬件 fallback\n\n3A 层：\n  - AE 主从同步（cct/target）\n  - AWB 主从同步（cct + Reverse Sync）\n  - AF 不同步（切换时重对焦）\n\nCCM 层：\n  - 各 sensor 自己的 CCM 表\n  - 切换时 CCM 内插\n\nTone Mapping 层：\n  - 各 sensor 自己的 Gamma + LTM/GTM\n  - 一致性要求：同 cct 下色调一致\n\n图像后处理层：\n  - 各 sensor 降噪强度（ISO 不同）\n  - 锐化强度\n```\n\n所有层都要协同。任何层出 bug 都影响一致性。\n\n### 多摄一致性的「**黄金准则**」\n\n> **同一物理场景下，从主摄切换到任何副摄，用户应该感觉「**画面平滑过渡**」，色彩 / 亮度 / 焦点不突变。**\n\n这是评判一致性的标准。\n\n### 测试矩阵\n\n```\n          | 主摄 | 长焦 | 超广角 | ToF |\n---------+------+------+--------+-----+\n户外 D65  |  √   |  √   |   √    |  -  |\n室内钨丝  |  √   |  √   |   √    |  -  |\n阴天     |  √   |  √   |   √    |  -  |\n夕阳     |  √   |  √   |   √    |  -  |\n夜景     |  √   |  √   |   √    |  -  |\n微距     |  -   |  -   |   -    |  √  |\n```\n\n+ 每个场景下「切换镜头」的平滑度。\n\n约 50-100 个测试 case。\n\n### 一致性的「**级别**」\n\n```\nA 级（旗舰要求）：\n  切换无感（用户感觉不到「**切换**」）\n  色彩 / 亮度 / 焦点都连续\n\nB 级（高端要求）：\n  切换有感但流畅\n  色彩略有差异（< 5% RG/BG）\n\nC 级（中端要求）：\n  切换明显但可接受\n  色彩差异 < 10%\n\nD 级（中低端）：\n  切换有突变\n  色彩差异 > 10%\n```\n\n你妹妹项目目标可能是 B 或 C 级。A 级需要旗舰资源 + 1-2 年调教。\n\n### Tuning 工程师的多摄一致性流程\n\n```\n阶段 1：硬件标定\n  - 各 sensor OTP\n  - 各 sensor CCM 24 色卡 ΔE < 5\n  - 各镜头光学测试\n\n阶段 2：单摄调教\n  - 主摄完整调教（AE/AWB/AF/Flash/Color）\n  - 副摄独立调教（如果用作主摄场景）\n\n阶段 3：多摄协同\n  - 多摄 AE/AWB 主从同步\n  - 切换 ramp + reverse sync\n  - CCM 内插平滑\n  - 多摄 AF 不同步但启动快\n\n阶段 4：场景测试\n  - 50+ 真实场景切换测试\n  - 客观指标 + 主观评估\n  - 找问题 → 调参数 → 重测\n\n阶段 5：用户测试\n  - QA 团队真实场景测试\n  - 收集反馈 → 迭代\n```\n\n3-6 个月一个项目（多摄是最复杂的）。",
+      "glossary": [
+        { "term": "多摄一致性", "zh": "Multi-camera Consistency", "explain": "切换镜头时画面平滑过渡，色彩/亮度/焦点不突变。" },
+        { "term": "一致性级别 A-D", "zh": "Consistency Level", "explain": "工程上把一致性分级，旗舰 A 级，中端 B/C 级，低端 D 级。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么 iPhone 多摄一致性那么好？", "a": "1) 工程投入大；2) 苹果自家 sensor + 镜头紧密配合；3) 多年调教积累；4) 硬件级别的相机 ISP 同步。" },
+          { "q": "中端机型多摄差是什么原因？", "a": "成本压缩：1) sensor 不同代（响应差异大）；2) CCM 标定不充分；3) 调教时间短（<3 个月）；4) 测试矩阵不够。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Multi-camera Consistency" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "行业工程方法",
+      "type": "concept",
+      "content": "### Tuning 工程师的标准工作流\n\n**1. 标定 (Calibration)**\n\n```\nsensor 出厂前：\n  - OTP 烧录（各色温下的 RG/BG）\n  - LSC 暗角校正表\n  - 坏点表（BPC）\n  - VCM 距离-DAC 表（AF）\n  - PDAF disparity-DAC 表\n\nsensor 装机后：\n  - 验证 OTP 正确性\n  - CCM 24 色卡标定（D65 / D50 / A 三档）\n  - Gamma + Tone Mapping 标定\n```\n\n标定是「**调教的基础**」，不准的话后续全错。\n\n**2. 调教 (Tuning)**\n\n```\n工作流：\n  1. 拍 RAW（各场景 100+ 张）\n  2. 在 Chromatix 调参\n  3. 跑测试集（自动化处理 RAW → JPEG）\n  4. 算客观指标（ΔE / SNR / 失焦率）\n  5. 主观评估（看 100+ JPEG 是否好看）\n  6. 反复迭代\n```\n\n这是日常 80% 的工作。\n\n**3. 测试 (Testing)**\n\n```\n实验室测试：\n  - 标定光源箱（D65 / D50 / A / H）\n  - 24 色卡 ΔE\n  - Resolution Chart（解析力）\n  - SFR（边缘锐度）\n  - SNR（信噪比）\n  - 暗光场景（lux 5 / 30 / 100）\n\n真实场景测试：\n  - 户外（白天 / 阴天 / 夕阳 / 夜景）\n  - 室内（钨丝 / 荧光 / 自然光）\n  - 人像（自拍 / 合影 / 远景）\n  - 风景 / 运动 / 微距\n  - 100+ 张 RAW + JPEG 对比\n```\n\n这是「**质量保证**」环节。\n\n**4. 上线 (Deployment)**\n\n```\nTuning XML 写入手机 firmware\n  ↓\n烧机刷机\n  ↓\nQA 全场景测试\n  ↓\n出厂\n```\n\n上线后还要：\n\n```\n用户反馈监控\n  ↓\n按反馈调参\n  ↓\nOTA 推送新 Tuning（可选）\n```\n\n**5. 迭代 (Iteration)**\n\n上线后数月内仍可能更新调教（如发现某场景 bug）。OTA 推送新 Tuning XML。\n\n### Tuning 工程师的「**质量度量**」\n\n```\n客观指标：\n  - 24 色卡平均 ΔE（< 5 优秀，< 8 合格）\n  - SNR（暗光下越高越好）\n  - SFR / Resolution（解析力）\n  - 失焦率（< 5% 优秀）\n  - banding 出现频率\n\n主观评估：\n  - 用户问卷调查\n  - 编辑团队评分\n  - A/B 测试\n  - 跟竞品对比\n```\n\n客观 + 主观结合判断质量。\n\n### Tuning 工程师的「**工具链**」\n\n```\n相机：高质量 sensor + 镜头（用于标定）\n光源箱：标准光源（D65/D50/A/H）\n色卡：X-Rite 24 / SpyderCheckr\nResolution Chart：ISO 12233 / EIA 1956\n软件：Chromatix（核心）+ Imatest（测试）+ MATLAB（分析）\n手机：批量手机做实机测试\n```\n\n这些工具大部分是行业标准（贵但必须）。\n\n### Tuning 工程师的「**沟通对象**」\n\n```\n上游：\n  - Sensor 厂家（索尼 / 三星 / 豪威）\n  - 高通 / 联发科（ISP 提供方）\n\n同行：\n  - ISP 算法工程师\n  - 多媒体框架工程师\n\n下游：\n  - QA 团队（测试反馈）\n  - PM（产品需求 / 风格定位）\n  - UX（用户研究）\n  - 销售 / 市场（产品定位）\n```\n\n这是「**协作密集型**」工作。",
+      "glossary": [
+        { "term": "Calibration", "zh": "标定", "explain": "sensor 出厂时测物理特性写入 OTP（基础阶段）。" },
+        { "term": "Imatest", "zh": "Imatest 测试软件", "explain": "行业标准 Camera 测试软件，算 ΔE / SNR / Resolution 等。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "Tuning 工程师 + 算法工程师 + ISP 工程师区别？", "a": "1) Tuning：调高通现成模块的参数；2) ISP 算法：设计高通 ISP 模块本身（厂家内部）；3) 应用层算法：设计自家创新算法（如夜景模式 AI）。三者协作。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "Imatest 官网", "url": "https://www.imatest.com/" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Tuning 工程师的真实日常",
+      "type": "concept",
+      "content": "### 一天的工作\n\n```\n09:00 - 09:30：邮件 + 需求同步\n  - 看 PM / QA 反馈\n  - 跟前辈讨论今天调什么\n\n09:30 - 12:00：调教 + 测试（上午）\n  - 拍 RAW（在标定光源箱或户外）\n  - 在 Chromatix 调参\n  - 跑测试集\n  - 看结果\n\n12:00 - 14:00：午休\n\n14:00 - 17:00：调教 + 测试（下午）\n  - 继续上午的调教\n  - 跨模块调整（如 AE+AWB 协同）\n  - 实机刷机测试\n\n17:00 - 18:00：报告 + 归纳\n  - 写日报（今天调了什么 / 改善什么 / 还有什么 bug）\n  - 提交 git\n  - 准备明天工作\n```\n\n这是「**典型一天**」。每周 5 天 × 几个月 = 一个项目。\n\n### 一周的工作\n\n```\n周一：跟 PM 同步本周目标\n周二-周四：调教 + 测试\n周五：周报 + 跟 QA 同步进度\n周末：偶尔加班拍 RAW（光线好的天气难得）\n```\n\n### 一个项目的工作\n\n```\nMonth 1：标定 + 单摄调教（AE/AWB/AF）\nMonth 2：场景适配（夜景 / 人像 / HDR）\nMonth 3：多摄一致性\nMonth 4：风格化 + Flash + Flicker\nMonth 5：测试 + 修补\nMonth 6：上线 + 用户反馈迭代\n```\n\n3-6 个月一个项目。一年大概做 2-3 个项目。\n\n### Tuning 工程师的成就感来源\n\n```\n直接成就感：\n  - 调好一个 bug（用户从「**夜景偏黄**」 → 「**夜景自然**」）\n  - 24 色卡 ΔE 从 8 降到 3\n  - 客观指标超过竞品\n\n间接成就感：\n  - 用户买了你调的手机\n  - 朋友圈用你调的相机拍照\n  - 成为「**全公司的相机专家**」\n\n职业成就感：\n  - 从初级成长到资深\n  - 跨平台迁移调教经验（高通 → 联发科 / 自研）\n  - mentor 后辈\n```\n\n### Tuning 工程师的痛点\n\n```\n1. 调参循环慢：每改一个参数测 10 张图，几天迭代一次\n2. 主观评估困难：客观 ΔE < 5 但用户仍觉得「不好看」\n3. 跨场景平衡：调好 A 场景却影响 B 场景\n4. 多摄一致性是无底洞：永远调不完美\n5. 上线后用户反馈：用户场景比实验室复杂\n6. 跟 PM 沟通：技术约束 vs 产品风格\n```\n\n这些痛点是工作的一部分，不是 bug。\n\n### Tuning 工程师的薪资 + 职业发展\n\n```\n初级（0-1 年）：年薪 30-50 万（一线城市，2025 年）\n中级（1-3 年）：50-80 万\n高级（3-5 年）：80-120 万\n资深（5+ 年）：120-200+ 万（含期权）\n```\n\n（数据是大致估算，因公司 / 城市差异大）\n\n职业发展：\n\n```\n技术线：Tuning → Camera 算法 → 部门技术专家 → CTO 候选\n管理线：Tuning → 小组 leader → 部门经理 → 产品总监\n创业线：Tuning → 自己开 Camera 创业公司（罕见但有人成功）\n```",
+      "glossary": []
+    },
+    {
+      "id": "s4",
+      "title": "你的 60 天进度回顾",
+      "type": "concept",
+      "content": "### 你已学过的内容\n\n```\nWeek 1（光学硬件）：\n  曝光三要素 / Bayer / CMOS / 镜头 / 快门 / 闪光灯\n  → PRD-Q22（flux）\n\nWeek 2（ISP Pipeline）：\n  22 模块流水线 / Spectra 架构 / OB-LSC-Demosaic / WB-CCM /\n  Gamma-Tone Mapping / LTM-GTM-ADRC / 降噪锐化\n  → PRD-Q6/Q7/Q8/Q9/Q11/Q12/Q13/Q14/Q16\n\nWeek 3（AEC 第一阶段）：\n  AE 总览 / 64×48 数据块 / 中心测光 / 曝光表 / 拐点 /\n  Lux Index / Exp Index / Target / Safe Target / 收敛 / Bright/Dark Region\n  → PRD-Q1/Q5/Q15/Q17/Q19\n\nWeek 4（AEC 第二阶段）：\n  10 个 Scene Analyzer / Brighten / Saturation Prevention /\n  Dark Prevention / Extreme Color / Face / Touch / Saliency /\n  Depth / Frame / LLS / ADRC 深入 / 3-EXP HDR /\n  MFHDR / SHDR / 视频 HDR / 多摄 AEC\n  → PRD-Q10/Q18/Q21/Q23\n\nWeek 5（AWB 第一阶段）：\n  AWB 总览 / 灰世界 / Bayer 网格 / OTP / 参考点 /\n  RG-BG 平面 / 普朗克轨迹 / LWV / DWV / MLC / 决策聚合\n\nWeek 6（AWB 第二阶段）：\n  AGW / FA / AWB Flash / 双 WB / 多摄 AWB / TGA /\n  Smart Convergence / FCM / Bias Compensation\n\nWeek 7（AF + Flash + Flicker）：\n  AF 三种模式 / CAF / PDAF / ToF / Saliency AF /\n  Continuous AF / Manual Focus / Precision Flash /\n  Auto Flicker Detection\n\nWeek 8（色彩 + 工具 + 面试）：\n  色彩科学 / Chromatix 工具实操 / 多摄一致性总结 /\n  行业工程方法（今天）/ 模拟面试 5 场 / 简历润色\n```\n\n### PRD 23 题完整覆盖\n\n做完 60 天，你能答出**全部 23 道**：\n\n- AE 类：Q1, Q2, Q3, Q4, Q5, Q15, Q17, Q18, Q19, Q21, Q23 (11 题)\n- ISP 类：Q6, Q7, Q8, Q9, Q11, Q12, Q13, Q14, Q16 (9 题)\n- 闪光灯类：Q22 (1 题)\n- TMC 类：Q10 (1 题)\n- 总计：22 题（Q20 应该是 Day 6 学过的「闪光灯打闪过曝」）\n\n### 你的进度地图\n\n```\n████████████████████████████████████████████████████████████████████░░  90% (Week 8/8)\n```\n\n做完 Day 52 = 60 天的 87%。还剩 8 天（Day 53-60）。\n\n### 还要学什么\n\n```\nDay 53：行业工程方法补完\nDay 54-58：模拟面试 5 场\nDay 59：简历润色\nDay 60：最终冲刺\n```\n\nWeek 8 后半程都是「**应试 + 软实力**」，不再学新算法。\n\n### Tuning 工程师面试通过率\n\n根据 PRD 描述，你妹妹是「**高通生态内调教工程师**」。这种岗位面试：\n\n- 一线大厂（小米/华为/OPPO/vivo）：通过率 5-10%\n- 二线（中兴/TCL/魅族）：通过率 15-25%\n- 三线（小厂）：通过率 30-50%\n\n你目标是「**两个月学完 + 入职**」。建议：\n\n1. **二线先入职**（容易）→ 1-2 年经验\n2. 跳一线（同样岗位）\n3. 5 年后跨平台或晋升管理\n\n### 学完 60 天你能做什么\n\n- ✅ 完整答 PRD 22 道面试题\n- ✅ 看懂高通 PDF（约 250 页 + 内部 Tuning Guide）\n- ✅ 用 Chromatix 跟着前辈调（基础操作）\n- ✅ 知道工程方法（标定 / 测试 / 迭代）\n- ✅ 应对真实场景问题（夜景 / HDR / 多摄）\n- ✅ 跟 sensor 厂家初步对接\n\n这是「**初级 Tuning 工程师**」的能力。1-2 年项目经验后晋升中级。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **多摄一致性涉及 6 层**：硬件 / 驱动 / ISP / 3A / CCM / 后处理\n2. **一致性 4 级**：A 旗舰 / B 高端 / C 中端 / D 中低端\n3. **Tuning 工程方法 5 步**：标定 / 调教 / 测试 / 上线 / 迭代\n4. **质量度量**：客观（ΔE / SNR / SFR）+ 主观（用户问卷）\n5. **Tuning 工程师工具链**：Chromatix 核心 + Imatest 测试 + 标定光源箱\n6. **薪资**：初级 30-50 万 → 资深 120-200+ 万\n7. **你已学完 60 天的 87%**\n\n### 自我检查\n\n1. 多摄一致性涉及哪 6 层？\n2. Tuning 5 步工作流？\n3. 质量度量的客观 vs 主观指标？\n4. 你目标的 Tuning 工程师级别 + 薪资？\n5. 你最想做哪种 Tuning（旗舰 / 中端 / 创业）？\n\n### 笔记建议\n\n- 把 Tuning 5 步流程抄到笔记\n- 整理职业发展 3 条线\n- 想想自己未来 1 年的目标\n\n### 明天预告\n\nDay 53：行业工程方法 + 跨平台知识。简单介绍联发科 ISP / 自研 ISP（如苹果 / 华为）的差异。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "本周 Day 50-51 references" },
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Multi-camera Consistency + Engineering Practices" }
+  ],
+  "dailyQuizId": "daily-day-52"
+}

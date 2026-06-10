@@ -1,0 +1,302 @@
+[
+  {
+    "id": "fc-w8-01",
+    "front": "CIE 1931 色度图？",
+    "back": "国际照明委员会 1931 年定的「人眼可见颜色」马蹄形图。每个点是一种颜色。所有色彩空间都在这个马蹄形里。",
+    "tags": [
+      "Day 50",
+      "CIE"
+    ],
+    "srcDay": "day-50"
+  },
+  {
+    "id": "fc-w8-02",
+    "front": "sRGB / Display P3 / DCI-P3 / BT.2020 用途？",
+    "back": "sRGB（1.0x）网页/JPEG 默认；Display P3（1.25x）iPhone/Mac；DCI-P3（1.30x）电影院；BT.2020（2.50x）4K HDR；ProPhoto（4.0x）后期工作。",
+    "tags": [
+      "Day 50",
+      "色彩空间"
+    ],
+    "srcDay": "day-50"
+  },
+  {
+    "id": "fc-w8-03",
+    "front": "Lab 色彩空间核心特点？",
+    "back": "L 亮度 + a 红绿轴 + b 蓝黄轴。空间距离 = 人眼色差感觉（ΔE）。色彩科学的「人眼标尺」。",
+    "tags": [
+      "Day 50",
+      "Lab"
+    ],
+    "srcDay": "day-50"
+  },
+  {
+    "id": "fc-w8-04",
+    "front": "CCM（色彩矩阵）作用 + 维度？",
+    "back": "3×3 矩阵把 sensor RGB 转标准 sRGB。每个 cct 配一组（D65/D50/A/H），实际 cct 在两档间内插。9 个矩阵元素由 24 色卡 ΔE 标定。",
+    "tags": [
+      "Day 50",
+      "CCM"
+    ],
+    "srcDay": "day-50"
+  },
+  {
+    "id": "fc-w8-05",
+    "front": "完整 ISP 色彩管线 6 模块？",
+    "back": "WB → CCM → Gamma → Tone Mapping → ADRC → 后期色彩调整。WB 去光源，CCM 转标准空间，Gamma 校正，Tone Mapping 压位深，ADRC 拉暗部，后期调风格。",
+    "tags": [
+      "Day 50",
+      "管线"
+    ],
+    "srcDay": "day-50"
+  },
+  {
+    "id": "fc-w8-06",
+    "front": "Chromatix 是什么？",
+    "back": "高通官方 Tuning 工具：参数编辑器 + RAW 预览 + 数据可视化。Tuning 工程师每天用。授权给手机厂家，需付费 + NDA。",
+    "tags": [
+      "Day 51",
+      "Chromatix"
+    ],
+    "srcDay": "day-51"
+  },
+  {
+    "id": "fc-w8-07",
+    "front": "Chromatix 5 步工作流？",
+    "back": "项目初始化 → 拍图（标定光源箱拍 100+ RAW）→ 调教（参数迭代）→ 测试（跑测试集算 ΔE/SNR）→ 导出 XML 烧机。",
+    "tags": [
+      "Day 51",
+      "工作流"
+    ],
+    "srcDay": "day-51"
+  },
+  {
+    "id": "fc-w8-08",
+    "front": "Tuning 工程师 4 个软实力？",
+    "back": "沟通能力（PM/QA/sensor 厂家）+ 审美（看好照片培养判断）+ 工程方法（标定/测试/迭代）+ 耐心（重复几千次）。",
+    "tags": [
+      "Day 51",
+      "软实力"
+    ],
+    "srcDay": "day-51"
+  },
+  {
+    "id": "fc-w8-09",
+    "front": "Tuning 成长路径 4 级？",
+    "back": "初级（0-1 年，懂参数）→ 中级（1-3 年，独立调教）→ 高级（3-5 年，定风格）→ 资深（5+ 年，影响产品）。",
+    "tags": [
+      "Day 51",
+      "成长"
+    ],
+    "srcDay": "day-51"
+  },
+  {
+    "id": "fc-w8-10",
+    "front": "多摄一致性涉及 6 层？",
+    "back": "硬件（sensor + 镜头 + OTP）+ 驱动 + ISP + 3A（AE/AWB/AF）+ CCM + 后处理（降噪/锐化）。任何一层 bug 影响一致性。",
+    "tags": [
+      "Day 52",
+      "多摄"
+    ],
+    "srcDay": "day-52"
+  },
+  {
+    "id": "fc-w8-11",
+    "front": "多摄一致性 4 个级别？",
+    "back": "A 旗舰（无感切换）/ B 高端（流畅）/ C 中端（明显但可接受）/ D 中低端（突变）。中端项目目标 B/C。",
+    "tags": [
+      "Day 52",
+      "级别"
+    ],
+    "srcDay": "day-52"
+  },
+  {
+    "id": "fc-w8-12",
+    "front": "Tuning 5 步工程方法？",
+    "back": "标定（OTP/CCM/Gamma）→ 调教（Chromatix 迭代）→ 测试（实验室 + 真实场景）→ 上线（写 firmware）→ 迭代（用户反馈）。",
+    "tags": [
+      "Day 52",
+      "工程方法"
+    ],
+    "srcDay": "day-52"
+  },
+  {
+    "id": "fc-w8-13",
+    "front": "Tuning 工程师工具链？",
+    "back": "Chromatix（核心）+ Imatest（测试软件，行业标准）+ MATLAB（分析）+ 标定光源箱 + 24 色卡 + Resolution Chart。",
+    "tags": [
+      "Day 52",
+      "工具"
+    ],
+    "srcDay": "day-52"
+  },
+  {
+    "id": "fc-w8-14",
+    "front": "Tuning 薪资 + 职业路线？",
+    "back": "初级 30-50 万 / 中级 50-80 万 / 高级 80-120 万 / 资深 120-200+ 万（一线）。技术线 / 管理线 / 创业线三选一。50 岁仍能做技术。",
+    "tags": [
+      "Day 52",
+      "薪资"
+    ],
+    "srcDay": "day-52"
+  },
+  {
+    "id": "fc-w8-15",
+    "front": "高通 vs 联发科 ISP 关系？",
+    "back": "核心算法相似（80% 知识通用）。不同：工具（Chromatix vs MTK Tuning Tool）+ 参数命名 + 默认值。Tuning 工程师跨平台不是从 0 开始。",
+    "tags": [
+      "Day 53",
+      "跨平台"
+    ],
+    "srcDay": "day-53"
+  },
+  {
+    "id": "fc-w8-16",
+    "front": "Camera 行业 6 大趋势？",
+    "back": "AI 全面渗透 + 计算摄影主导 + 算力暴涨（10 年 100x）+ 传感器进化（大底）+ 视频崛起（HDR10/Dolby Vision）+ 硬件协同（OIS/Dual ISP）。",
+    "tags": [
+      "Day 53",
+      "趋势"
+    ],
+    "srcDay": "day-53"
+  },
+  {
+    "id": "fc-w8-17",
+    "front": "PRD-Q1 AE 算法 3 步？",
+    "back": "亮度获取（64×48 + 加权得 final_luma）/ 计算 Target（luma_target → adjusted → safe_target）/ 曝光调节（lux_index → exp_index → 写 sensor）。",
+    "tags": [
+      "Day 54",
+      "PRD-Q1"
+    ],
+    "srcDay": "day-54"
+  },
+  {
+    "id": "fc-w8-18",
+    "front": "PRD-Q15 safe_target 三步？",
+    "back": "Step 1 luma_target（按 lux 查表，常见 80）/ Step 2 adjusted_target（10 个 Scene Analyzer 修正）/ Step 3 safe_target（减 ADRC 预扣）。",
+    "tags": [
+      "Day 54",
+      "PRD-Q15"
+    ],
+    "srcDay": "day-54"
+  },
+  {
+    "id": "fc-w8-19",
+    "front": "PRD-Q5 lux_index 公式？",
+    "back": "基准 + log2(real_gain × exp_time / target_real_gain × target_exp_time) + log2(target_lum / current_lum)。三项：基准 + 曝光偏差 + 亮度偏差。",
+    "tags": [
+      "Day 54",
+      "PRD-Q5"
+    ],
+    "srcDay": "day-54"
+  },
+  {
+    "id": "fc-w8-20",
+    "front": "PRD-Q17 高通 AE 多少数据块？",
+    "back": "64×48 = 3072 块 + 中心测光 + Touch/Face/Saliency/Depth ROI 加权。高通 ISP 硬件设计。",
+    "tags": [
+      "Day 57",
+      "PRD-Q17"
+    ],
+    "srcDay": "day-57"
+  },
+  {
+    "id": "fc-w8-21",
+    "front": "PRD-Q18 Metering 两模块？",
+    "back": "AE 数据统计模块（决定 target，sensor-independent）+ evtable 曝光表（决定 sensor 寄存器，sensor-dependent）。",
+    "tags": [
+      "Day 57",
+      "PRD-Q18"
+    ],
+    "srcDay": "day-57"
+  },
+  {
+    "id": "fc-w8-22",
+    "front": "PRD-Q10 TMC 4.0 vs 3.0？",
+    "back": "3.0 GTM 全局曲线（中端 SM7250）；4.0 LTM 局部分块曲线（旗舰 SM8350+）。4.0 计算成本高 + tuning 工作量大但效果好。",
+    "tags": [
+      "Day 55",
+      "PRD-Q10"
+    ],
+    "srcDay": "day-55"
+  },
+  {
+    "id": "fc-w8-23",
+    "front": "行为题答题模板：转行原因？",
+    "back": "个人兴趣 + 职业匹配 + 行业前景 + 行动证据（自学 60 天 + 看高通 PDF + 答 PRD 23 题）。用真实经历支撑。",
+    "tags": [
+      "Day 53",
+      "行为题"
+    ],
+    "srcDay": "day-53"
+  },
+  {
+    "id": "fc-w8-24",
+    "front": "STAR 法则？",
+    "back": "Situation 背景 + Task 任务 + Action 行动（重点）+ Result 结果（量化）。行为面试的标准模板。",
+    "tags": [
+      "Day 53",
+      "STAR"
+    ],
+    "srcDay": "day-53"
+  },
+  {
+    "id": "fc-w8-25",
+    "front": "简历 5 部分结构？",
+    "back": "基本信息 / 个人简介（3-5 句）/ 核心技能（30+ 关键词）/ 项目经历（STAR 格式）/ 教育背景。HR 30 秒看，前 3 行必须吸引眼球。",
+    "tags": [
+      "Day 59",
+      "简历"
+    ],
+    "srcDay": "day-59"
+  },
+  {
+    "id": "fc-w8-26",
+    "front": "为什么转行段落必须写？",
+    "back": "不写 HR 假设「上家干不下去」「找工作迫切」「没真兴趣」 → 直接刷掉。主动解释 + 真实经历 = 让测试经验变成转 Tuning 优势。",
+    "tags": [
+      "Day 59",
+      "转行"
+    ],
+    "srcDay": "day-59"
+  },
+  {
+    "id": "fc-w8-27",
+    "front": "投递简历分级策略？",
+    "back": "A 一线大厂（小米/华为/OPPO/vivo，通过率 5-10%，2-3 家）+ B 二线（通过率 15-25%，5-8 家）+ C 中小厂（30-50%，5-10 家）。B 级先入职 → 1-2 年经验跳 A。",
+    "tags": [
+      "Day 60",
+      "投递"
+    ],
+    "srcDay": "day-60"
+  },
+  {
+    "id": "fc-w8-28",
+    "front": "60 天学完能答多少 PRD 题？",
+    "back": "PRD 23 道核心面试题 + 30+ 行业相关题 + 5 场模拟面试 + 6 道行为题。达到初级 Camera Tuning 工程师能力。",
+    "tags": [
+      "Day 60",
+      "成果"
+    ],
+    "srcDay": "day-60"
+  },
+  {
+    "id": "fc-w8-29",
+    "front": "Tuning 工程师 5 年规划？",
+    "back": "Year 1 初级（上岗）→ Year 2-3 中级（独立项目）→ Year 3-5 高级（跨平台 + 计算摄影）→ Year 5-10 资深（影响产品决策）。",
+    "tags": [
+      "Day 60",
+      "规划"
+    ],
+    "srcDay": "day-60"
+  },
+  {
+    "id": "fc-w8-30",
+    "front": "60 天结业你的能力包？",
+    "back": "硬：完整 3A 知识 + 高通 PDF 250 页 + Chromatix 基础 + PRD 23 题。软：学习能力 + 工程方法 + 跨团队思维 + 行业视野。这是初级 Tuning 工程师全部能力。",
+    "tags": [
+      "Day 60",
+      "能力包"
+    ],
+    "srcDay": "day-60"
+  }
+]

@@ -1,0 +1,77 @@
+{
+  "id": "day-47",
+  "week": 7,
+  "module": "M6",
+  "title": "Precision Flash 完整流程",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Flash 模块全景",
+      "type": "concept",
+      "content": "### 从基础到完整\n\n之前学过的 Flash 知识点：\n\n- Day 6：双 LED（暖白 + 冷白）+ 预闪/主闪机制 + flux 反直觉参数（PRD-Q22）\n- Day 38：AWB Flash（双 WB 处理 LED + 环境光混合）\n\n今天看 Flash 的**完整工程视角**。\n\n### Flash 三种触发模式\n\n```\nAuto（自动）：AE 决定要不要闪。lux < 阈值 + AE 拉到 ISO 上限仍不够 → 触发\nOn（强制）：总是闪\nOff（关闭）：不闪\nFill（填充）：户外强光下补人脸（即使整体不暗）\nTorch（手电）：LED 持续亮（不是「**闪**」）\n```\n\n### Precision Flash 完整流程（高通规范）\n\n```\nT+0：用户按下拍照按钮\n  ↓ Flash mode = auto/on\n  \nT+10ms：决定是否需要闪光\n  - lux < flash_lux_threshold？\n  - AE 是否已到 ISO 上限？\n  - 是 → 进入 Pre-Flash\n  - 否 → 普通拍照（不闪）\n  \nT+20ms：Pre-Flash 触发\n  - LED 暖光 + 冷光按 比例 100% / 100% 亮（弱亮度模式）\n  - 持续 50ms\n  - sensor 拍 1-2 帧\n  - 用预闪期间的统计：\n    * AE：测光算正确曝光参数（含 LED 影响）\n    * AWB：双 WB（前景 LED / 背景环境光）\n    * AF：用 LED 照亮的画面重新对焦\n    * Flash：决定主闪强度（基于场景距离 + 反射率）\n  \nT+100ms：等 100ms（让 LED 冷却 + 决策固化）\n  ↓\nT+200ms：主闪触发\n  - LED 全亮度（按 Pre-Flash 算的强度）\n  - 持续 30-50ms\n  - sensor 同步曝光\n  ↓\nT+250ms：sensor 曝光完成 → ISP 处理\n  - 应用 Pre-Flash 算好的 AE/AWB/AF 参数\n  ↓\nT+400ms：ISP 输出 JPEG\n  → 用户看到「**咔嚓 + 出片**」\n```\n\n这就是 **Precision Flash** 的完整 400ms 流程。Day 6 + Day 38 各看了一部分，今天看完整。\n\n### Flash 强度估算（Pre-Flash 关键工作）\n\n主闪强度不是固定的，按场景调：\n\n```python\ndef estimate_main_flash_intensity(preflash_stats, ambient_stats):\n    # 算「Pre-Flash 让画面亮度上升多少」\n    luminance_gain = preflash_stats.luma_avg - ambient_stats.luma_avg\n    \n    # 推主闪需要多强（要让画面达到 luma_target）\n    target_luma = 80\n    needed_main_intensity = (target_luma - ambient_stats.luma_avg) / luminance_gain * 100\n    \n    # 限制范围\n    return max(20, min(100, needed_main_intensity))\n```\n\n效果：\n\n- 极暗场景：主闪 100%（最亮）\n- 中度暗：主闪 50-70%\n- 户外补光（Fill）：主闪 20-30%（弱补）\n\n这是 Day 6 学过的 flux 参数的**实际作用**。\n\n### LED 双色温调节\n\n暖白 + 冷白两个 LED，按比例调出不同色温的「合成 LED 光」：\n\n```python\ndef get_led_intensity(scene_cct):\n    # 想让 LED 色温接近场景环境光（避免色温突变）\n    if scene_cct < 4000:  # 钨丝灯环境\n        return {'warm': 100, 'cool': 30}  # 偏暖\n    elif scene_cct < 5500:  # 中性\n        return {'warm': 60, 'cool': 60}\n    else:  # 冷光环境（日光 / 阴天）\n        return {'warm': 30, 'cool': 100}  # 偏冷\n```\n\n这种「**LED 跟环境**」让闪光后画面整体色调和环境一致，不突兀。\n\n### Flash 与红眼\n\n闪光照射人脸时，光从瞳孔反射回 sensor → 红眼（视网膜血管反光）。\n\n应对：\n\n- **Pre-Flash 收缩瞳孔**：Pre-Flash 让眼睛瞳孔提前缩小 → 主闪时进入眼内的光少 → 红眼弱\n- **算法去红眼**：ISP 后段检测瞳孔区域的红色像素 → 替换成深色\n\n这就是 Pre-Flash 除了测光、还有「**生理反应**」的作用。",
+      "glossary": [
+        { "term": "Precision Flash", "zh": "精准闪光", "explain": "完整流程：用户按下→Pre-Flash→3A 决策→主闪→曝光→出片，约 400ms。" },
+        { "term": "Flash Intensity", "zh": "闪光强度", "explain": "主闪 LED 亮度百分比，由 Pre-Flash 测光决定。" },
+        { "term": "Red Eye Reduction", "zh": "去红眼", "explain": "Pre-Flash 收缩瞳孔 + ISP 算法替换红色像素。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么不直接闪一次拍下来？", "a": "1) 测光不准（不知道闪多强合适）；2) AWB 不准（不知道 LED 和环境的混合比例）；3) AF 不准（亮度突变让 CAF 误判）。Pre-Flash 解决全部。" },
+          { "q": "Pre-Flash 用户感觉吗？", "a": "感觉。会看到「闪两下」（预闪 + 主闪），间隔 100-200ms。但用户已经接受这是「闪光相机的正常表现」。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：手机闪光 双 LED", "search": "手机闪光灯 双 LED 调节 原理" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Precision Flash" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Flash 在不同场景的策略",
+      "type": "concept",
+      "content": "### 1. 弱光人像（最常见 Flash 场景）\n\n```\n场景：晚上室内，钨丝灯，拍人\n  lux=50, AE 已到 ISO 12800 仍不够\n→ Auto Flash 触发\nPre-Flash：\n  AE：测出主闪需 70% 强度\n  AWB：双 WB（前景 LED 5500K + 背景钨丝 3000K）\n  AF：脸部 ROI + PDAF\n主闪：70% 暖白 + 30% 冷白（cct 偏暖匹配钨丝）\n效果：人脸自然 + 背景温暖 + 不偏蓝\n```\n\n### 2. 户外补光（Fill Flash）\n\n```\n场景：户外正午，逆光人像\n  lux=600（很亮）但人脸在阴影里\n→ Fill Flash（自动判断脸部欠曝）\nPre-Flash：\n  AE：测出主闪只需 25% 弱补\n  AWB：LED 用 D65（5500K）匹配日光\n主闪：25% 中性白\n效果：人脸亮出来 + 背景天空仍正常曝光\n```\n\n这就是为什么有时白天拍人也会闪 —— 补光填影。\n\n### 3. 抓拍场景（速度优先）\n\n```\n场景：用户连拍模式，每帧都按下\n→ Pre-Flash 太慢（每张要 400ms）\n→ 改用 \"Snapshot Mode Flash\"：\n  - 第一张：完整 Precision Flash\n  - 后续连拍：复用第一张的 Flash 参数（不再 Pre-Flash）\n  - 直到场景明显变化\n```\n\n这种**Pre-Flash 复用**让连拍体验流畅。\n\n### 4. 录像中的 Flash（不能闪）\n\n```\n场景：用户录视频时按拍照\n→ 不闪（影响录像）\n→ 改用 \"Torch Mode\" 或 \"Continuous LED\"\n  - LED 持续亮（弱亮度）\n  - 录像中的「拍照」其实是从录像帧中抽一帧\n  - 不能用瞬时闪光\n```\n\n### 5. 极弱光（Night Mode 模式）\n\n```\n场景：lux < 5（极暗）\n→ 多帧合成（夜景模式）+ 不闪\n→ 因为闪光只能照亮前景（远景仍黑），多帧合成画面均匀\n→ 现代手机夜景模式默认关闭闪光\n```\n\n这种「**夜景不闪**」是新趋势 —— 多帧合成 + AI 增强 > 闪光。\n\n### Flash 在不同手机定位的策略\n\n```\niPhone：\n  Auto Flash 算法保守（少闪），多用多帧 + AI\n  夜景模式默认替代 Flash\n  Fill Flash 智能（脸部欠曝才用）\n\nAndroid 旗舰：\n  类似 iPhone\n  双 LED 调节精细（暖冷比例自动）\n\nAndroid 中端：\n  Auto Flash 算法激进（更常闪）\n  双 LED 简化（不调比例）\n  夜景模式可能没有 → Flash 用户体验差\n```\n\n这就是「**旗舰夜拍好 + 中端夜拍差**」的差距来源。\n\n### Flash 调教参数\n\n```xml\n<flash_tuning>\n  <auto_threshold_lux>50</auto_threshold_lux>     <!-- 触发 Auto Flash 的 lux -->\n  <pre_flash_intensity>20</pre_flash_intensity>   <!-- Pre-Flash 强度（弱）-->\n  <main_flash_min>20</main_flash_min>             <!-- 主闪最低 20% -->\n  <main_flash_max>100</main_flash_max>\n  <led_warm_cool_curve>...</led_warm_cool_curve>  <!-- 按场景 cct 调比例 -->\n  <enable_anti_red_eye>true</enable_anti_red_eye>\n  <fill_flash_face_threshold>0.7</fill_flash_face_threshold>  <!-- 脸亮度低于 70% 触发 Fill -->\n  <connect_with_3a>true</connect_with_3a>\n  <pre_flash_reuse_frames>5</pre_flash_reuse_frames>  <!-- 连拍复用 -->\n</flash_tuning>\n```",
+      "glossary": [
+        { "term": "Fill Flash", "zh": "填充闪光", "explain": "户外强光下脸部欠曝时弱补光，让人脸亮出来。" },
+        { "term": "Snapshot Mode Flash", "zh": "连拍模式 Flash", "explain": "Pre-Flash 复用，连拍速度快。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "夜景模式为什么不闪？", "a": "1) 闪光只照前景，远景仍黑；2) 多帧合成能让全画面亮且低噪；3) 夜景模式 + Flash 组合反而效果差。" },
+          { "q": "Fill Flash 怎么判断「脸欠曝」？", "a": "Face ROI 内的平均 luma vs 整体 luma 比例。脸 luma < 整体 70% → 欠曝 → Fill 触发。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Flash Strategies" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Flash 调教 cheat 综合",
+      "type": "example",
+      "content": "### log 字段\n\n```\n[Flash] mode=auto trigger=true (lux=45 < 50)\n[Flash-Pre] intensity=20% duration=50ms\n[Flash-Pre] AE: target_main_intensity=70%\n[Flash-Pre] AWB: led_cct=4000 ambient_cct=3000 → led_warm=80% led_cool=40%\n[Flash-Pre] AF: face_roi locked at dac=180\n[Flash-Main] intensity=70% duration=40ms\n[Flash-Main] AE settled, AWB settled, AF settled\n[Flash] sensor exposure complete\n[Flash] ISP processing → JPEG output at T+380ms\n```\n\n### 排查实例\n\n**「闪光后画面偏冷」**\n\n```\n[Flash-Pre] led_warm=30% led_cool=100% (cct 5500)\n[Flash-Pre] ambient_cct=3000\n```\n\n问题：LED 用 5500K 但环境是钨丝（3000K），LED 比环境冷 → 闪光后画面偏冷。\n\n修：让 LED 跟随环境 cct（warm-up 到 led_warm=100%, led_cool=20%，整体 cct 接近 3500K）。\n\n**「Fill Flash 太亮」**\n\n```\n[Flash] mode=fill (face_luma 60 vs target 80)\n[Flash-Main] intensity=60% (太强)\n```\n\n问题：Fill 主闪 60% 让人脸过亮（白成一片）。\n\n修：fill_flash_max 60→30，限制 Fill 主闪强度。\n\n**「连拍速度慢」**\n\n```\n[Flash] frame 1: full Precision Flash (400ms)\n[Flash] frame 2: full Precision Flash (400ms) ← 应该复用\n```\n\n问题：连拍每帧都跑 Pre-Flash，速度低。\n\n修：pre_flash_reuse_frames=5（前 5 张复用）。\n\n**「夜景闪光画面只前景亮」**\n\n```\n[Flash] mode=on intensity=100\n```\n\n问题：用户开 Flash 在夜景下，但 Flash 只照前景（5 米外的物体仍黑）。\n\n建议：夜景模式 + Flash 组合 → 提示用户用「夜景模式」（多帧合成，全画面亮）。\n\n### Flash 调教 cheat\n\n| 反馈 | 调什么 |\n|---|---|\n| 闪光偏冷 | LED warm/cool 比例跟随环境 cct |\n| Fill Flash 过亮 | fill_flash_max 限制 |\n| 红眼 | 启用 Pre-Flash 收缩瞳孔 + ISP 去红眼 |\n| 连拍慢 | pre_flash_reuse 启用 |\n| 户外不闪应该闪 | auto_threshold_lux 提高（更激进触发）|\n| Auto 误闪 | auto_threshold_lux 降低（更保守）|\n| 闪光后画面突变 | ambient_continuity 启用（damping 30 帧）|\n| 闪光画面偏黄 | LED cool 比例增加 |\n\n### Flash 与 PRD Q22 对应\n\nPRD Q22：「**flux 越大越暗**」\n\nflux 在某些公司定义里是「**Pre-Flash 阈值**」 —— flux 越大 → 主闪触发条件越严 → 实际打闪较弱 → 画面较暗。\n\n这是 Day 6 + Day 47 两次对 PRD-Q22 的解释。",
+      "glossary": []
+    },
+    {
+      "id": "s4",
+      "title": "Flash 与 ISP 后段的协同",
+      "type": "concept",
+      "content": "### Flash 信息传给 ISP\n\nFlash 触发后，ISP 后段需要知道：\n\n- 主闪是否触发\n- 主闪强度 + 时序\n- 双 WB 信息（前景/背景区域）\n\n应用：\n\n**1. ISP WB 模块**：应用 Day 38 学过的双 WB（前景 LED gain / 背景环境光 gain）\n\n**2. ISP CCM 模块**：选合适的 CCM 矩阵（按主闪 cct）\n\n**3. ISP Tone Mapping**：闪光下的局部调整\n  - 前景过亮（接近脸）→ 适度压低\n  - 背景没受影响 → 保持\n\n**4. ISP 降噪**：闪光让前景明显（ISO 低）→ 弱降噪；背景仍暗（高 ISO）→ 强降噪。两个区域差异化处理。\n\n**5. ISP HDR Merge**（如果用 MFHDR）：闪光帧 + 不闪帧合成，前景用闪光帧、背景用不闪帧。\n\n### Flash + HDR 组合\n\n旗舰用「Flash + Multi-frame」组合：\n\n```\n拍 1：不闪光（背景明亮）\n拍 2：Pre-Flash（弱光）\n拍 3：主闪光（前景明亮）\n\nISP 合成：\n  前景：用拍 3（脸亮）\n  背景：用拍 1（环境保留）\n  → HDR + Flash 双效果\n```\n\n这是夜景人像「**完美**」的实现：脸亮 + 背景的霓虹灯 / 城市夜景都保留。\n\n### Tuning 协同\n\n```xml\n<flash_isp_pipeline>\n  <pass_flash_info_to_wb>true</pass_flash_info_to_wb>\n  <pass_flash_info_to_ccm>true</pass_flash_info_to_ccm>\n  <pass_flash_info_to_denoise>true</pass_flash_info_to_denoise>\n  <enable_flash_hdr>true</enable_flash_hdr>     <!-- 旗舰才开 -->\n  <hdr_frames>3</hdr_frames>\n</flash_isp_pipeline>\n```\n\n### Flash 是 3A 协同的「**集大成**」\n\nFlash 触发时 AE / AWB / AF 都要参与，ISP 后段也用 Flash 信息。这是 3A 系统**最复杂**的协同场景。\n\n做完 Day 47 你应该理解：\n\n```\n用户按下拍照\n   ↓\n3A + Flash 协同决策（Pre-Flash 测光）\n   ↓\n主闪触发 + sensor 曝光\n   ↓\nISP 应用 3A 决策 + Flash 信息\n   ↓\n输出最终 JPEG\n```\n\n这是「**手机摄影**」的全套流水线。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **Precision Flash 400ms 流程**：按下→Pre-Flash 测光→等→主闪→曝光→ISP→出片\n2. **Pre-Flash 4 个工作**：AE 测光 + AWB 双 WB + AF 重对焦 + Flash 强度估算\n3. **LED 双色温调节**：跟随环境 cct，避免突变\n4. **Flash 5 种模式**：Auto / On / Off / Fill（户外补光）/ Torch（持续亮）\n5. **Flash + ISP 协同**：传信息给 WB / CCM / Denoise，旗舰还有 Flash + HDR 多帧合成\n6. **PRD-Q22 解释**：flux 越大主闪触发越保守 → 画面较暗（前两次解释统一）\n\n### 自我检查\n\n1. Precision Flash 完整流程的 5 个关键时间点？\n2. Pre-Flash 同时做哪 4 件事？\n3. LED 暖冷比例怎么决定？\n4. Fill Flash 什么时候触发？\n5. Flash + HDR 组合怎么实现「夜景人像完美」？\n\n### 笔记建议\n\n- 把 Precision Flash 400ms 时间轴抄到笔记\n- 整理 5 种 Flash 模式适用场景\n- 思考你妹妹项目用的 Flash 模式策略\n\n### 明天预告\n\nDay 48：Auto Flicker Detection 自动闪烁检测。Day 19 学过 antibanding（50/60Hz 抗带状），明天看自动检测电网频率的算法（不靠用户手动设置 50/60Hz）。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Precision Flash" }
+  ],
+  "dailyQuizId": "daily-day-47"
+}

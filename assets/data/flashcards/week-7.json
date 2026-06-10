@@ -1,0 +1,302 @@
+[
+  {
+    "id": "fc-w7-01",
+    "front": "AF 三种主要模式？",
+    "back": "CAF（反差对焦，爬山法，通用便宜暗光不稳）/ PDAF（相位对焦，sensor 内特殊像素直接算视差，一帧到位）/ ToF Depth AF（红外测距，弱光最稳）。",
+    "tags": [
+      "Day 43",
+      "AF 模式"
+    ],
+    "srcDay": "day-43"
+  },
+  {
+    "id": "fc-w7-02",
+    "front": "现代手机的 AF 三件套？",
+    "back": "PDAF + CAF + ToF。3-5 帧搞定对焦：ToF 大致定位 → PDAF 精修方向 → CAF 精修最终位置。旗舰才完整三件套。",
+    "tags": [
+      "Day 43",
+      "三件套"
+    ],
+    "srcDay": "day-43"
+  },
+  {
+    "id": "fc-w7-03",
+    "front": "VCM 马达控制原理？",
+    "back": "DAC 值（10-bit 0-1023）控制电流，电流让线圈在永磁场中受力推镜头。每个 VCM 出厂 OTP 标定「距离-DAC」非线性关系。",
+    "tags": [
+      "Day 43",
+      "VCM"
+    ],
+    "srcDay": "day-43"
+  },
+  {
+    "id": "fc-w7-04",
+    "front": "CAF 钟形曲线 + 爬山法？",
+    "back": "清晰度 vs 镜头位置的钟形曲线。爬山法：试探方向 → 大步长粗搜索（早停）→ 小步长细搜索 → 找最高峰。约 8-15 帧（300-500ms）。",
+    "tags": [
+      "Day 44",
+      "爬山法"
+    ],
+    "srcDay": "day-44"
+  },
+  {
+    "id": "fc-w7-05",
+    "front": "CAF 在「拍纯色墙」失败的原因？",
+    "back": "纯色没边缘，对比度趋零，所有位置 score 都接近 0 → 找不到峰。这种场景需要 PDAF 或 ToF 兜底。",
+    "tags": [
+      "Day 44",
+      "纯色"
+    ],
+    "srcDay": "day-44"
+  },
+  {
+    "id": "fc-w7-06",
+    "front": "对焦呼吸（Focus Breathing）的原因？",
+    "back": "CAF 持续微调让 DAC 值小幅震荡，画面看起来前后晃。解决：smooth_dac + damping_alpha 0.7+ + refocus_threshold 减小。",
+    "tags": [
+      "Day 44",
+      "呼吸"
+    ],
+    "srcDay": "day-44"
+  },
+  {
+    "id": "fc-w7-07",
+    "front": "PDAF 像素的特殊设计？",
+    "back": "两个相邻 PD 共享一个微透镜。对焦准 → 两 PD 看到相同模式；不准 → 视差。0.5-1% sensor 像素是 PDAF（混合在普通像素中）。",
+    "tags": [
+      "Day 45",
+      "PDAF 像素"
+    ],
+    "srcDay": "day-45"
+  },
+  {
+    "id": "fc-w7-08",
+    "front": "PDAF 1PD / 2PD / Quad 区别？",
+    "back": "1PD：少量 PDAF 像素散布；2PD：所有像素都是 PDAF（全像素）；Quad PDAF：每像素 4 个 PD 检测水平+垂直视差。旗舰用 2PD/Quad。",
+    "tags": [
+      "Day 45",
+      "PDAF 变体"
+    ],
+    "srcDay": "day-45"
+  },
+  {
+    "id": "fc-w7-09",
+    "front": "Saliency AF 工作流？",
+    "back": "NPU 输出 saliency map → 64×48 块的显著性 → 给 AF 评分加权（显著区权重高）→ AF 自动对焦主体（不依赖用户点击）。",
+    "tags": [
+      "Day 45",
+      "Saliency AF"
+    ],
+    "srcDay": "day-45"
+  },
+  {
+    "id": "fc-w7-10",
+    "front": "Depth AF (ToF) 的最大优势？",
+    "back": "不靠图像分析（红外测距）。纯色场景仍工作（CAF 失效）+ 弱光最稳（PDAF 信号弱时）。但远距离 > 5 米精度差。",
+    "tags": [
+      "Day 45",
+      "Depth AF"
+    ],
+    "srcDay": "day-45"
+  },
+  {
+    "id": "fc-w7-11",
+    "front": "AF settle 双稳定判断？",
+    "back": "DAC 位置稳（连续 5 帧方差 < 5）+ score 稳（连续 5 帧方差 < 5）+ 满足以上连续 N 帧（默认 3）。",
+    "tags": [
+      "Day 46",
+      "settle"
+    ],
+    "srcDay": "day-46"
+  },
+  {
+    "id": "fc-w7-12",
+    "front": "Continuous AF 状态机？",
+    "back": "LOCKED（已对焦监控）/ MONITORING（怀疑失焦多帧确认）/ SEARCHING（确认失焦重新爬山）。三态切换避免单帧抖动触发频繁重对焦。",
+    "tags": [
+      "Day 46",
+      "状态机"
+    ],
+    "srcDay": "day-46"
+  },
+  {
+    "id": "fc-w7-13",
+    "front": "录像跟焦的额外要求？",
+    "back": "不允许对焦呼吸 + 不允许重对焦慢 + 不允许跟丢。需要 smooth_dac + damping_alpha 0.7+ + refocus_threshold 0.5（更稳）。",
+    "tags": [
+      "Day 46",
+      "录像"
+    ],
+    "srcDay": "day-46"
+  },
+  {
+    "id": "fc-w7-14",
+    "front": "Predictive AF 是什么？",
+    "back": "看过去几帧 disparity 变化预测下一帧位置，VCM 提前移动。让 AF 跟得上跑动物体。旗舰才有。",
+    "tags": [
+      "Day 46",
+      "Predictive"
+    ],
+    "srcDay": "day-46"
+  },
+  {
+    "id": "fc-w7-15",
+    "front": "Snapshot 拍照流程总时长？",
+    "back": "约 350-400ms。T+0 按下 → T+10 等 3A settle → T+20 Pre-Flash → T+200 主闪 → T+250 ISP → T+400 出片。",
+    "tags": [
+      "Day 46",
+      "Snapshot"
+    ],
+    "srcDay": "day-46"
+  },
+  {
+    "id": "fc-w7-16",
+    "front": "Precision Flash 完整流程？",
+    "back": "400ms：T+0 按下 → T+20 Pre-Flash 50ms（AE+AWB+AF+Flash 同时决策）→ T+100 等 100ms 冷却 → T+200 主闪 + 曝光 → T+250 ISP → T+400 出片。",
+    "tags": [
+      "Day 47",
+      "Flash"
+    ],
+    "srcDay": "day-47"
+  },
+  {
+    "id": "fc-w7-17",
+    "front": "Pre-Flash 同时做 4 件事？",
+    "back": "AE 测光（算主闪强度）+ AWB 双 WB（前景 LED / 背景 ambient）+ AF 用 LED 照亮的画面重对焦 + Flash 算 LED 暖冷比例（跟环境）。",
+    "tags": [
+      "Day 47",
+      "Pre-Flash"
+    ],
+    "srcDay": "day-47"
+  },
+  {
+    "id": "fc-w7-18",
+    "front": "Fill Flash 触发条件？",
+    "back": "户外强光下（lux 高）但脸部欠曝（face luma < 整体 70%）。Auto Flash 算法自动检测，弱补光让人脸亮出来。",
+    "tags": [
+      "Day 47",
+      "Fill"
+    ],
+    "srcDay": "day-47"
+  },
+  {
+    "id": "fc-w7-19",
+    "front": "红眼现象 + 应对？",
+    "back": "原因：闪光照射人眼 → 光从瞳孔的视网膜血管反射 → 红眼。应对：Pre-Flash 收缩瞳孔 + ISP 算法去红眼（检测瞳孔区红色像素替换）。",
+    "tags": [
+      "Day 47",
+      "红眼"
+    ],
+    "srcDay": "day-47"
+  },
+  {
+    "id": "fc-w7-20",
+    "front": "夜景闪光只前景亮，怎么解决？",
+    "back": "提示用户开「夜景模式」（多帧合成 + AI，不依赖闪光）。或旗舰用「Flash + HDR Multi-frame」组合：拍 1 不闪 + 拍 3 主闪 → ISP 合成（前景闪光 + 背景不闪光）。",
+    "tags": [
+      "Day 47",
+      "夜景"
+    ],
+    "srcDay": "day-47"
+  },
+  {
+    "id": "fc-w7-21",
+    "front": "Auto Flicker Detection 算法？",
+    "back": "短曝光（1/240）拍多帧 → 沿垂直方向算每行平均亮度 → FFT 频谱 → 50Hz 峰高 = 50Hz 灯，60Hz 峰高 = 60Hz 灯。",
+    "tags": [
+      "Day 48",
+      "Flicker"
+    ],
+    "srcDay": "day-48"
+  },
+  {
+    "id": "fc-w7-22",
+    "front": "Stationary vs Rolling Banding？",
+    "back": "Stationary：曝光时间不是周期整数倍 → 条纹固定位置；Rolling：sensor 帧读出时间不是周期整数倍 → 条纹滚动（视频里看条纹移动）。",
+    "tags": [
+      "Day 48",
+      "Banding"
+    ],
+    "srcDay": "day-48"
+  },
+  {
+    "id": "fc-w7-23",
+    "front": "完整 antibanding 策略？",
+    "back": "1) Auto Flicker Detection 检测 50/60Hz；2) AE 锁曝光时间到 1/freq 整数倍（消除 stationary banding）；3) sensor frame_readout 锁周期整数倍（消除 rolling banding）。",
+    "tags": [
+      "Day 48",
+      "完整"
+    ],
+    "srcDay": "day-48"
+  },
+  {
+    "id": "fc-w7-24",
+    "front": "中国用户视频条纹怎么修？",
+    "back": "1) 启用 Auto Detect；2) fallback_to_region=50（中国默认）；3) min_lux_for_detection 减小让弱光也检测；4) detection_freq_seconds 减小（更频繁检测）。",
+    "tags": [
+      "Day 48",
+      "条纹修复"
+    ],
+    "srcDay": "day-48"
+  },
+  {
+    "id": "fc-w7-25",
+    "front": "AF 调教参数总数？",
+    "back": "约 80-120 个，比 AE（200-400）少一半。算法相对独立，调教 3-4 个月一个项目（比 AE/AWB 短）。",
+    "tags": [
+      "Day 49",
+      "参数"
+    ],
+    "srcDay": "day-49"
+  },
+  {
+    "id": "fc-w7-26",
+    "front": "AF 与 AE/AWB 协同？",
+    "back": "共享 ROI（Touch/Face/Saliency）；AF 等 AE settle 才启动；拍照流程等所有 settle 才出片。",
+    "tags": [
+      "Day 49",
+      "协同"
+    ],
+    "srcDay": "day-49"
+  },
+  {
+    "id": "fc-w7-27",
+    "front": "AF 13 道面试题包括什么？",
+    "back": "AF 三种模式 / VCM / CAF 爬山 / PDAF 视差 / ToF / 状态机 / Snapshot 流程 / Precision Flash / Auto Flicker / Stationary vs Rolling / 录像跟焦 / 夜景 / 跨平台。",
+    "tags": [
+      "Day 49",
+      "面试"
+    ],
+    "srcDay": "day-49"
+  },
+  {
+    "id": "fc-w7-28",
+    "front": "PDAF 比 CAF 快多少？",
+    "back": "5 倍以上。CAF 8-15 帧（300-500ms），PDAF 1-2 帧（30-60ms）。这是「对焦秒响应 vs 对焦慢」的核心差距。",
+    "tags": [
+      "Day 45",
+      "速度"
+    ],
+    "srcDay": "day-45"
+  },
+  {
+    "id": "fc-w7-29",
+    "front": "AF + Flash 协同的关键？",
+    "back": "Pre-Flash 期间 AF 重新对焦（用 LED 照亮的画面）。Face ROI + PDAF 优先 → 主闪时焦点准。",
+    "tags": [
+      "Day 47",
+      "AF+Flash"
+    ],
+    "srcDay": "day-47"
+  },
+  {
+    "id": "fc-w7-30",
+    "front": "3A 调教参数总数？",
+    "back": "AE 200-400 + AWB 100-150 + AF 80-120 + Flash 50-100 + Color 100-200 = 约 600-1000 个参数。一个项目 3-6 个月调完。",
+    "tags": [
+      "Day 49",
+      "总参数"
+    ],
+    "srcDay": "day-49"
+  }
+]

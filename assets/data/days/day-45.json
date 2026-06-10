@@ -1,0 +1,91 @@
+{
+  "id": "day-45",
+  "week": 7,
+  "module": "M5",
+  "title": "PDAF + Saliency AF + Depth AF",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "PDAF 相位对焦：sensor 内的小秘密",
+      "type": "concept",
+      "content": "### Day 43 复习\n\nPDAF 的核心：sensor 上有特殊设计的「**相位检测像素**」，能直接读出焦点偏移。\n\n今天看 PDAF 的硬件实现 + 算法。\n\n### PDAF 像素结构\n\n普通 sensor 像素：每个像素一个独立的微透镜（聚焦光到光电二极管）。\n\nPDAF 像素：**两个相邻的小光电二极管共享一个微透镜**：\n\n```\n普通像素：\n   [微透镜]\n      |\n   [PD全照]\n\nPDAF 像素：\n   [微透镜]\n      |\n   [左PD][右PD]   ← 两个分开\n```\n\n光从透镜进入后，左半部分的光聚焦在「左 PD」，右半部分聚焦在「右 PD」。\n\n如果对焦准：左 PD 和右 PD 都看到「同一个物体的左右两半」，但**亮度模式相同**。\n\n如果对焦不准：左 PD 看到的图和右 PD 看到的图**有水平偏移**（视差）。\n\n### 视差 → 焦点偏移\n\n```python\ndef pdaf_estimate(left_pd_image, right_pd_image):\n    # 算左右图像的水平偏移量（用相关性匹配）\n    disparity = compute_disparity(left_pd_image, right_pd_image)\n    \n    # disparity > 0 → 焦点在物体前面（前焦）\n    # disparity < 0 → 焦点在物体后面（后焦）\n    # disparity = 0 → 对焦准\n    \n    # 转 DAC 偏移（每 sensor 标定）\n    dac_offset = disparity * sensitivity_per_pixel\n    \n    return dac_offset, disparity\n```\n\n关键：**一帧就能算出焦点偏多远 + 哪个方向**。CAF 需要爬山多次才能找的信息，PDAF 一帧搞定。\n\n### PDAF 像素的代价\n\nPDAF 像素**不输出正常图像**（只用作相位检测）。所以 sensor 中：\n\n- 普通像素 99-99.5%\n- PDAF 像素 0.5-1%\n\n少量 PDAF 像素散布在 sensor 各处（一般 4×4 或 8×8 cluster 一个 PDAF）。这些位置在拍照时**有「**坏点**」**，需要 ISP 的 BPC（坏点校正）填补。\n\n### PDAF 的不同变体\n\n**1. 1PD（单 PDAF）**\n\n上面学的基础版。每个 PDAF 像素是一对（左+右），只检测水平视差。\n\n**2. 2PD（双 PDAF / Dual PDAF）**\n\n所有像素都是 PDAF（每像素都一对左右光电二极管）。理论上「**全像素 PDAF**」 → 极强相位检测能力。但成本高 + 数据量大。\n\n**3. Quad PDAF**\n\n每像素是 4 个 PD（左上+右上+左下+右下）。能检测水平 + 垂直视差，对水平条纹也有效。旗舰才用。\n\n### PDAF 的弱点\n\n- **极弱光下信号弱**（PDAF 像素本来就比普通像素小）\n- **远景纹理少时**（如风景）相位匹配难\n- **焦点偏移过大**时（视差 > sensor 能检测的范围）失效\n\n这些场景需要 CAF / ToF 兜底。\n\n### PDAF + CAF 协同\n\n现代手机的标准 AF 流程：\n\n```\n1. PDAF 一帧：估出 disparity\n   - disparity 小（< 阈值）→ 焦点接近 → 直接 锁定\n   - disparity 大 → 走 step 2\n2. PDAF 给出大致方向 → CAF 跳到那个方向\n3. CAF 在该方向小范围爬山找精确位置\n4. 锁定\n\n总时间：1-3 帧（30-100ms） vs 纯 CAF 的 8-15 帧（300-500ms）\n```\n\nPDAF + CAF 比纯 CAF **快 5 倍以上**。\n\n### Tuning 参数\n\n```xml\n<pdaf_config>\n  <enabled>true</enabled>\n  <disparity_to_dac_table>...</disparity_to_dac_table>  <!-- 标定 -->\n  <small_disparity_threshold>2</small_disparity_threshold>  <!-- 小于这个直接锁定 -->\n  <large_disparity_threshold>30</large_disparity_threshold> <!-- 大于这个先粗调 -->\n  <fallback_to_caf>true</fallback_to_caf>\n  <pdaf_min_lux>50</pdaf_min_lux>                          <!-- 极弱光关 PDAF -->\n</pdaf_config>\n```",
+      "glossary": [
+        { "term": "PDAF Pixel", "zh": "相位检测像素", "explain": "sensor 上特殊像素：两个 PD 共享一个微透镜，输出左右视差。" },
+        { "term": "Disparity", "zh": "视差", "explain": "PDAF 输出：左右 PD 看到的图像水平偏移量。" },
+        { "term": "1PD / 2PD / Quad PDAF", "zh": "PDAF 变体", "explain": "不同 sensor 设计：1PD 少量 / 2PD 全像素 / Quad PD 四方向。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "PDAF 像素影响画质吗？", "a": "影响极小。0.5-1% 像素是「坏点」，BPC 用周围像素插值填补。普通用户察觉不到。" },
+          { "q": "为什么旗舰 sensor 都强调 2PD？", "a": "全像素 PDAF 给 AF 极强信号，弱光对焦极快。也能用作景深估计辅助（前景虚化）。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：相位对焦 PDAF 原理", "search": "相位对焦 PDAF 原理 sensor" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "PDAF" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Saliency AF：AI 找主体",
+      "type": "concept",
+      "content": "### Day 24 复习\n\nDay 24 学过 Saliency Analyzer 在 AE 里的作用：AI 模型识别画面里「**最显眼的主体**」。\n\nSaliency 同样适用于 AF —— 让 AF **自动对焦主体**，不依赖用户点屏幕。\n\n### Saliency AF 工作流\n\n```python\ndef saliency_af(stats, saliency_map):\n    # saliency_map 是 NPU 输出的「**显著性热力图**」\n    # 每像素 0-1，表示「**这是主体的可能性**」\n    \n    # 转 64×48 块的显著性\n    saliency_64x48 = downsample(saliency_map, 64, 48)\n    \n    # 给 AF 评分加权：显著区权重高\n    score = 0\n    for i, block in enumerate(stats):\n        block_contrast = sobel_energy(block)\n        sal = saliency_64x48[i]\n        weight = sal * 5.0 + 0.1  # 显著区 ×5 + 微小基础\n        score += block_contrast * weight\n    return score\n```\n\n效果：拍宠物 / 食物 / 物品时，AF 自动锁定主体（不用手动点）。\n\n### Saliency AF vs Face AF\n\n| | Face AF | Saliency AF |\n|---|---|---|\n| 检测什么 | 只检测人脸 | 任何主体（动物、物品、风景中的目标） |\n| 模型 | 小（~1MB），快（1-2ms） | 大（~10MB），慢（5-10ms） |\n| 精度 | 高 | 中 |\n| 适用场景 | 拍人 | 没人脸但有主体 |\n\n两者**互补使用**：有人脸 → Face AF 优先；没人脸 → Saliency AF 兜底。\n\n### Saliency AF 的难点\n\n**1. 多个主体**\n\n画面里有 2 个突出物体（如两只猫）。Saliency Map 是热力图（不是「**单点**」），AF 需要决定对哪个。\n\n应对：取最高 saliency 的「**重心**」（saliency map 加权平均位置）作为目标。\n\n**2. Saliency 抖动**\n\n模型每帧输出可能有微小变化 → AF 跟着抖。\n\n应对：时序平滑（多帧平均 saliency map）+ 锁定一段时间不重置。\n\n**3. 模型置信度低时**\n\n场景没有明显主体（如纯风景），saliency map **平坦**（最大值才 0.3）。这时不应该用 Saliency AF。\n\n应对：检测 saliency map 最大值 < 阈值 → 退化到中心 AF。\n\n### Tuning 参数\n\n```xml\n<saliency_af>\n  <enabled>true</enabled>\n  <model_path>...</model_path>\n  <update_freq_frames>5</update_freq_frames>     <!-- 每 5 帧更新一次（NPU 节能）-->\n  <min_saliency_threshold>0.30</min_saliency_threshold>\n  <weight_multiplier>5.0</weight_multiplier>\n  <smoothing_window>3</smoothing_window>          <!-- 时序平滑 -->\n  <fallback_to_center>true</fallback_to_center>\n</saliency_af>\n```\n\n### Saliency AF 的位置\n\nSaliency AF **不是独立 AF 模式**，而是「**给 CAF/PDAF 评分加权**」。最终还是 CAF/PDAF 找清晰位置，但权重由 Saliency 决定哪些区域**优先清晰**。",
+      "glossary": [
+        { "term": "Saliency AF", "zh": "显著性对焦", "explain": "用 AI 显著性 map 给 AF 评分加权，自动对焦主体。" },
+        { "term": "Saliency Map", "zh": "显著性热力图", "explain": "NPU 输出每像素 0-1 的「主体程度」。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "Saliency AF 必须 NPU 吗？", "a": "现代 Saliency 模型用 NPU 跑（5-10ms）。中端机型如果没 NPU 可以跑简化模型在 CPU（20-50ms），影响 AF 速度。" },
+          { "q": "Saliency 主体跑动时 AF 跟得上吗？", "a": "视乎更新频率。每 5 帧更新（167ms 延迟），跑步速度的小孩跟焦勉强。配合 Predictive AF 更好。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Saliency AF" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Depth AF：用距离直接定位",
+      "type": "concept",
+      "content": "### ToF 模块\n\nDay 24 学过 ToF（Time of Flight）：发射红外光，测光来回时间算距离。手机 ToF 模块精度厘米级（近距离）。\n\nToF 的输出：**深度图（Depth Map）**，每像素一个「**距离值**」。\n\n### Depth AF 工作流\n\n```python\ndef depth_af(depth_map, target_pixel):\n    # 取目标像素的深度\n    distance = depth_map[target_pixel.y, target_pixel.x]\n    \n    # 查表得 DAC（VCM 标定的距离-DAC 关系）\n    dac_value = distance_to_dac(distance)\n    \n    # 直接移到位置\n    move_vcm_to(dac_value)\n```\n\n**完全不靠图像分析**。\n\n### Depth AF 的优势\n\n- **极快**：测距 ~1ms + 写 DAC ~10ms = 一帧完成（11ms）\n- **暗光稳定**：红外不依赖可见光，弱光仍工作\n- **纯色场景仍工作**：白纸 / 天空都能测距\n\n### Depth AF 的限制\n\n- **需要 ToF 硬件**（旗舰机型才有）\n- **远距离精度差**：> 5 米误差大（红外衰减）\n- **强光干扰**：户外强日光下红外被淹没\n- **透明物体不行**：玻璃 / 水反射红外不准\n\n### 现代手机 AF 三件套\n\n```\nPDAF + CAF + ToF Depth AF：\n\n1. ToF 一帧：算大致距离 → DAC 大致定位\n2. PDAF 一帧：精修方向\n3. CAF 1-2 帧：精修最终位置\n4. 锁定\n\n总：3-5 帧（100-150ms）\n```\n\n旗舰用三件套，**对焦速度极快 + 各种场景都稳**。\n\n### Tuning 协同\n\n```xml\n<af_pipeline>\n  <stages>\n    <stage name=\"tof\" priority=\"1\">\n      <enabled>true</enabled>\n      <max_distance>5.0</max_distance>     <!-- 5米外不用 ToF -->\n      <min_lux>500</min_lux>                <!-- 强光下关 ToF（红外被淹）-->\n    </stage>\n    <stage name=\"pdaf\" priority=\"2\">\n      <enabled>true</enabled>\n      <min_lux>50</min_lux>\n    </stage>\n    <stage name=\"caf\" priority=\"3\">\n      <enabled>true</enabled>\n      <fallback_only>true</fallback_only>   <!-- 只在 PDAF/ToF 失败时跑 -->\n    </stage>\n  </stages>\n</af_pipeline>\n```\n\n### 各模式适用场景\n\n```\n极弱光近景：ToF（最稳）\n弱光近景：ToF + PDAF\n日常 / 中距离：PDAF + CAF\n强光远景：CAF（ToF 受干扰）\n纯色场景：ToF（CAF 失效）\n人脸场景：Face ROI + 任意 AF（ROI 决定关注区，AF 模式决定怎么对）\n```\n\n这是手机 AF 的「**全能策略**」。\n\n### 录像中的 Depth AF\n\n录视频时**实时跟焦**特别需要稳定：\n\n- ToF 持续测距（~30Hz）\n- 物体移动 → 距离变 → DAC 平滑跟随\n- 不需要 CAF 爬山（避免 focus breathing）\n\n所以**有 ToF 的手机录视频跟焦平滑**，没 ToF 的录像 AF 容易呼吸。\n\n### 你妹妹项目的 AF 配置\n\n如果项目是 7250 中端平台：\n\n- **大概率**有 PDAF（中端 sensor 标配）\n- **可能没** ToF（成本）\n- **CAF + PDAF** 组合，对焦速度中等\n\n如果项目是旗舰平台：\n\n- **PDAF + CAF + ToF** 三件套\n- 对焦速度极快\n\n这影响你 AF 调教的复杂度。",
+      "glossary": [
+        { "term": "Depth AF", "zh": "深度对焦", "explain": "用 ToF 测距直接算 DAC，不靠图像分析。" },
+        { "term": "Depth Map", "zh": "深度图", "explain": "ToF 输出，每像素一个距离值。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "前置摄像头有 Depth AF 吗？", "a": "iPhone Face ID 用 ToF（点阵投影），但主要做面部识别，不做 AF。前置 AF 一般用 PDAF + CAF。" },
+          { "q": "ToF 干扰 AWB 吗？", "a": "不直接干扰。ToF 用红外，sensor 滤光片正常会过滤红外（IR Cut Filter）。但极个别情况下红外残留可能让暗光下白平衡偏。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "维基百科 · Time-of-flight camera", "url": "https://en.wikipedia.org/wiki/Time-of-flight_camera" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "AF 模式选择 + log 调试",
+      "type": "example",
+      "content": "### AF 模式选择决策\n\n```python\ndef select_af_mode(scene):\n    if scene.is_macro_distance:  # < 30cm\n        return 'tof_then_caf'  # 近景 ToF 最准\n    \n    if scene.lux < 30:  # 极弱光\n        return 'tof_only'  # 弱光 ToF 最稳\n    \n    if scene.is_low_texture:  # 纯色 / 天空\n        return 'tof_only'\n    \n    if scene.has_motion:  # 运动\n        return 'pdaf_with_predict'  # PDAF + Predictive\n    \n    if scene.has_face:\n        return 'pdaf_face_roi'  # PDAF + Face ROI\n    \n    # 默认\n    return 'pdaf_then_caf'\n```\n\n### log 字段\n\n```\n[AF] mode=pdaf_then_caf trigger=touch (320, 240)\n[AF-PDAF] disparity=12 → dac_estimate=180\n[AF-VCM] move from 100 to 180\n[AF-CAF] fine search around 180: positions=[175,178,180,182,185] scores=[80,90,98,92,85]\n[AF-CAF] best at 180 score=98\n[AF] locked at dac=180 settled=true total_frames=2 elapsed=80ms\n```\n\n### 实战 bug 排查\n\n**「室内人像对焦慢」**\n\n```\n[AF] mode=caf (PDAF disabled in low_lux)\n[AF-CAF] coarse: 8 frames\n[AF-CAF] fine: 5 frames\n[AF] total 13 frames = 430ms\n```\n\n问题：lux < 50 关了 PDAF，纯 CAF 慢。但实际室内 lux=80（不算极弱），PDAF 应该工作。\n\n修：pdaf_min_lux 50→30（让室内场景仍用 PDAF）。\n\n**「远距离对焦不准」**\n\n```\n[AF] mode=tof_only (depth=8.5m)\n[AF-ToF] distance=8.5m dac=20\n[AF] locked at dac=20\n```\n\n但用户感觉「**焦点不在物体上**」。原因：ToF > 5 米精度差，distance 估了 8.5m 但实际可能 6m 或 12m，DAC 偏。\n\n修：max_distance for ToF=5m。> 5m 用 PDAF + CAF。\n\n**「跑步小孩跟焦不上」**\n\n```\n[AF] mode=pdaf trigger=continuous\n[AF-PDAF] frame 100 disparity=2 → dac=180\n[AF-PDAF] frame 105 disparity=15 → dac=240（小孩走近了）\n[AF-VCM] still moving from 180 to 240（VCM 没到位）\n[AF-PDAF] frame 110 disparity=20 → dac=270（小孩更近）\n```\n\nVCM 移动跟不上小孩速度。\n\n修：启用 Predictive AF（看 disparity 变化趋势预测下一帧位置）。\n\n### Tuning 工程师的 AF 大 cheat\n\n| 反馈 | 调什么 |\n|---|---|\n| 对焦慢 | 启用 PDAF；降低 pdaf_min_lux；ToF max_distance 拉大 |\n| 对焦不准 | OTP 校准重做；CAF fine_step 减小 |\n| 弱光失焦 | 多帧平均；ToF/PDAF fallback |\n| 录像呼吸 | smooth_dac + damping_alpha 0.7 + refocus_threshold 减小 |\n| 跟焦慢 | Predictive AF 启用 |\n| 点击对焦不准 | touch_radius 增大 + touch_weight 增大 |\n| 主体识别错 | Saliency AF + Face ROI 联动 |\n| 远距离不准 | ToF max_distance 限制；用 PDAF + CAF |\n| 强光下对焦失败 | ToF 关闭（pdaf_min_lux too high）|\n| 微距对焦失败 | VCM macro_position 标定；ToF 启用 |\n\n这是 AF 调教的全方位 cheat。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **PDAF 硬件原理**：sensor 内特殊像素（左+右 PD 共享微透镜），输出视差直接算焦点偏移\n2. **PDAF 变体**：1PD / 2PD（全像素）/ Quad PDAF（四方向）\n3. **Saliency AF**：用 AI 显著性 map 给 AF 评分加权，自动对焦主体\n4. **Depth AF (ToF)**：红外测距 → 直接定位，纯色 / 弱光最稳\n5. **现代 AF 三件套**：PDAF + CAF + ToF，3-5 帧搞定\n6. **AF 模式自动选择**：按场景（lux / texture / motion / face / depth）自动切换\n\n### 自我检查\n\n1. PDAF 像素和普通像素的区别？\n2. PDAF / CAF / ToF 各自最适用什么场景？\n3. Saliency AF vs Face AF 的优势区别？\n4. 现代手机 AF 的「三件套」是什么？\n5. 「跟焦慢」可能的修法？\n\n### 笔记建议\n\n- 把三种 AF 模式适用场景对比表抄到笔记\n- 整理 AF 大 cheat（按 bug 反查参数）\n- 思考你妹妹项目用的是哪个 AF 组合\n\n### 明天预告\n\nDay 46：马达驱动 + AF 收敛 + Continuous AF 进阶。看 VCM 控制的更深细节、AF 收敛逻辑、连续对焦的精细化处理。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "PDAF + Saliency AF + Depth AF" },
+    { "source": "维基百科 · Time-of-flight camera", "url": "https://en.wikipedia.org/wiki/Time-of-flight_camera" }
+  ],
+  "dailyQuizId": "daily-day-45"
+}

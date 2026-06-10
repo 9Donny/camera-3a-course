@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-48",
+  "title": "Day 48 日测：Auto Flicker Detection",
+  "module": "M5",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "Auto Flicker Detection 解决什么问题？",
+      "options": [
+        "用户手动设置 50/60Hz 麻烦 + 经常错",
+        "sensor bug",
+        "AE 抖动",
+        "AWB 不准"
+      ],
+      "answer": "用户手动设置 50/60Hz 麻烦 + 经常错",
+      "explain": "用户出差时 SIM 卡可能没换，地区数据库滞后。Auto Detect 是「最准的当前现实」。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "Auto Flicker 算法的核心原理？",
+      "options": [
+        "用 AI 模型",
+        "短曝光多帧拍摄 → FFT 频谱分析 → 找 50Hz 或 60Hz 峰",
+        "测温度判断",
+        "用陀螺仪"
+      ],
+      "answer": "短曝光多帧拍摄 → FFT 频谱分析 → 找 50Hz 或 60Hz 峰",
+      "explain": "短曝光让 banding 可见，沿垂直方向算每行平均亮度，FFT 分析得到频谱。50Hz 灯下 50Hz 峰高，60Hz 灯下 60Hz 峰高。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "Stationary Banding vs Rolling Banding 区别？",
+      "options": [
+        "位置不同",
+        "曝光时间不是周期整数倍 = stationary（条纹固定位置）；帧读出时间不是周期整数倍 = rolling（条纹滚动）",
+        "颜色不同",
+        "宽度不同"
+      ],
+      "answer": "曝光时间不是周期整数倍 = stationary（条纹固定位置）；帧读出时间不是周期整数倍 = rolling（条纹滚动）",
+      "explain": "两种 banding 都需 antibanding 但调参不同：Stationary 调曝光时间锁；Rolling 调 sensor frame_readout_time 锁。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: 中国 50Hz 灯下短曝光（< 1/100s）会看到「___」周期的条纹",
+      "answer": [
+        "50Hz",
+        "100Hz",
+        "50/100Hz"
+      ],
+      "explain": "电网 50Hz，灯光以 100Hz 闪烁（每半周期一次）。短曝光画面里看到 100Hz 周期条纹，FFT 频谱 50Hz 和 100Hz 都有峰。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "「中国用户拍视频有横条纹」怎么排查 + 修？",
+      "referenceAnswer": "排查：1) Auto Detect 是否启用？2) 检测到的频率对吗（应该 50Hz）？3) AE 是否按检测频率约束曝光？常见 bug：fallback_to_region 错（默认设了 60Hz）。修：1) min_lux_for_detection 减小（弱光也能检测）；2) fallback_to_region 按系统语言/SIM 卡推断（中国用户默认 50Hz）；3) detection_freq_seconds 减小（更频繁更新）。"
+    }
+  ]
+}

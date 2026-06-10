@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-56",
+  "title": "Day 56 日测：模拟面试 3 - 曝光 + Target",
+  "module": "M7",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "PRD-Q11 240fps 慢动作时曝光时间最长？",
+      "options": [
+        "1/30 秒",
+        "1/240 秒（理论上限），实际 1/300 秒留 sensor 读出时间",
+        "1/60 秒",
+        "1/120 秒"
+      ],
+      "answer": "1/240 秒（理论上限），实际 1/300 秒留 sensor 读出时间",
+      "explain": "每帧时间 = 1/240 秒 = 4.17ms。曝光不能超过这个否则帧间重叠。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "PRD-Q13 TMC 的核心作用？",
+      "options": [
+        "只是压位深",
+        "把高动态范围（14-bit RAW）压到显示位深（8-bit JPEG），保留对比度细节",
+        "降低噪声",
+        "加速处理"
+      ],
+      "answer": "把高动态范围（14-bit RAW）压到显示位深（8-bit JPEG），保留对比度细节",
+      "explain": "非线性压缩，让暗部和亮部都有细节。GTM 全局曲线，LTM 局部曲线。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "PRD-Q14 Gamma vs LTM 优先级？",
+      "options": [
+        "Gamma 优先",
+        "执行顺序：LTM 先于 Gamma；影响范围：LTM 大于 Gamma；调教顺序：先 Gamma 基础后 LTM 细节",
+        "LTM 优先",
+        "一样"
+      ],
+      "answer": "执行顺序：LTM 先于 Gamma；影响范围：LTM 大于 Gamma；调教顺序：先 Gamma 基础后 LTM 细节",
+      "explain": "三种「优先级」的解读都答出，让面试官选他要的。这是深入题。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: PRD-Q15 safe_target 第二步：adjusted_target = luma_target × ___ + scene_offset",
+      "answer": [
+        "scene_factor",
+        "factor",
+        "场景修正系数"
+      ],
+      "explain": "10 个 Scene Analyzer 各输出 (factor, offset)，几何加权聚合得 final_factor。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "PRD-Q12 高通曝光表怎么调试？",
+      "referenceAnswer": "5+ 层次：1) 基础曝光表：拐点位置（lux 200 / 1/30 秒，OIS 机型 1/8 秒）+ Analog Gain 上限（6400-12800）+ Digital Gain；2) lux_to_exp 映射；3) Bright/Dark Region：边界 + 修正系数（注意方向）；4) ROI 加权：Touch 3.0 / Face 5.0 / Saliency 2-3；5) HDR 多曝光表（长/短/超短）+ long_short_ratio 决定动态范围；6) 抗带状（Antibanding）：曝光时间锁 50/60Hz 整数倍 + gain 补足。调教方法：标准光源箱 + 灰板从亮到暗扫一遍 + 真实场景验证。一个项目 200-400 个参数。"
+    }
+  ]
+}

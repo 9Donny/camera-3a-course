@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-59",
+  "title": "Day 59 日测：简历润色",
+  "module": "M7",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "Tuning 工程师简历的 5 部分结构？",
+      "options": [
+        "只要项目经历",
+        "基本信息 / 个人简介 / 核心技能 / 项目经历 / 教育背景",
+        "和 IT 简历一样",
+        "自由格式"
+      ],
+      "answer": "基本信息 / 个人简介 / 核心技能 / 项目经历 / 教育背景",
+      "explain": "前 3 行内容必须吸引眼球。HR 看简历平均 30 秒挑亮点。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "简历的 30+ 关键词主要包含？",
+      "options": [
+        "个人爱好",
+        "Camera 3A / 高通 ISP / Chromatix / 色彩科学 / HDR / PDAF / sensor 标定 等专业术语",
+        "学历背景",
+        "薪资期望"
+      ],
+      "answer": "Camera 3A / 高通 ISP / Chromatix / 色彩科学 / HDR / PDAF / sensor 标定 等专业术语",
+      "explain": "让 HR 检索系统能筛到。塞够关键词是简历筛选第一步。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "STAR 项目格式？",
+      "options": [
+        "Story / Time / Action / Result",
+        "Situation + Task + Action + Result",
+        "Strong / Tough / Achievement / Reward",
+        "Subject / Topic / Article / Reference"
+      ],
+      "answer": "Situation + Task + Action + Result",
+      "explain": "描述项目用 STAR 让 HR 看到具体贡献 + 量化指标。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: 「为什么转行」段落必写，让 ___ 经验变成优势",
+      "answer": [
+        "测试",
+        "之前",
+        "原"
+      ],
+      "explain": "不要把测试当作「前段无关」。强调「懂客观指标 + 懂测试矩阵 + 懂用户场景」是 Tuning 优势。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "简历常见 5 大错误 + 改法？",
+      "referenceAnswer": "1) 项目描述模糊：「负责相关工作」→「设计 50+ 测试用例覆盖 AE 各场景」；2) 没量化：「提升效率」→「时间缩短 95%（1 天→30 分钟）」；3) 没关键词：「相机测试」→「Camera 3A 测试（AE/AWB/HDR），用 Imatest 测 ΔE/SNR」；4) 转行原因不清：缺失 →「测试 → Camera 兴趣 → 自学转型」；5) 简历太长：3 页 → 1 页（HR 30 秒看完）。改完简历找朋友看一遍给反馈。"
+    }
+  ]
+}

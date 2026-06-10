@@ -1,0 +1,66 @@
+{
+  "id": "daily-day-55",
+  "title": "Day 55 日测：模拟面试 2 - 色彩 + TMC",
+  "module": "M7",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "PRD-Q6 ISP 色彩处理涉及哪些模块？",
+      "options": [
+        "只有 WB",
+        "WB / CCM / Gamma / Tone Mapping / ADRC / 后期色彩调整",
+        "只有 CCM",
+        "只有 Gamma"
+      ],
+      "answer": "WB / CCM / Gamma / Tone Mapping / ADRC / 后期色彩调整",
+      "explain": "6 个核心模块。WB 去光源，CCM 转标准空间，Gamma 校正，Tone Mapping 压位深，ADRC 拉暗部，后期调风格。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "PRD-Q7 影响对比度的 5 个模块？",
+      "options": [
+        "只有 Gamma",
+        "Gamma / Tone Mapping (GTM/LTM) / ADRC / CCM / 锐化",
+        "只有 Tone Mapping",
+        "所有 ISP 模块"
+      ],
+      "answer": "Gamma / Tone Mapping (GTM/LTM) / ADRC / CCM / 锐化",
+      "explain": "5 个核心。Gamma 是基础调节器；Tone Mapping 重新分配亮度档位；ADRC 拉暗部；CCM 间接（饱和度）；锐化增加边缘对比度。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "PRD-Q8 曝光方程？",
+      "options": [
+        "EV = TV",
+        "AV + TV = BV + SV = EV",
+        "AV = SV",
+        "BV + SV"
+      ],
+      "answer": "AV + TV = BV + SV = EV",
+      "explain": "AV 光圈 + TV 曝光时间 + BV 场景亮度 + SV ISO + EV 曝光值。手机 AV 固定，AE 调 TV + SV 让 AV+TV = BV+SV。"
+    },
+    {
+      "id": "q4",
+      "type": "choice",
+      "prompt": "PRD-Q9 LTM 算法 4 步？",
+      "options": [
+        "只有一步",
+        "分块 / 局部直方图 / 局部映射曲线 / 像素级内插",
+        "分块 / 计算 / 应用",
+        "线性映射"
+      ],
+      "answer": "分块 / 局部直方图 / 局部映射曲线 / 像素级内插",
+      "explain": "每块独立处理 + 边界平滑。LTM 比 GTM（全图一条曲线）好，但计算成本高。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "PRD-Q10 7250 用 TMC 几？4.0 vs 3.0 区别？",
+      "referenceAnswer": "7250（SM7250 / 骁龙 765G 中端）用 TMC 3.0。区别：1) 算法：3.0 是 GTM（全局色调映射，整图一条曲线），4.0 是 LTM（局部色调映射，按区域分块各自映射）；2) 实现成本：3.0 计算简单（一条 LUT），4.0 需要 NPU 协助；3) 效果：4.0 动态范围处理更精细，暗部和亮部分别优化；4) 调教成本：4.0 工作量 3-5 倍；5) 平台：3.0 中端，4.0 旗舰（SM8350+）。具体平台版本可能因 BSP 而异，建议 verify。"
+    }
+  ]
+}

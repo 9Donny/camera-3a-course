@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-42",
+  "title": "Day 42 日测：Week 6 总结",
+  "module": "M4",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "AWB 完整流程的最后一步是什么？",
+      "options": [
+        "DWV 计算",
+        "damping 平滑",
+        "写 ISP（WB module + CCM module）",
+        "算 current_rg/bg"
+      ],
+      "answer": "写 ISP（WB module + CCM module）",
+      "explain": "AWB 决策完成后写到 ISP：WB module 应用 R/G/B gain，CCM module 按 cct 选 3×3 矩阵。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "AWB 调教参数总数大约多少？",
+      "options": [
+        "约 50 个",
+        "约 170 个",
+        "约 500 个",
+        "约 1000 个"
+      ],
+      "answer": "约 170 个",
+      "explain": "比 AE（200-400）少但更间接（通过 LWV/DWV 影响色彩）。需要更多色彩科学直觉。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "AWB 14 道面试题里你能答出多少？",
+      "options": [
+        "全部 14 道",
+        "约 10 道",
+        "约 5 道",
+        "约 2 道"
+      ],
+      "answer": "全部 14 道",
+      "explain": "做完 Week 5+6 你应该能完整答出 AWB 类全部面试题（含 LWV/DWV/MLC/AGW/FA/Flash/双摄/TGA/FCM/Bias 等）。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: AWB 算法是 60 天里第 ___ 大模块（仅次于 AE）",
+      "answer": [
+        "二",
+        "2",
+        "第二"
+      ],
+      "explain": "AE 是最大（Week 3+4），AWB 第二大（Week 5+6），AF 相对独立简单（Week 7）。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "用一段话总结 AWB 调教的核心思路。",
+      "referenceAnswer": "AWB 调教 = 用算法估出真实光源色温（DWV/LWV/参考点）+ sensor 校准（OTP/Bias）+ 场景特化（AGW/FA/Flash）+ 风格化（TGA/style_bias）。各层有约 170 个参数。Tuning 工程师按用户反馈反查参数，调一个测多个场景，一个项目 6 个月。「风格 vs 准确」是核心哲学，FCM 让两者在不同场景兼得。"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "id": "day-49",
+  "week": 7,
+  "module": "M5",
+  "title": "Week 7 总结：AF + Flash + Flicker + 周考",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Week 7 学了什么",
+      "type": "concept",
+      "content": "### 一周回顾\n\n| Day | 主题 |\n|---|---|\n| Day 43 | AF 总览 + 三种模式 |\n| Day 44 | CAF 反差对焦深入 |\n| Day 45 | PDAF + Saliency AF + Depth AF |\n| Day 46 | AF 收敛 + Continuous AF + 协同 |\n| Day 47 | Precision Flash 完整流程 |\n| Day 48 | Auto Flicker Detection |\n| Day 49 | 总结 + 周考（今天）|\n\n### 三大主题\n\n**主题 1：AF（Day 43-46）**\n\n```\n硬件：\n  - VCM 马达（DAC 控制）\n  - PDAF 像素（sensor 内特殊）\n  - ToF 模块（红外测距）\n\n算法：\n  - CAF 爬山（粗-细两阶段）\n  - PDAF 一帧到位\n  - Saliency / Face / Touch ROI\n  - Continuous AF 状态机\n  - Predictive AF\n\n协同：\n  - 与 AE/AWB 共享 ROI\n  - 拍照流程等 settle\n  - 录像跟焦平滑\n```\n\n**主题 2：Flash（Day 47）**\n\n```\nPrecision Flash 流程：\n  T+0：用户按下\n  T+20：Pre-Flash（50ms 弱光）\n    AE：测主闪强度\n    AWB：双 WB（前景 LED / 背景环境）\n    AF：脸 ROI 重对焦\n    Flash：算 LED 暖冷比例\n  T+100：等冷却\n  T+200：主闪 + 曝光\n  T+250：ISP 处理\n  T+400：JPEG 出片\n\n5 种模式：Auto / On / Off / Fill / Torch\n```\n\n**主题 3：Flicker（Day 48）**\n\n```\nAuto Flicker Detection：\n  短曝光多帧 → FFT 分析 → 50Hz/60Hz/无 flicker\n  fallback_to_region 兜底（按地区默认）\n\nantibanding 完整策略：\n  1. Auto Detect 判断频率\n  2. AE 锁曝光时间到 1/freq 整数倍\n  3. Sensor frame_readout 锁周期整数倍（处理 Rolling Banding）\n```\n\n### 与 AE/AWB 的对比\n\n```\nAE （Week 3-4）：算法最复杂、参数最多、场景最多\nAWB（Week 5-6）：算法精细、协同最多、风格化最重\nAF （Week 7）：算法相对独立、参数最少、模式直观\nFlash：3A 协同最复杂的场景（一次 Pre-Flash 触发整个 3A 重决策）\nFlicker：物理特性硬约束\n```\n\nAF 是 3A 里**学起来最简单**的（这是为什么我们 Week 7 用 4 天就过了）。\n\n### 你的进度\n\n```\n████████████████████████████████████████████████████████████████░░░  88% (Week 7/8)\n```\n\n做完 Week 7 + 49 天 = 60 天的 82%。\n\n剩下 11 天（Week 8）是冲刺：色彩科学 + Chromatix 工具 + 模拟面试 + 简历。",
+      "glossary": [],
+      "extras": {
+        "faq": [],
+        "videos": [],
+        "reads": [
+          { "title": "回顾 Day 43-48 所有 references" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "AF + Flash 综合面试题",
+      "type": "concept",
+      "content": "### Q1：AF 三种模式对比？\n\n> 1. **CAF（反差对焦）**：用清晰度（对比度）爬山找最高分。通用、便宜、暗光不稳、纯色失效。普通 sensor 都能用。\n> 2. **PDAF（相位对焦）**：sensor 内特殊像素（左右 PD 共享微透镜）输出视差直接算焦点偏移。极快（一帧到位）、暗光相对稳。需要 sensor 支持。\n> 3. **ToF Depth AF**：红外测距 → 直接算 DAC。极快、暗光最稳、纯色场景仍工作。需要 ToF 硬件（旗舰才有）。\n> \n> 现代手机 PDAF + CAF + ToF 三件套，3-5 帧搞定。\n\n### Q2：CAF 爬山法的两阶段？\n\n> 粗-细两阶段：\n> \n> 1. **粗搜索**：大步长（如 step=20）扫描，找全局清晰度峰附近。早停优化（score 开始下降就停）。\n> 2. **细搜索**：在粗峰附近 ±10 范围，小步长（step=2）精确定位。\n> \n> 全范围细搜索成本太高（30 秒），两阶段是工程平衡。\n\n### Q3：Continuous AF 状态机？\n\n> 三态：\n> \n> - **LOCKED**：已对焦，监控当前 score\n> - **MONITORING**：怀疑失焦（score 跌到锁定时 70% 以下），等多帧确认\n> - **SEARCHING**：确认失焦，正在重对焦\n> \n> 多帧确认避免单帧抖动触发频繁重对焦。\n\n### Q4：Precision Flash 完整流程？\n\n> 400ms 流程：\n> \n> 1. T+0：用户按下，决定是否需要闪光\n> 2. T+20：Pre-Flash 触发（50ms 弱亮度）\n>    - AE 测光（算主闪强度）\n>    - AWB 双 WB（前景 LED / 背景环境光）\n>    - AF 脸部 ROI 重对焦\n>    - Flash 算 LED 暖冷比例\n> 3. T+100：等 100ms（LED 冷却 + 决策固化）\n> 4. T+200：主闪触发 + sensor 曝光\n> 5. T+250：ISP 处理（应用 Pre-Flash 算好的参数）\n> 6. T+400：JPEG 出片\n\n### Q5：Auto Flicker Detection 怎么工作？\n\n> 1. 用短曝光（如 1/240）拍多帧（10 帧）\n> 2. 算每帧画面**沿垂直方向的亮度分布**（每行平均亮度）\n> 3. 用 FFT 频谱分析\n> 4. 50Hz 灯下 → FFT 50Hz 峰高；60Hz 灯下 → 60Hz 峰高\n> 5. 比例 > 1.3 才确定（避免误判）\n> 6. 输出 50/60/no_flicker → AE 用对应频率约束曝光时间\n\n### Q6：Day 19 vs Day 48 对 antibanding 的处理区别？\n\n> Day 19：基础 antibanding —— AE 把曝光时间锁到 1/50 或 1/60 整数倍。\n> \n> Day 48：完整 antibanding —— Auto Flicker Detection 自动检测频率 + 锁曝光时间 + sensor frame_readout 锁周期整数倍（解决 Rolling Banding）。\n\n### Q7：Stationary vs Rolling Banding 区别？\n\n> - **Stationary Banding**：曝光时间不是周期整数倍 → 整帧条纹位置固定\n> - **Rolling Banding**：sensor 帧读出时间不是周期整数倍 → 条纹滚动（视频里看到条纹移动）\n> \n> 两个都需要 antibanding，但调的参数不同（曝光时间 vs 帧读出时间）。\n\n### Q8：「拍视频时焦点拉风箱」怎么排查？\n\n> 原因：Continuous AF 频繁触发重对焦。\n> \n> 排查 + 修：\n> 1. refocus_threshold 太敏感（0.7） → 改 0.5（让物体小动不触发）\n> 2. max_refocus_per_second 没限制 → 改 2（限频）\n> 3. smooth_dac 没启用 → 启用（DAC 变化平滑）\n> 4. damping_alpha 太小 → 改 0.7+（DAC 渐变）\n\n### Q9：「夜景闪光只前景亮」怎么解决？\n\n> 闪光本来就只照前景（LED 衰减按距离平方反比）。解决：\n> \n> - 提示用户开「**夜景模式**」（多帧合成 + AI 增强，不依赖闪光）\n> - 旗舰用「Flash + HDR Multi-frame」组合：\n>   - 拍 1：不闪光（背景明亮保留）\n>   - 拍 3：主闪光（前景明亮）\n>   - ISP 合成：前景用闪光帧、背景用不闪光帧\n> \n> 这就是「**夜景人像完美**」的实现。\n\n### Q10：AF settle 的判断条件？为什么 AF 必须等 AE settle？\n\n> AF settle 双稳定：\n> \n> 1. DAC 位置稳（连续 5 帧方差 < 5）\n> 2. score 稳（连续 5 帧方差 < 5）\n> 3. 满足以上连续 N 帧（默认 3）\n> \n> AF 等 AE settle 因为：AE 不稳时画面亮度变化 → AF 算的对比度也跟着变 → AF 容易把「亮度变化」误判为「失焦」 → 拉风箱。等 AE 稳后画面亮度稳定，AF 才能可靠工作。",
+      "glossary": []
+    },
+    {
+      "id": "s3",
+      "title": "Week 7 完整调教 cheat",
+      "type": "example",
+      "content": "### AF + Flash + Flicker 综合 cheat\n\n| 反馈 | 调什么 |\n|---|---|\n| 对焦慢 | PDAF 启用；ToF 启用；coarse_step 增大 |\n| 对焦不准 | OTP 校准；CAF fine_step 减小 |\n| 弱光对焦失败 | 多帧平均；ToF/PDAF fallback；pdaf_min_lux 减小 |\n| 录像呼吸 | smooth_dac + damping_alpha 0.7+ |\n| 录像拉风箱 | refocus_threshold 减小（0.5）+ max_refocus 限频 |\n| 跟焦慢 | enable_predictive_af |\n| 点击对焦不准 | touch_radius 增大；touch_weight 增大 |\n| 主体识别错 | Saliency AF + Face ROI 联动 |\n| 远距离对焦不准 | ToF max_distance 限制（5m） |\n| 微距对焦失败 | VCM macro_position 标定；ToF 启用 |\n| 闪光偏冷 | LED warm/cool 比例跟环境 cct |\n| Fill 过亮 | fill_flash_max 限制 |\n| 红眼 | Pre-Flash 启用 + ISP 去红眼 |\n| 连拍慢 | pre_flash_reuse 启用 |\n| 中国视频有条纹 | Auto Detect 启用 + fallback_to_region=50 |\n| 美国视频有条纹 | fallback_to_region=60 |\n| 弱光检测失败 | min_lux_for_detection 减小 |\n| 切换地区慢适配 | detection_freq_seconds 减小 |\n| 短曝光条纹 | sensor frame_readout 锁周期整数倍 |\n\n### Tuning 工程师的 Week 7 工作流\n\n```\n1. AF 标定（VCM + PDAF + ToF）\n   - 拍多距离的标定卡\n   - OTP 写入\n2. AF 算法调参\n   - CAF coarse/fine step\n   - PDAF 阈值\n   - ROI 权重\n3. AF 场景适配\n   - 弱光 / 运动 / 微距各场景测试\n4. Flash 调参\n   - LED 暖冷比例曲线\n   - Pre-Flash / 主闪强度\n   - Auto / Fill 触发条件\n5. Flicker 调参\n   - Auto Detect 启用\n   - fallback_to_region\n   - sensor frame_readout 同步\n6. 综合测试\n   - 100+ 真实场景拍照 + 录像\n   - 客观指标 + 主观评估\n```\n\n3-4 个月一个项目（比 AE/AWB 短）。",
+      "glossary": []
+    },
+    {
+      "id": "s4",
+      "title": "Week 8 预告 + 最后冲刺",
+      "type": "concept",
+      "content": "### Week 8 主题（11 天 -- 冲刺周）\n\n| Day | 主题 |\n|---|---|\n| Day 50 | 色彩科学：Lab / sRGB / Display P3 |\n| Day 51 | Chromatix 工具实操 |\n| Day 52 | 多摄一致性总结（AE/AWB/AF/CCM）|\n| Day 53 | 行业工程方法：标定 / 测试 / 上线 |\n| Day 54 | 模拟面试 1：PRD Q1-Q5（AE 流程类）|\n| Day 55 | 模拟面试 2：PRD Q6-Q10（色彩 + TMC）|\n| Day 56 | 模拟面试 3：PRD Q11-Q15（曝光 + Target）|\n| Day 57 | 模拟面试 4：PRD Q16-Q23（其他）|\n| Day 58 | 模拟面试 5：综合 + 行为题 |\n| Day 59 | 简历润色 + 项目描述 |\n| Day 60 | 最终冲刺 + 心态调整 |\n\nWeek 8 是「**应试**」周，把前 7 周的知识转化为面试能力。\n\n### 你已完成的能力\n\n做完 Week 7 你能：\n\n- ✅ 看懂高通 7.0 + 10 PDF 的全部 3A 章节（约 200 页）\n- ✅ 答出 PRD 23 道面试题里 13 道 AE 类（Week 3-4）+ 8 道 AWB 类（Week 5-6）+ 10 道 AF/Flash/Flicker 类（Week 7）\n- ✅ 用 3A 视角分析任意拍摄场景\n- ✅ 知道 Tuning 工程师的真实工作流程\n- ✅ 应对真实工程问题（混合光源 / 多摄一致性 / 风格 vs 准确）\n\n### Week 8 准备\n\n建议：\n\n1. 周末整理一份「**3A 完整 cheat sheet**」（10-20 页）\n2. 把 PRD 23 题答案默写一遍\n3. 翻一翻高通 PDF 巩固薄弱章节\n4. 找一个面试导师 / 朋友模拟面试（如果有的话）\n\nWeek 8 我们会做 **5 场模拟面试**（Day 54-58），每场 5 题 + 答辩。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本周小结",
+      "type": "recap",
+      "content": "### Week 7 收获\n\n- ✅ 掌握 AF 三种模式（CAF / PDAF / ToF）+ 协同\n- ✅ 完整理解 Precision Flash 400ms 流程\n- ✅ 掌握 Auto Flicker Detection + 完整 antibanding 策略\n- ✅ 答出 10 道 AF/Flash/Flicker 类面试题\n- ✅ 用 3A 视角分析「**点击对焦**」「**夜景闪光**」「**视频条纹**」等真实场景\n\n### Week 7 自我检查\n\n1. **画一张 AF 决策模式图**（按场景选 CAF/PDAF/ToF）\n2. **默写 Precision Flash 400ms 流程**（5 个时间点）\n3. **解释 Stationary vs Rolling Banding**\n4. **场景分析**：用户报「**夜景视频拉风箱 + 偶尔条纹**」 → 怎么排查？\n5. **完成本周周考**（15 题）\n\n### Week 7 周考\n\n打开「考核 → 周测试 → Week 7」做 15 题。\n\n80% 正确 = AF/Flash/Flicker 全部过关。\n\n### 笔记建议\n\n本周笔记最起码包含：\n\n1. AF 三种模式对比表（Day 43）\n2. CAF 爬山 + 状态机（Day 44, 46）\n3. Precision Flash 400ms 时间轴（Day 47）\n4. Auto Flicker Detection 算法（Day 48）\n5. AF + Flash + Flicker 调教 cheat 综合\n\n### 下周见\n\nWeek 8 是冲刺周。让我们把前 7 周的知识转化成面试能力。\n\n你已经走过 60 天里的 82%。坚持到最后 :)",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "本周 Day 43-48 所有 references" }
+  ],
+  "dailyQuizId": "daily-day-49"
+}

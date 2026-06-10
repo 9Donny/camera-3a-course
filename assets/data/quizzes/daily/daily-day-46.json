@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-46",
+  "title": "Day 46 日测：AF 收敛 + Continuous AF",
+  "module": "M5",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "AF settle 的双稳定判断条件？",
+      "options": [
+        "DAC 位置稳 + score 稳 + 连续 N 帧",
+        "只看 score",
+        "只看 DAC",
+        "只看时间"
+      ],
+      "answer": "DAC 位置稳 + score 稳 + 连续 N 帧",
+      "explain": "两个变量都稳定（方差 < 阈值）+ 连续 N 帧（默认 3）满足才算 settled。其他模块（拍照触发）等这个信号。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "Continuous AF 状态机的三个状态？",
+      "options": [
+        "INIT / RUNNING / DONE",
+        "LOCKED / MONITORING / SEARCHING",
+        "START / WAIT / END",
+        "OFF / READY / ON"
+      ],
+      "answer": "LOCKED / MONITORING / SEARCHING",
+      "explain": "LOCKED 已对焦监控；MONITORING 怀疑失焦多帧确认；SEARCHING 重新爬山。三态切换避免单帧抖动触发频繁重对焦。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "录像跟焦比预览跟焦的额外要求？",
+      "options": [
+        "更准",
+        "不允许对焦呼吸 + 不允许重对焦慢 + 不允许跟丢",
+        "更快",
+        "适应不同 sensor"
+      ],
+      "answer": "不允许对焦呼吸 + 不允许重对焦慢 + 不允许跟丢",
+      "explain": "录像视觉敏感，DAC 抖动用户能看到。需要 smooth_dac + damping_alpha 0.7+ + refocus_threshold 0.5（更稳定）。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: 拍照流程等 3A all settled，最大等待 ___ ms 后强制拍",
+      "answer": [
+        "500",
+        "500ms",
+        "500 毫秒"
+      ],
+      "explain": "500ms 是「等收敛 vs 用户体验」的平衡。超时强制拍接受可能失焦，比无限等好。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "Snapshot 拍照流程的完整步骤？",
+      "referenceAnswer": "1) 用户按下拍照（T+0）；2) 检查 AE/AF/AWB 是否 settled，最多等 500ms（T+10）；3) 触发 Pre-Flash（如果需要，T+50）；4) 3A 重新评估含 LED 影响（T+110）；5) 主闪触发 + sensor 曝光 30ms（T+150）；6) ISP 处理 150ms（T+200）；7) 输出 JPEG（T+350）。整个流程 350-400ms。AF 在第 2 步是瓶颈之一，旗舰 PDAF/ToF 让 AF 30ms 内完成。"
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "id": "day-48",
+  "week": 7,
+  "module": "M5",
+  "title": "Auto Flicker Detection 自动闪烁检测",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Day 19 复习 + Auto Flicker 是什么",
+      "type": "concept",
+      "content": "### Day 19 复习\n\nantibanding 抗带状：电网 50Hz（中国/欧洲）或 60Hz（北美/日本部分），灯光以 100Hz / 120Hz 闪烁。如果曝光时间不是这个的整数倍，画面有横条纹（banding）。\n\n应对：曝光时间锁定到 1/50, 1/100, 1/200... 整数倍周期。\n\n### Auto Flicker Detection 解决什么\n\n用户切换地区时（比如出差北美），手机不知道当前电网是 50Hz 还是 60Hz。\n\n**手动设置**：用户在系统设置里选「中国」（50Hz）或「美国」（60Hz）。但很多用户不知道这个设置，或者忘了切换。\n\n**自动检测**：手机的 Auto Flicker Detection 自动判断当前电网频率。\n\n### 算法原理\n\n核心思路：**用很短的曝光时间拍几帧，看 banding 模式**：\n\n- 50Hz 灯下用 1/120 秒（短）拍：每 1/50 秒会有一个 banding 周期 → 画面里能看到 50Hz 周期的条纹\n- 60Hz 灯下用 1/120 秒拍：每 1/60 秒一个 banding 周期 → 60Hz 条纹\n- 看条纹的「**周期**」反推电网频率\n\n```python\ndef detect_flicker_freq():\n    # 拍多帧短曝光\n    short_exposure = 1/240  # 4ms\n    frames = capture_frames(num=10, exposure=short_exposure)\n    \n    # 算每帧画面的「**亮度沿垂直方向的分布**」\n    # banding 让某些行偏亮、某些行偏暗\n    luma_profiles = []\n    for f in frames:\n        profile = mean_per_row(f)  # 每行的平均亮度\n        luma_profiles.append(profile)\n    \n    # 算 profiles 的 FFT（频率分析）\n    # 50Hz 有 50Hz 峰，60Hz 有 60Hz 峰\n    spectra = compute_fft(luma_profiles)\n    peak_50 = spectrum_at(spectra, 50)\n    peak_60 = spectrum_at(spectra, 60)\n    \n    if peak_50 > peak_60 * 1.3:\n        return 50  # 50Hz 主导\n    elif peak_60 > peak_50 * 1.3:\n        return 60  # 60Hz 主导\n    else:\n        return 'no_flicker'  # 户外日光，无 banding\n```\n\n关键：**用 FFT 频谱分析判断**。\n\n### 何时跑 Auto Flicker Detection\n\n```\n时机 1：相机 app 启动时（一次性检测）\n时机 2：场景剧变时（用户从户外进入室内 → 触发检测）\n时机 3：定期（如每 30 秒）确认\n```\n\n检测期间用户**不会感觉**（用现有的预览帧分析，不额外曝光）。\n\n### 检测后的应用\n\n```python\ndetected_freq = auto_detect_flicker()\n\nif detected_freq == 50:\n    antibanding_period = 1/50  # 中国\nelif detected_freq == 60:\n    antibanding_period = 1/60  # 北美\nelse:\n    antibanding_period = None  # 不需要 antibanding\n\nae.set_antibanding(antibanding_period)\n```\n\nAE 用检测出的频率自动调整曝光时间约束。",
+      "glossary": [
+        { "term": "Auto Flicker Detection", "zh": "自动闪烁检测", "explain": "算法自动判断电网频率（50/60Hz），不靠用户设置。" },
+        { "term": "Banding Frequency Analysis", "zh": "条纹频率分析", "explain": "用 FFT 分析画面亮度沿垂直方向的频谱，找 50Hz 或 60Hz 峰。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "短曝光拍才能看到 banding 吗？", "a": "对。长曝光（如 1/30）已经覆盖了多个 banding 周期，画面平均后看不到条纹。短曝光（< 1/100）只覆盖部分周期 → 行间亮度差异明显 → banding 可见。" },
+          { "q": "检测多少次后就停止？", "a": "一般检测一次后用 30 秒。中间不重复（除非场景剧变）。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Auto Flicker Detection" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Flicker Detection 的 corner case",
+      "type": "concept",
+      "content": "### 1. 户外无 flicker\n\n```\n户外日光：\n  无 banding（连续光，不闪）\n  FFT 没有 50/60Hz 峰\n  → 算法返回 'no_flicker'\n```\n\nantibanding 关闭，曝光时间任意。\n\n### 2. 多种灯混合\n\n```\n场景：室内 50Hz LED + 户外 60Hz 招牌\n→ 检测可能给出混合结果\n→ 优先按主导光源（看 FFT 峰更高的）\n```\n\n### 3. 移动场景\n\n```\n用户手机抖动：\n  画面整体抖 → 行亮度变化也跟着抖\n  → FFT 频谱噪声大 → 检测不准\n```\n\n应对：检测前等画面稳定（陀螺仪报静止）。\n\n### 4. 极弱光\n\n```\nlux < 30：\n  信号弱 + 噪声大\n  FFT 频谱被噪声主导\n  → 检测不可靠\n```\n\n应对：极弱光下用「**默认值**」（按系统区域 / SIM 卡），不依赖 Auto Detect。\n\n### 5. 直流 LED（无 flicker）\n\n```\n高质量 LED（直流驱动）：\n  无 100/120Hz 纹波\n  画面无 banding\n  → 检测返回 'no_flicker'\n```\n\n这种场景正常，AE 不需要 antibanding 约束。\n\n### Tuning 配置\n\n```xml\n<auto_flicker>\n  <enabled>true</enabled>\n  <detection_freq_seconds>30</detection_freq_seconds>\n  <fft_threshold>1.3</fft_threshold>           <!-- 50/60 比例 > 1.3 才确定 -->\n  <min_lux_for_detection>50</min_lux_for_detection>  <!-- 极弱光不检测 -->\n  <require_stationary>true</require_stationary>      <!-- 等手机静止 -->\n  <fallback_to_region>50</fallback_to_region>        <!-- 默认 50Hz（中国市场）-->\n</auto_flicker>\n```\n\n### 视频中的 Flicker 处理\n\n视频更敏感（条纹更明显）：\n\n- 录像时 antibanding 必须严格\n- 检测到 50Hz → 曝光锁 1/50 倍数\n- 检测到 60Hz → 锁 1/60 倍数\n- 「无 flicker」→ 自由曝光\n\n用户切换地区录视频时，Auto Detect 让画面**自动适配**，不需要手动设置。\n\n### Tuning 工程师的 Auto Flicker 调教\n\n常见问题：\n\n**「中国用户拍视频有横条纹」**\n\n排查：\n\n- Auto Detect 是否启用？\n- 检测到的频率对吗（应该是 50Hz）？\n- AE 是否按检测频率约束曝光？\n\n修：检查上面三步，常见是 fallback_to_region 错（默认设了 60Hz）。\n\n**「条纹偶尔出现」**\n\n排查：\n\n- 检测频率（30 秒一次）够吗？\n- 用户在两种灯之间走动，每次切换 30 秒才更新\n\n修：detection_freq_seconds 30→10（更频繁检测）。\n\n**「LED 灯下错误检测出 50Hz」**\n\n排查：\n\n- 高质量 LED 应该「无 flicker」\n- 但便宜 LED 有 100Hz 纹波 → 看起来像 50Hz banding\n\n这是物理现象，算法没错。修：用更好的 LED 灯。",
+      "glossary": [],
+      "extras": {
+        "faq": [
+          { "q": "为什么不直接用全球地区数据库？", "a": "用户出差时 SIM 卡可能没换，地区数据库滞后。Auto Detect 是「**最准的当前现实**」。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Flicker Edge Cases" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Flicker 与 Rolling Shutter 的协同",
+      "type": "concept",
+      "content": "### Day 3 复习\n\nDay 3 学过滚动快门（Rolling Shutter）：sensor 每行依次曝光，不是同时。\n\n这就是为什么 banding 是「**横条纹**」 —— 每行的曝光时间略不同，对应灯闪的不同相位。\n\n### Rolling Shutter 让 antibanding 复杂\n\n传统 antibanding：把曝光时间锁到 1/50 整数倍 → 假设「**全帧同时曝光**」 → 整张图同时受同一相位灯影响 → 没条纹。\n\n但 Rolling Shutter 下，**第 0 行**和**第 1080 行**曝光时间差 30ms（一帧的时间）：\n\n```\n第 0 行曝光起点：T=0ms\n第 1080 行曝光起点：T=30ms（一帧时间）\n```\n\n如果灯是 100Hz（10ms 周期），30ms = 3 个周期。第 0 行和第 1080 行**相差整数个周期** → 接收同样亮度。✓\n\n但如果灯是某个奇怪频率（如 110Hz, 9.09ms 周期），30ms = 3.3 个周期。第 0 行和 1080 行**差 0.3 周期** → 接收不同亮度 → 条纹。\n\n### Sensor 「读出时间」配置\n\n现代 sensor 让你配置「**每帧读出时间**」（FLL：Frame Length Lines × line time）。\n\n```python\nframe_readout_time = total_lines * line_time\n# 调整 frame_readout_time 让它是 banding 周期的整数倍\n# 例如 50Hz 灯下，frame_readout = 20ms（1 个周期）或 30ms（1.5 个周期）→ 调整\n```\n\n这是「**Sensor 级 antibanding**」，Tuning 工程师要懂。\n\n### Flicker + Rolling Shutter 调教\n\n```xml\n<flicker_rolling_shutter>\n  <ensure_frame_readout_synced>true</ensure_frame_readout_synced>\n  <50hz_frame_readout>20.0</50hz_frame_readout>   <!-- 1 周期 -->\n  <60hz_frame_readout>16.67</60hz_frame_readout>  <!-- 1 周期 -->\n  <fallback_no_sync>30</fallback_no_sync>          <!-- 无 flicker 时随便 -->\n</flicker_rolling_shutter>\n```\n\n这种**帧读出时间同步**让 banding 完全消失。是高级 Tuning 技巧。\n\n### Stationary vs Rolling Banding\n\n- **Stationary Banding**：曝光时间不是周期整数倍 → 整帧条纹固定位置\n- **Rolling Banding**：帧读出时间不是周期整数倍 → 条纹「**滚动**」（视频里看条纹在移动）\n\n两种 banding 都需要 antibanding 处理，但调教参数不同。\n\n### Tuning 工程师的「**完整 antibanding 策略**」\n\n```\n1. Auto Flicker Detection 检测电网频率\n2. AE 锁曝光时间到 1/freq 整数倍（消除 stationary banding）\n3. Sensor frame_readout_time 锁定到周期整数倍（消除 rolling banding）\n4. 短曝光 corner case（< 1/200）：曝光时间不能锁，用 gain 补\n```\n\n这是 antibanding 的「**全套**」。Day 19 学的是其中一部分（步骤 2）。Day 48 加上步骤 1（自动检测）+ 步骤 3（rolling 处理）。",
+      "glossary": [
+        { "term": "Stationary Banding", "zh": "静止条纹", "explain": "曝光时间不是周期整数倍，条纹固定。" },
+        { "term": "Rolling Banding", "zh": "滚动条纹", "explain": "帧读出时间不是周期整数倍，条纹移动。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "Sensor 帧读出时间能任意改吗？", "a": "不能任意，但有一定范围（取决于 sensor 设计）。一般 20ms-50ms 可调。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Rolling Banding" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "Flicker Detection log + 调教 cheat",
+      "type": "example",
+      "content": "### log 字段\n\n```\n[Flicker] auto_detection_running\n[Flicker] short_exposure=4ms 10 frames captured\n[Flicker] fft analysis: 50Hz_peak=0.85 60Hz_peak=0.12\n[Flicker] ratio=0.85/0.12=7.1 > 1.3 → detected as 50Hz\n[Flicker] AE updated: antibanding_period=20ms\n[Flicker] sensor frame_readout adjusted to 20ms (1 period)\n[Flicker] next detection in 30s\n```\n\n### 排查实例\n\n**「拍视频有条纹」**\n\n```\n[Flicker] detection_disabled (lux=20 < min_lux=50)\n[Flicker] using fallback_to_region=60 (但用户在中国)\n[AE] antibanding using 1/60s (错误)\n```\n\n问题：弱光下 Auto Detect 关闭，fallback 错误（用户在中国应该 50Hz）。\n\n修：1) min_lux_for_detection 50→30（暗光也能检测）；2) fallback_to_region 按系统语言/SIM 卡推断（中国用户默认 50Hz）。\n\n**「条纹偶尔出现」**\n\n```\n[Flicker] detected 50Hz at T+0\n[Flicker] next detection at T+30s\n[Flicker] (between) 用户走到 60Hz 灯下 → 条纹\n```\n\n问题：30 秒检测一次，期间不变化。\n\n修：detection_freq_seconds 30→10，或检测「场景剧变」时立即重检测。\n\n**「短曝光下条纹仍存在」**\n\n```\n[AE] exposure=1/240s (短曝光，无法锁 1/50)\n[AE] antibanding_locked=false\n[Flicker] banding visible\n```\n\n问题：极短曝光下没法锁 antibanding（曝光比周期还短）。\n\n应对：\n\n1. 接受这种 corner case 下有条纹\n2. 或者强制延长曝光（用 gain 调整画面亮度）\n3. 或者用 sensor 帧读出时间同步（rolling banding 处理）\n\n### Flicker 调教 cheat\n\n| 反馈 | 调什么 |\n|---|---|\n| 中国用户视频有条纹 | Auto Detect 启用；fallback_to_region=50（中国默认）|\n| 美国用户视频有条纹 | Auto Detect 启用；fallback_to_region=60 |\n| 弱光下检测失败 | min_lux_for_detection 减小；fallback 更稳 |\n| 切换地区后才适配 | detection_freq_seconds 减小；场景剧变触发重检测 |\n| 短曝光下条纹 | 接受 corner case；或用 frame_readout 同步 |\n| LED 灯下误检测 | fft_threshold 提高（让算法更保守）|\n| 滚动条纹 | sensor frame_readout 锁周期整数倍 |",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **Auto Flicker Detection**：算法自动判断电网 50/60Hz，不靠用户设置\n2. **算法原理**：短曝光拍多帧，FFT 频谱分析，找 50Hz 或 60Hz 峰\n3. **5 个 corner case**：户外无 flicker / 混合灯 / 移动场景 / 极弱光 / 直流 LED\n4. **Rolling Shutter 复杂化**：sensor 帧读出时间也要锁周期整数倍（解决滚动条纹）\n5. **完整 antibanding 策略**：Auto Detect + 曝光时间锁 + frame_readout 锁\n6. **Tuning 工程师调教重点**：fallback_to_region（市场默认）+ 检测频率\n\n### 自我检查\n\n1. Auto Flicker Detection 怎么工作？为什么用短曝光？\n2. Stationary Banding vs Rolling Banding 区别？\n3. 「中国用户拍视频有条纹」可能怎么调？\n4. fallback_to_region 默认应该怎么设？\n5. 极弱光下 Auto Detect 怎么处理？\n\n### 笔记建议\n\n- 把 Auto Flicker 算法 5 步流程抄到笔记\n- 整理 antibanding 完整策略（3 个步骤）\n- 思考你妹妹项目 fallback_to_region 设的什么\n\n### 明天预告\n\nDay 49：Week 7 总结 + 周考。串完 AF + Flash + Flicker 完整内容，做 15 题周考。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Auto Flicker Detection + Rolling Banding" }
+  ],
+  "dailyQuizId": "daily-day-48"
+}

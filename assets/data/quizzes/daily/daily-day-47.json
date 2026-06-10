@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-47",
+  "title": "Day 47 日测：Precision Flash 完整流程",
+  "module": "M6",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "Precision Flash 完整流程总时长？",
+      "options": [
+        "约 100ms",
+        "约 400ms",
+        "约 1 秒",
+        "约 2 秒"
+      ],
+      "answer": "约 400ms",
+      "explain": "T+0 按下 → T+20 Pre-Flash → T+100 等冷却 → T+200 主闪+曝光 → T+250 ISP → T+400 出片。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "Pre-Flash 同时做的 4 件事？",
+      "options": [
+        "只测光",
+        "AE 测光 + AWB 双 WB + AF 重对焦 + Flash 强度估算",
+        "只对焦",
+        "只调色"
+      ],
+      "answer": "AE 测光 + AWB 双 WB + AF 重对焦 + Flash 强度估算",
+      "explain": "Pre-Flash 50ms 弱光期间所有 3A + Flash 同时决策，主闪只是应用预算好的参数。「预测式」AWB。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "Fill Flash（填充闪光）的触发条件？",
+      "options": [
+        "用户主动开启",
+        "户外强光下 Face ROI 内的脸部欠曝（lux 高但脸 luma < 70%）",
+        "闪光灯总是触发",
+        "弱光场景"
+      ],
+      "answer": "户外强光下 Face ROI 内的脸部欠曝（lux 高但脸 luma < 70%）",
+      "explain": "白天逆光人像脸部在阴影里。Auto Flash 算法检测到「脸欠曝」自动触发弱补光。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: 红眼现象因为闪光照射人眼，光从 ___ 反射回 sensor",
+      "answer": [
+        "瞳孔",
+        "瞳孔（视网膜）",
+        "视网膜"
+      ],
+      "explain": "Pre-Flash 让瞳孔提前缩小 + ISP 后段算法去红眼是两道防线。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "「夜景闪光只前景亮，远景仍黑」怎么解决？",
+      "referenceAnswer": "闪光物理上只能照前景（LED 衰减按距离平方反比）。完整解决：1) 提示用户开「夜景模式」（多帧合成 + AI 增强，不依赖闪光）；2) 旗舰用「Flash + HDR Multi-frame」组合：拍 1 不闪（背景明亮）+ 拍 3 主闪（前景明亮）→ ISP 合成（前景用闪光帧 + 背景用不闪光帧）。这是「夜景人像完美」的实现：脸亮 + 背景的霓虹/城市灯光都保留。"
+    }
+  ]
+}

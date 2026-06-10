@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-50",
+  "title": "Day 50 日测：色彩科学",
+  "module": "M6",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "CIE 1931 色度图是什么？",
+      "options": [
+        "色卡名字",
+        "国际照明委员会 1931 年定的「人眼可见颜色」马蹄形图",
+        "颜色编码",
+        "LCD 标准"
+      ],
+      "answer": "国际照明委员会 1931 年定的「人眼可见颜色」马蹄形图",
+      "explain": "每个点是「人眼能感受到的一种颜色」（含色相 + 饱和度，不含亮度）。所有色彩空间都在这个马蹄形里。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "sRGB / Display P3 / DCI-P3 / BT.2020 大小排序？",
+      "options": [
+        "一样大",
+        "sRGB < Adobe RGB / Display P3 / DCI-P3 < BT.2020 < ProPhoto",
+        "sRGB 最大",
+        "BT.2020 最小"
+      ],
+      "answer": "sRGB < Adobe RGB / Display P3 / DCI-P3 < BT.2020 < ProPhoto",
+      "explain": "sRGB 最普及最小（覆盖度 1.0x），Display P3 比 sRGB 大 25%，BT.2020 比 P3 大很多（4K HDR 用），ProPhoto 含人眼看不到的颜色。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "Lab 色彩空间的核心特点？",
+      "options": [
+        "更鲜艳",
+        "空间里的「距离」 = 「人眼感觉的色差」（ΔE 来源）",
+        "色彩多",
+        "转换简单"
+      ],
+      "answer": "空间里的「距离」 = 「人眼感觉的色差」（ΔE 来源）",
+      "explain": "L 亮度，a 红绿，b 蓝黄。Lab 距离是色彩科学的「人眼标尺」，CCM 调教用 ΔE 衡量。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: CCM 是 ___ 矩阵，把 sensor RGB 转标准 sRGB",
+      "answer": [
+        "3×3",
+        "3x3",
+        "三乘三"
+      ],
+      "explain": "每个 cct 配一组 9 个矩阵元素。Tuning 工程师用 24 色卡 ΔE 标定。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "完整 ISP 色彩管线 6 个模块？",
+      "referenceAnswer": "1) WB（白平衡）：去光源色温，三通道 gain；2) CCM（色彩矩阵）：sensor RGB → 标准 sRGB，按 cct 分段；3) Gamma 校正：线性 → sRGB Gamma（γ≈2.2）；4) Tone Mapping：14-bit 压到 8-bit，GTM/LTM 两种；5) ADRC：暗部加 gain，简化 LTM；6) 后期色彩调整：饱和度 + 对比度 + 肤色优化。这套管线决定照片最终色彩。每个模块都是 Tuning 工程师调教的对象。"
+    }
+  ]
+}

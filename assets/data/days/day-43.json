@@ -1,0 +1,110 @@
+{
+  "id": "day-43",
+  "week": 7,
+  "module": "M5",
+  "title": "AF 总览：自动对焦的三种模式",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "AF 是干什么的",
+      "type": "concept",
+      "content": "### 你已经摸过 AF\n\n之前学过的几个 AF 相关知识：\n\n- Day 4：VCM 马达（音圈电机）驱动镜头移动\n- Day 19：AF 等 AE settle 才启动（避免亮度变化误判）\n- Day 24：用户点屏幕触发 Touch ROI（AE/AF/AWB 都用）\n- Day 27：多摄切换镜头时 AF 重新对焦（AF 不需要同步）\n\n现在我们正式进入 AF 主线。\n\n### 一句话定义\n\n> **AF = Auto Focus**（自动对焦）：调整镜头与 sensor 的距离，让被摄物体在 sensor 上**成像清晰**。\n\n硬件上靠 VCM 马达推镜头前后移动；算法上靠**判断当前画面清晰度** + 决策马达往哪个方向移。\n\n### AF 难在哪\n\n看上去简单，实际很复杂：\n\n**1. sensor 不直接知道「**清晰**」**\n\nsensor 输出像素亮度，不直接告诉你「**这张图清晰**」。AF 要从图像数据**推断**清晰度。\n\n**2. 调整方向不直观**\n\n马达可以前推（让镜头离 sensor 更近）或后拉。给定当前清晰度，**该往哪个方向移**？算法要试着「**爬山**」找最高点。\n\n**3. 速度要求高**\n\n用户期望「点哪儿对哪儿」立即响应（< 200ms）。AF 不能慢慢爬。\n\n**4. 弱光场景对比度低**\n\n暗光下信号弱噪点大，对比度难判 → AF 容易失焦。\n\n**5. 运动场景（跟焦）**\n\n用户拍跑动的孩子，AF 要**实时跟随**（连续对焦）。\n\n### AF 三种模式\n\n手机摄像头通常有 3 种 AF 实现：\n\n**1. CAF（Contrast AF，反差自动对焦）**\n\n判断清晰度的最经典方法：**清晰图像 = 高对比度**（明暗变化大）。\n\n```\n模糊图像：相邻像素差异小（颜色平滑过渡）\n清晰图像：相邻像素差异大（边缘锐利）\n```\n\n算「**对比度分数**」（如 Sobel / Laplacian 滤波器输出），分数越高越清晰。\n\nCAF 的工作流程：\n\n```\n1. 当前位置算对比度分数 score_0\n2. 马达稍微前推一点 → 算 score_1\n3. 比较：\n   if score_1 > score_0: 继续前推（爬山方向对）\n   else: 后拉（方向反）\n4. 重复直到找到最高分（清晰）\n```\n\n这是「**爬山法**」（Hill Climbing），CAF 的核心算法。\n\n**优点**：通用、便宜、不需要特殊硬件。\n\n**缺点**：慢（要试探多次）、暗光不稳。\n\n**2. PDAF（Phase Detection AF，相位对焦）**\n\nsensor 上**专门设计的相位检测像素**：左半 sensor 看到的图 vs 右半 sensor 看到的图，如果对焦准 → 两半图相同；不准 → 两半图有「**视差**」。\n\n```\n对焦准 → 视差 = 0\n前焦（焦点在物体前面）→ 视差 +5（左偏右）\n后焦（焦点在物体后面）→ 视差 -5（右偏左）\n```\n\n通过视差**直接知道焦点偏多远 + 哪个方向**。一步到位（不用爬山）。\n\n**优点**：极快（一两帧搞定）、暗光相对稳。\n\n**缺点**：sensor 必须支持 PDAF（成本高）、远景 + 极弱光时仍需要 CAF 兜底。\n\n**3. ToF + Depth AF（深度对焦）**\n\n用 ToF 模块（红外发射 + 接收测距）直接测物体距离，**不靠图像分析**。\n\n```\nToF 测出物体距离 = 1.5 米\n查表：1.5 米对应 VCM 位置 = 320\n马达直接移到位置 320\n```\n\n**优点**：极快、暗光最稳（不依赖图像）。\n\n**缺点**：需要 ToF 硬件（旗舰才有）、远距离精度差（> 5 米误差大）。\n\n### 现代手机的 AF 组合\n\n```\n旗舰：PDAF + CAF + ToF（三种协同）\n中高端：PDAF + CAF（最常见）\n中端：仅 CAF（依赖 sensor 不支持 PDAF）\n低端：仅 CAF 简化版（速度慢）\n```\n\n这就是为什么旗舰「点哪儿对哪儿」秒响应，中端机「**对焦慢**」是工程现实。\n\n### Week 7 路线\n\n| Day | 主题 |\n|---|---|\n| Day 43（今天）| AF 总览 + 三种模式 |\n| Day 44 | CAF（反差对焦）深入 |\n| Day 45 | PDAF + Saliency AF + Depth AF |\n| Day 46 | 马达驱动 + AF 收敛 + Continuous AF |\n| Day 47 | Flash 完整流程（Precision Flash） |\n| Day 48 | Auto Flicker Detection |\n| Day 49 | Week 7 总结 + 周考 |\n\nWeek 7 主题相对独立，学起来比 AE/AWB 轻松。",
+      "glossary": [
+        { "term": "AF", "zh": "Auto Focus 自动对焦", "explain": "通过调镜头位置让物体在 sensor 上成像清晰的算法。3A 第三大模块。" },
+        { "term": "CAF", "zh": "Contrast AF 反差对焦", "explain": "用画面对比度判断清晰度，爬山法找最高分。最通用的 AF 方法。" },
+        { "term": "PDAF", "zh": "Phase Detection AF 相位对焦", "explain": "sensor 设计专门相位检测像素，通过视差直接算出焦点偏移方向 + 距离。极快。" },
+        { "term": "ToF Depth AF", "zh": "深度对焦", "explain": "用红外测距硬件直接测物体距离，不靠图像分析。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么手机不像单反那样有专用 AF 传感器？", "a": "手机 sensor 把「**普通像素**」+「**PDAF 像素**」混合在一起（特殊设计的 sensor 工艺）。比单反的「**独立 AF 传感器**」紧凑。" },
+          { "q": "AF 和 AE 有什么共享？", "a": "AF 用 64×48 块统计算对比度（共享 AE 的硬件统计输出）。AF/AE 都用 Touch ROI（同一个 ROI 分享给 3A）。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：相机对焦 PDAF", "search": "相机对焦 相位对焦 PDAF" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "page": 180, "section": "AF 整章" },
+          { "title": "维基百科 · Autofocus", "url": "https://en.wikipedia.org/wiki/Autofocus" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "对焦清晰度的物理：什么是「清晰」",
+      "type": "concept",
+      "content": "### 数学定义\n\n人眼看到的「**清晰**」对应数学上：\n\n> 图像里**相邻像素的亮度差异足够大** = 边缘锐利 = 清晰\n\n反之：\n\n> 相邻像素差异小 = 边缘模糊 = 失焦\n\n### 算清晰度的滤波器\n\n经典对比度滤波器：\n\n**Sobel 边缘检测**：\n\n```\n横向 Sobel：     纵向 Sobel：\n  -1  0  +1       +1 +2 +1\n  -2  0  +2        0  0  0\n  -1  0  +1       -1 -2 -1\n```\n\n图像和滤波器卷积得到「**边缘强度**」。每个像素的 Sobel 输出 = 该像素附近的边缘强度。\n\n**Laplacian 二阶导数**：\n\n```\n  0  -1   0\n -1   4  -1\n  0  -1   0\n```\n\n更敏感的边缘检测，对噪声也更敏感。\n\n### AF 评分\n\n```python\ndef compute_focus_score(stats_64x48):\n    score = 0\n    for block in stats_64x48:\n        # 算每块的对比度（Sobel 滤波后的高频能量）\n        block_contrast = sobel_energy(block)\n        # 用 Touch ROI 加权（用户关心的区域权重高）\n        weight = roi_weight[block]\n        score += block_contrast * weight\n    return score\n```\n\nAF 实际不需要对每像素卷积（成本高），通常用「**统计输出的高频成分**」估算。\n\n### 焦点位置 vs 清晰度的关系\n\n马达推镜头时，清晰度跟着位置变化形成一个**钟形曲线**：\n\n```\n清晰度\n  ↑\n  |        ___\n  |       /   \\\n  |      /     \\\n  |     /       \\\n  |____/         \\____\n  +--------+------------→ 马达位置\n         最佳位置\n```\n\n- 远离最佳位置 → 清晰度降低\n- 在最佳位置 → 清晰度最高\n- 钟形曲线**单峰** → 爬山法适用\n\n### 钟形曲线的宽度\n\n钟形曲线的「**宽度**」由景深决定：\n\n- **大光圈**（如 f/1.4）：钟形窄 → 对焦精度要求高\n- **小光圈**（如 f/8）：钟形宽 → 对焦容差大\n\n手机光圈固定（一般 f/1.6-f/2.2，相对大），所以对焦精度要求高。\n\n### 清晰度还有「**误差波**」\n\n实际清晰度曲线**不完美**：\n\n```\n清晰度\n  ↑\n  |       ___\n  |      /   \\\n  |  __ /     \\__\n  | /  \\      /  \\\n  |/    \\____/    \\____\n  +-------------------→ 位置\n        ↑    ↑\n      局部峰   全局峰\n```\n\n出现「**局部峰**」的原因：\n\n- 噪点造成假高分\n- 多个被摄物体（如远近两个物体）\n- 周期性图案（如条纹衣服）\n\n爬山法**容易卡在局部峰**，找不到全局最优。\n\n### 解决：粗-细两阶段搜索\n\n```python\ndef caf_search():\n    # 阶段 1：粗搜索（大步长）\n    coarse_step = 20  # 大步\n    positions = list(range(0, max_position, coarse_step))\n    coarse_scores = [evaluate_focus_at(p) for p in positions]\n    coarse_peak = positions[argmax(coarse_scores)]\n    \n    # 阶段 2：细搜索（小步长，在粗峰附近）\n    fine_step = 2\n    fine_range = (coarse_peak - 10, coarse_peak + 10)\n    fine_positions = list(range(*fine_range, fine_step))\n    fine_scores = [evaluate_focus_at(p) for p in fine_positions]\n    return fine_positions[argmax(fine_scores)]\n```\n\n粗搜索找全局区域 + 细搜索精确定位。**避免卡在局部峰**。\n\n### CAF vs PDAF 时间对比\n\n```\nCAF 粗-细搜索：约 20-30 帧（300-500ms）\nPDAF：1-2 帧（30-60ms）→ 一步到位\n```\n\nPDAF **快 10 倍**。这就是为什么旗舰对焦「秒响应」。",
+      "glossary": [
+        { "term": "Sobel / Laplacian", "zh": "边缘检测滤波器", "explain": "数学工具，从图像中提取「边缘强度」。AF 用它算清晰度。" },
+        { "term": "Hill Climbing", "zh": "爬山法", "explain": "CAF 的核心算法：试探一个方向，如果分数变高就继续，变低就反向。" },
+        { "term": "Local Peak", "zh": "局部峰", "explain": "爬山法的陷阱：清晰度曲线有多个峰时，可能卡在错误的峰上。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "光圈大小为什么影响对焦精度？", "a": "光圈大 → 景深浅 → 焦平面前后一点点都模糊 → 钟形曲线窄 → 对焦精度要求高。手机光圈大（f/1.6-2.0）所以对焦敏感。" },
+          { "q": "拍纯色墙能对焦吗？", "a": "纯色墙没边缘，对比度趋零，CAF 算不出来 → 失焦。这种场景需要 PDAF 或 ToF。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "维基百科 · Sobel operator", "url": "https://en.wikipedia.org/wiki/Sobel_operator" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "VCM 马达控制",
+      "type": "concept",
+      "content": "### Day 4 复习\n\nDay 4 我们学过 VCM（Voice Coil Motor，音圈电机）：\n\n- 镜头上有线圈（电流通过产生磁场）\n- 镜头周围有永磁铁\n- 通电 → 线圈受力 → 镜头向前/向后移动\n- 不通电 → 弹簧把镜头拉回静止位置\n\n### VCM 控制接口\n\n```\nAF 算法 → DAC（数模转换）→ 线圈电流 → 镜头位置\n```\n\nAF 算法只需要写一个数（DAC 值），驱动 VCM 移到对应位置。常见 10-bit DAC：\n\n```\nDAC 0：弹簧最松（无穷远）\nDAC 1023：电流最大（最近距离）\n```\n\n中间任意值对应中间距离。**不连续**（10-bit = 1024 个离散位置），但精度够。\n\n### 距离 vs DAC 的非线性\n\nVCM 的位置和 DAC 值**不完全线性**：\n\n```\nDAC 0：无穷远\nDAC 100：5 米\nDAC 200：1 米\nDAC 400：50 厘米\nDAC 600：20 厘米\nDAC 1023：5 厘米\n```\n\n注意：每个 DAC 单位对应的距离变化，**近距离越大**（0-200 跨 4 米；800-1023 跨 5 厘米）。这是 VCM 弹簧 + 电流的物理特性。\n\n这个**非线性曲线**是每个手机/sensor/VCM 组合**专门标定**的，存在 OTP 或 Tuning 配置里。\n\n### AF 标定\n\nVCM 出厂时校准：\n\n```\n1. 装到夹具上，对准已知距离的标定卡\n2. 在多个距离（10cm, 20cm, 50cm, 1m, 2m, 5m, 无穷远）拍\n3. 在每个距离下用 CAF 找最佳 DAC 值\n4. 把「距离 → DAC」对应关系写到 OTP\n```\n\n这是 VCM 的「身份证」，让 AF 知道**这个具体马达的非线性曲线**。\n\n### 马达响应时间\n\nVCM 不是瞬间到位：\n\n- 写 DAC 值后，马达需要 **5-15ms** 才到目标位置\n- 期间镜头在「**晃动**」（机械惯性 + 电感效应）\n- 完全稳定要 **30-50ms**\n\n所以 AF 一次「**移动 + 评估**」需要 30-50ms。爬山法每步 30ms × 20 步 = 600ms。这就是 CAF 慢的根源。\n\n### 一些 VCM 现象\n\n**「**对焦呼吸**」**\n\n用户用录像时拍人，AF 微调让画面**看起来「**前后呼吸**」**。原因：CAF 持续微调（哪怕物体没动），DAC 值小幅震荡 → 视觉上画面前后晃。\n\n解决：「**禁止 AF 微调**」（damping）+「**确认稳定后停止**」 → 录像时 AF 不抖。\n\n**「**对焦延迟**」**\n\n用户按拍照按钮 → AF 开始爬山 → 1 秒才出片。这是中端机的常见体验。\n\n解决：旗舰用 PDAF（一帧搞定）或预热（半按时已对好焦）。\n\n### Tuning 工程师调马达\n\n```xml\n<vcm_config>\n  <dac_max>1023</dac_max>\n  <dac_min>0</dac_min>\n  <macro_position>900</macro_position>      <!-- 微距 -->\n  <infinity_position>50</infinity_position>  <!-- 无穷远 -->\n  <step_per_distance>...</step_per_distance> <!-- OTP 标定的非线性表 -->\n  <settling_time_ms>30</settling_time_ms>\n  <damping_alpha>0.7</damping_alpha>          <!-- 平滑步进 -->\n</vcm_config>\n```\n\nVCM 调教大多是**硬件级**，Tuning 工程师只在调试阶段微调。",
+      "glossary": [
+        { "term": "DAC", "zh": "数模转换", "explain": "AF 算法输出 DAC 值控制 VCM 线圈电流。10-bit (0-1023) 决定镜头位置。" },
+        { "term": "对焦呼吸", "zh": "Focus Breathing", "explain": "AF 持续微调让画面看起来前后晃动的现象。" },
+        { "term": "VCM 标定", "zh": "VCM Calibration", "explain": "出厂时测「距离 → DAC」对应关系，存到 OTP。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么不用步进电机？", "a": "步进电机精度高但慢、嘈杂。VCM 快、安静、便宜，更适合手机。代价是每个 VCM 物理特性略有差异（需 OTP 标定）。" },
+          { "q": "对焦呼吸是 bug 吗？", "a": "不是，是 AF 微调的副作用。优化方向：用 PDAF 减少 CAF 微调；damping 让 DAC 变化平滑；确认稳定后停止 AF。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "维基百科 · Voice coil", "url": "https://en.wikipedia.org/wiki/Voice_coil" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "AF 触发模式：单次 vs 连续",
+      "type": "concept",
+      "content": "### Single AF（SAF，单次对焦）\n\n用户按拍照前对一次焦：\n\n```\n用户半按拍照按钮 → AF 启动\n→ 爬山找最佳位置\n→ 锁定（lock）\n→ 用户按下拍照\n→ 拍照时焦点不变\n```\n\n这是经典模式，单反/手机都有。优点：响应快（用户主动触发）；缺点：物体动了仍是旧焦点（除非用户重对）。\n\n### Continuous AF（CAF Continuous，连续对焦）\n\nAF 一直在跑，自动跟焦：\n\n```\nsensor 持续输出帧\nAF 持续监测清晰度\n物体动了 → 清晰度降低 → AF 重新对焦\n物体停了 → AF 锁定不动\n```\n\n这是手机预览 + 录像的默认模式。用户不用主动操作，AF 跟着场景跑。\n\n### Continuous AF 的挑战\n\n**1. 什么时候触发重对焦**\n\nAF 不能每帧都跑爬山（太慢 + 画面抖）。需要「**触发条件**」：\n\n```python\ndef should_refocus(current_score, last_locked_score, lost_threshold=0.7):\n    # 当前清晰度低于锁定时的某个比例 → 失焦\n    return current_score < last_locked_score * lost_threshold\n```\n\n清晰度跌到锁定时的 70% → 触发重对焦。这个 0.7 阈值是 Tuning 参数。\n\n**2. 重对焦的时长**\n\n触发后立即爬山找新位置。但**爬山期间画面失焦更严重**（先变模糊再变清晰）。所以 Continuous AF 的爬山要尽量快。PDAF 一步到位最佳。\n\n**3. 移动物体跟焦**\n\n用户拍跑动的小孩，AF 要**预测**未来位置：\n\n```python\ndef predict_next_position(history):\n    # 看过去几帧的距离变化\n    velocity = history[-1].distance - history[-3].distance\n    next_distance = history[-1].distance + velocity\n    return distance_to_dac(next_distance)\n```\n\n这是「**Predictive AF**」（预测对焦）。旗舰才有，效果是「**孩子跑过来 AF 已经预对到下一帧的位置**」。\n\n### 触发模式选择\n\n手机的 AF 模式自动选择：\n\n```\n相机预览：Continuous AF（实时跟焦）\n按下拍照前：Single AF（半按锁定）\n录像中：Continuous AF（边录边跟）\n按住拍照（连拍）：每帧 Continuous AF\n用户点击屏幕：触发 Single AF + ROI 锁定\n```\n\n### Tuning 调教\n\n```xml\n<af_modes>\n  <preview_mode>continuous</preview_mode>\n  <snapshot_mode>single_with_predict</snapshot_mode>\n  <video_mode>continuous_smooth</video_mode>\n  <touch_mode>single_with_lock</touch_mode>\n</af_modes>\n\n<continuous_af>\n  <refocus_threshold>0.7</refocus_threshold>\n  <max_refocus_per_second>3</max_refocus_per_second>  <!-- 防止频繁触发 -->\n  <smooth_dac>true</smooth_dac>                        <!-- DAC 变化平滑 -->\n  <stability_check_frames>5</stability_check_frames>  <!-- 稳定 5 帧才锁定 -->\n</continuous_af>\n```\n\n### 常见 bug 排查\n\n**「**录像中 AF 频繁拉风箱**」**\n\n症状：录像时焦点在两个位置之间反复横跳。原因：refocus_threshold 太敏感（0.7 过于敏感），物体小动一下就重对焦。\n\n修：refocus_threshold 0.7 → 0.5（更稳定）；启用 max_refocus_per_second 限制频次。\n\n**「**人脸跟丢**」**\n\n症状：拍跑动的人，AF 跟不上。原因：不是 Predictive AF；或预测窗口太短。\n\n修：启用 Predictive AF；增大预测窗口；用 Saliency AF（Day 45 学）锁定主体。\n\n**「**点击屏幕后过几秒又自动对到别的地方**」**\n\n症状：用户 Touch 锁定后，AF 自动重启 Continuous AF。原因：lock 持续时长设太短（如 3 秒）。\n\n修：lock_duration 增大到 5-8 秒；或者「lock 直到下次用户操作」（最常见做法）。",
+      "glossary": [
+        { "term": "Single AF (SAF)", "zh": "单次对焦", "explain": "用户主动触发，对一次后锁定，物体动了不重对。" },
+        { "term": "Continuous AF (CAF)", "zh": "连续对焦", "explain": "AF 一直在跑，自动跟随物体。手机预览 + 录像默认。" },
+        { "term": "Predictive AF", "zh": "预测对焦", "explain": "看过去几帧物体的运动速度，预测下一帧位置。旗舰才有。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么单反多用 SAF 手机多用 CAF？", "a": "单反用户经验丰富，主动对焦体验好。手机用户多数小白，希望「打开就拍」 → CAF 自动跟焦更友好。" },
+          { "q": "AF 锁定时物体动了怎么办？", "a": "短时间内（< 3 秒）保持锁定。如果用户不动手机也不点屏幕，3 秒后自动解锁回 Continuous AF。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AF Modes" }
+        ]
+      }
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **AF 是什么**：调镜头 vs sensor 距离让物体在 sensor 上成像清晰\n2. **三种 AF 模式**：CAF 反差对焦（爬山法）/ PDAF 相位对焦（一步到位）/ ToF Depth AF（红外测距）\n3. **清晰度数学定义**：相邻像素亮度差异（Sobel/Laplacian 滤波）= 边缘强度\n4. **CAF 钟形曲线 + 爬山法**：粗-细两阶段搜索避免卡局部峰\n5. **VCM 马达**：DAC 控制电流 → 镜头位置（10-bit 1024 个位置）；位置 vs 距离非线性，OTP 标定\n6. **Single AF vs Continuous AF**：单次拍照用 SAF，预览/录像用 CAF\n\n### 自我检查\n\n1. AF 三种模式的核心区别？\n2. CAF 爬山法为什么需要粗-细两阶段？\n3. VCM 标定为什么必要？没有标定会怎样？\n4. Continuous AF 的「重对焦阈值」typically 多少？\n5. Predictive AF 解决什么场景？\n\n### 笔记建议\n\n- 把三种 AF 模式对比表抄到笔记（速度 / 暗光 / 硬件要求）\n- 整理 VCM DAC 和距离的对应关系（粗略：0=远 / 1023=近）\n- 想想你妹妹项目用的 sensor 是否带 PDAF\n\n### 明天预告\n\nDay 44：CAF（反差对焦）深入。看高通 ISP 怎么实现爬山搜索的具体细节、各种 corner case（弱光、纯色场景、运动场景）的处理。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "page": 180, "section": "AF 章节开篇" },
+    { "source": "维基百科 · Autofocus", "url": "https://en.wikipedia.org/wiki/Autofocus" },
+    { "source": "维基百科 · Voice coil", "url": "https://en.wikipedia.org/wiki/Voice_coil" }
+  ],
+  "dailyQuizId": "daily-day-43"
+}

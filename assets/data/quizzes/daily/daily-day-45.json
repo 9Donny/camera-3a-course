@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-45",
+  "title": "Day 45 日测：PDAF + Saliency AF + Depth AF",
+  "module": "M5",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "PDAF 像素的特殊设计？",
+      "options": [
+        "更大",
+        "两个相邻 PD 共享一个微透镜，输出左右视差",
+        "更敏感",
+        "滤光片不同"
+      ],
+      "answer": "两个相邻 PD 共享一个微透镜，输出左右视差",
+      "explain": "对焦准 = 两 PD 看到相同模式；不准 = 视差。视差大小直接对应焦点偏移量 + 方向。0.5-1% 的 sensor 像素是 PDAF 像素（混合在普通像素中）。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "Saliency AF 比 Face AF 的覆盖更广，原因？",
+      "options": [
+        "模型更大",
+        "检测任何「显眼」主体（动物、物品、风景），不仅人脸",
+        "准确率高",
+        "速度快"
+      ],
+      "answer": "检测任何「显眼」主体（动物、物品、风景），不仅人脸",
+      "explain": "Face 只检测人脸；Saliency 用 AI 输出热力图（每像素 0-1）覆盖任何主体。两者互补：有脸用 Face，没脸用 Saliency。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "ToF Depth AF 的最大优势？",
+      "options": [
+        "便宜",
+        "不靠图像分析（红外测距），纯色场景 + 弱光仍工作",
+        "算法简单",
+        "sensor 不需要特殊设计"
+      ],
+      "answer": "不靠图像分析（红外测距），纯色场景 + 弱光仍工作",
+      "explain": "CAF/PDAF 都依赖图像信息，纯色或弱光下失效。ToF 用红外光来回时间测距，与可见光无关。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: ToF 远距离精度差，一般 max_distance 限制 ___ 米",
+      "answer": [
+        "5",
+        "5m",
+        "五"
+      ],
+      "explain": "红外衰减按距离平方反比，> 5 米信号弱。这种场景用 PDAF + CAF 替代。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "AF 模式选择决策（按场景）的核心规则？",
+      "referenceAnswer": "1) 微距（< 30cm）：tof_then_caf（近景 ToF 最准）；2) 极弱光（lux<30）：tof_only（弱光 ToF 最稳）；3) 纯色 / 低纹理：tof_only（CAF 失效）；4) 运动场景：pdaf_with_predict（PDAF + Predictive AF）；5) 有人脸：pdaf_face_roi（PDAF + Face ROI）；6) 默认：pdaf_then_caf（一般场景）。这是「全能策略」让旗舰对焦各场景都稳。"
+    }
+  ]
+}

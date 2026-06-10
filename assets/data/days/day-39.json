@@ -1,0 +1,85 @@
+{
+  "id": "day-39",
+  "week": 6,
+  "module": "M4",
+  "title": "双摄 AWB 同步：多摄一致性的核心",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Day 27 复习 + AWB 视角的双摄问题",
+      "type": "concept",
+      "content": "### Day 27 学过双摄 AE 同步\n\n用主从架构（Master/Slave）：主摄独立决策 → 副摄跟随 → 切换时画面平滑。\n\n双摄 AWB 思路一样但**实施更难**。\n\n### AWB 比 AE 难的原因\n\n**1. 不同 sensor 的颜色响应不同**\n\n- 主摄 IMX989：D65 下 RG=1.05, BG=0.95\n- 长焦 IMX663：D65 下 RG=1.00, BG=1.00\n- 超广角 IMX355：D65 下 RG=1.10, BG=0.90\n\n同样的「**白纸 + D65 光源**」，三个 sensor 输出**不同 RGB**。OTP 校准后这个差异被消除（Day 30 学过），但**误差仍存在**（OTP 不可能 100% 准）。\n\n**2. 不同视场看到的画面不同**\n\n- 主摄看到「整个场景」（窗户 + 屋内）\n- 长焦只看到「人脸特写」（不看窗户）\n- 超广角看到「**更大范围**」（包含更多窗户）\n\n三个摄像头看到的「**画面色彩分布**」完全不同 → 各自跑 AWB 会得出不同光源估计。\n\n**3. CCM 联动**\n\n每个 sensor 有自己的 CCM 表（按 CCT 分段）。即使三摄输出相同 CCT，**不同 sensor 的 CCM 得到的色彩输出仍不同**。\n\n### 一个具体例子\n\n用户在客厅（主光源 A 钨丝）拍人。三摄各自跑 AWB：\n\n```\n主摄（视场宽）：看到钨丝 + 窗外天光，AGW 识别混合光源 → cct 4500K\n长焦（视场窄）：只看人脸，FA 主导 → cct 3000K（钨丝纯）\n超广角（视场极宽）：看到更多窗户 → cct 5500K（更冷）\n\n用户从主摄切到长焦：cct 4500 → 3000 → 画面色调突变\n用户从主摄切到超广角：cct 4500 → 5500 → 画面色调突变\n```\n\n这种「**切换镜头画面突变**」是双摄一致性最严重的问题之一。\n\n### 解决：主从同步 + sensor-specific 适配\n\n**主摄独立运行 AWB → 输出 final_cct**\n\n副摄不独立跑 AWB 决策，而是**接收主摄的 cct**：\n\n```python\nclass AuxiliaryAWB:\n    def __init__(self, sensor_otp):\n        self.otp = sensor_otp\n    \n    def update(self, master_cct, master_lwv):\n        # 用主摄的 cct，但 gain 用本 sensor 的 OTP 校准\n        # 因为同一个 cct 在不同 sensor 上对应不同 RG/BG\n        local_rg, local_bg = cct_to_rg_bg(master_cct, self.otp)\n        \n        R_gain = 1.0 / local_rg\n        B_gain = 1.0 / local_bg\n        return R_gain, 1.0, B_gain\n```\n\n切换镜头时：\n\n- master_cct 不变（主摄一直在跑）\n- 副摄启用瞬间用 master_cct → 立即得到「正确 gain」\n- 用户感觉「**色调连贯**」\n\n这就是 Day 27 提到的「主从架构」在 AWB 上的具体实现。",
+      "glossary": [
+        { "term": "Multi-camera AWB Sync", "zh": "多摄 AWB 同步", "explain": "副摄跟随主摄的 cct，但 gain 用本 sensor OTP 校准。" },
+        { "term": "Sensor-Specific Adaptation", "zh": "Sensor 专属适配", "explain": "同一 cct 在不同 sensor 上对应不同 RG/BG，gain 必须按 sensor OTP 校准。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么副摄 cct 跟主摄但 gain 不跟？", "a": "cct 是「光源色温」（物理量，跨 sensor 一致）；gain 是「sensor 输出修正系数」（每 sensor 不同）。同一 cct 不同 sensor 应该用不同 gain。" },
+          { "q": "副摄完全不跑 AWB 算法吗？", "a": "不是。副摄仍然算自己的 LWV（用副摄的 64×48 + OTP），但**只作为「第二意见」给主摄参考**，副摄输出的 gain 跟主摄 cct。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Multi-camera AWB Sync" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "切换瞬间的 AWB 处理",
+      "type": "concept",
+      "content": "### 镜头切换的 3 个阶段\n\n用户从主摄切到长焦的过程：\n\n```\n阶段 1：用户点击「切到长焦」\n  ↓\n阶段 2：长焦 sensor 启动（~50ms 初始化）\n  - 长焦 sensor 开始输出 RAW\n  - 长焦 ISP 开始处理\n阶段 3：第一帧长焦画面显示给用户\n```\n\n关键点：阶段 2 期间用户**仍看到主摄画面**（fade 过渡或冻结），所以 AWB 有 50ms 时间准备。\n\n### 平滑切换的 5 个策略\n\n**a. 预热（Pre-warm）**\n\n用户切换前，副摄一直「**待机**」，OTP 已读取，预闪等可触发。第一帧能立即工作。\n\n**b. 同步主摄 cct**\n\n切换瞬间副摄读 master_cct → 算 gain → 第一帧用这个 gain。**不需要从头跑 AWB**。\n\n**c. damping 过渡**\n\n切换后副摄会逐帧调自己的 AWB（基于副摄看到的画面）。但这个调整用 damping 慢慢做，30-60 帧（1-2 秒）才完全切到「副摄独立决策」。\n\n```python\ndef post_switch_awb(slave, master_cct, slave_local_estimate, alpha=0.05):\n    \"\"\"切换后逐帧从主摄 cct 渐变到副摄独立估计\"\"\"\n    if frame_since_switch == 0:\n        return master_cct  # 第一帧完全用主摄\n    elif frame_since_switch < 30:\n        # 渐变\n        weight = frame_since_switch / 30.0\n        return master_cct * (1 - weight) + slave_local_estimate * weight\n    else:\n        return slave_local_estimate  # 完全切到副摄独立\n```\n\n这种渐变让用户**感觉不到切换**。\n\n**d. CCM 同步**\n\n上面学过不同 sensor CCM 不同，即使 cct 同样画面色彩仍可能略不同。解决：让副摄 CCM 也**渐变切换**：\n\n```\n切换前 30 帧：副摄 CCM = 主摄 CCM 的内插\n切换后 30 帧：副摄 CCM = 副摄自己的 CCM\n中间过渡：内插\n```\n\n**e. 极端场景的 fallback**\n\n如果主摄 cct 和副摄独立估计差距 > 阈值（比如 > 1500K），说明两个摄像头看到完全不同的场景：\n\n```python\nif abs(master_cct - slave_local_estimate) > 1500:\n    # 副摄场景跟主摄差太多，跟不上\n    # 用「**渐变更慢**」让用户感觉到切换但不突变\n    use_extra_long_damping(60)\n```\n\n这种场景比如：主摄看广角风景（主光源是天光 6500K），切到长焦特写（只看到一个钨丝灯下的物体 3000K）。\n\n### Tuning 调教参数\n\n```xml\n<multi_camera_awb_sync>\n  <use_master_cct_on_switch>true</use_master_cct_on_switch>\n  <transition_frames>30</transition_frames>\n  <transition_extra_for_large_gap>60</transition_extra_for_large_gap>\n  <large_cct_gap>1500</large_cct_gap>\n  <ccm_sync>true</ccm_sync>          <!-- CCM 也跟随主摄 -->\n  <preheat_aux_sensors>true</preheat_aux_sensors>\n</multi_camera_awb_sync>\n```\n\n### Master 角色的动态切换\n\n通常**主摄是 master**，副摄都是 slave。但有些场景这个关系会**翻转**：\n\n场景：用户在长焦上拍了 5 秒（已经稳定在长焦），切回主摄。\n\n这时长焦的 AWB 已经独立运行了，主摄重新启动时 master 仍是「主摄」（默认架构）。但**主摄第一帧用什么 cct？**\n\n两种策略：\n\n- **a. 用切换前主摄保存的 NVRAM 值**（5 秒前的状态）\n- **b. 用长焦当前的 cct 反算到主摄空间**（更新）\n\n现代手机用 b（更准），不过实现复杂。中端机型用 a（足够好）。\n\n### 实战例子\n\n场景：用户在公园（D65 户外）拍人。\n\n```\n主摄运行 AWB：cct=6300K\n用户切到长焦（人脸特写）：\n  长焦立即用主摄 cct=6300K\n  长焦自己的 64×48 看到：\n    肤色块 (1.20, 0.62) - 平均 80%\n    背景树叶 (0.95, 1.05) - 20%\n  长焦独立估计：FA 主导，cct ≈ 6500K\n  damping 30 帧：6300 → 6400 → 6500K\n  用户感觉：色调几乎没变（差距很小）\n\n用户切回主摄：\n  主摄立即用长焦的 cct=6500K（如果配置 b）\n  主摄独立估计：cct ≈ 6300K（看到树叶 + 天空 + 人）\n  damping 30 帧：6500 → 6400 → 6300\n  用户感觉：平滑\n```\n\nD65 户外场景下双摄 AWB 几乎无感切换。\n\n### 难场景：钨丝灯室内\n\n```\n主摄运行 AWB：看到钨丝 + 窗外，AGW cct=4500K（混合光源）\n用户切到长焦（人脸特写，只看到钨丝照射的脸）：\n  长焦立即用主摄 cct=4500K\n  长焦的 FA 估计：cct=3000K（钨丝纯）\n  差距 1500K → 触发「extra_long_damping」（60 帧）\n  damping 60 帧：4500 → 4250 → 4000 → ... → 3000\n  用户感觉：略慢（2 秒）但不突变\n```\n\n这种「**真有色温差异**」的场景，必须慢慢过渡，不能快。",
+      "glossary": [
+        { "term": "Pre-warm", "zh": "预热", "explain": "副摄在切换前保持待机，OTP 已读，可立即工作。" },
+        { "term": "Damping Transition", "zh": "渐变过渡", "explain": "切换后副摄从主摄 cct 渐变到自己的独立估计。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "切换是否会影响录像？", "a": "录像中切换镜头是新功能（部分旗舰才支持）。AWB 必须保证「视频帧间色彩连贯」，对 damping 时长要求更高。一般录像中切换允许 1-2 秒过渡。" },
+          { "q": "前置后置切换呢？", "a": "前置和后置 sensor 完全不同（前置较小、CCM 不同）。切换时需要更彻底的「重启 AWB」 + 自己的 OTP。中间常加 fade 过渡（黑屏 0.5 秒）让 AWB 有时间初始化。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Multi-camera Switch Handling" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "调教多摄一致性的实战流程",
+      "type": "example",
+      "content": "### Tuning 工程师的多摄调教流程\n\n```\n1. 各 sensor 单独 OTP 校准（D65/D50/A/H 各色温的 RG/BG）\n2. 各 sensor 的 CCM 单独标定（在标准光源下拍 24 色卡）\n3. 各 sensor 的参考点表对齐到「校准后的 RG/BG」\n4. 单摄场景下各自跑 AWB，验证准确性\n5. 双摄切换场景测试：\n   - 户外（D65）：切换平滑度（应秒切）\n   - 室内（A）：切换平滑度（应有 30 帧过渡）\n   - 混合光源（D65 + A）：切换平滑度（应有 60 帧 long damping）\n   - 极端场景（一摄全暖、一摄全冷）：是否突变\n6. CCM 切换平滑度测试（同一 cct 下切换镜头，色彩应一致）\n7. 调参 + 重测\n```\n\n这个流程**很 tedious**：每改一个参数要在 10+ 场景下重测。\n\n### 常见问题\n\n**问题 1：「切到长焦后画面发黄」**\n\n```\n[AWB-Master] cct=4500\n[AWB-Slave-Tele] cct (after sync) = 4500 → ramping to 3500\n  frame 5: 4250\n  frame 30: 3700 ← 感觉偏黄\n```\n\n问题：长焦在没切换前已经在自己跑 AWB，估出 3500K。切换瞬间用 master 的 4500 → ramp 30 帧到 3500。30 帧期间画面**逐渐偏黄**（cct 变低）。\n\n修：切换瞬间不立即用 master 的 4500，而是「**已经在长焦运行的 AWB 状态**」（3500K 或附近）。这样切换瞬间用 3500K，没有 ramp 突变。\n\n相当于把 master 的影响**用作「nudge」**而不是「**完全覆盖**」。\n\n**问题 2：「切回主摄后画面发蓝」**\n\n```\n[Tele] 用户在长焦上拍了 10 秒，AWB 已经收敛到 3500K\n[切换] 用户切回主摄\n[Master] 主摄 5 秒前的 NVRAM 状态：4500K\n[Master] 主摄第一帧用 4500K\n  → 但实际场景没变（主摄还在客厅）\n  → 主摄重新算：3500K\n  → ramp 30 帧从 4500 → 3500\n  → 用户看到画面从「正常」逐渐变暖\n```\n\n问题：用户期望「切换瞬间画面就对」，但 master 用了 NVRAM 的旧 cct → ramp 让用户感觉「**画面渐变发暖**」。\n\n修：切换瞬间 master 应该用「**长焦最近的 cct**」作为初始值，而不是 NVRAM 旧值。\n\n这就是「**反向同步**」 —— 不仅 slave 跟 master，回到 master 时也用 slave 的最新状态。\n\n### log 字段（多摄 AWB）\n\n```\n[AWB-MC] master=main slaves=[tele, ultra]\n[AWB-MC-MAIN] cct=4500 r_gain=0.78 b_gain=1.28\n[AWB-MC-TELE] sync=master cct_local_estimate=3500 ramping=true frames=15/30\n[AWB-MC-ULTRA] sync=master cct_local_estimate=4800 ramping=false\n[AWB-MC] switch event: tele→main at frame 1234\n[AWB-MC] cct on switch: master used tele.cct=3500 (reverse sync)\n```\n\n字段：\n\n- `sync`：当前同步源\n- `cct_local_estimate`：副摄独立估计（用作「第二意见」）\n- `ramping`：是否在过渡中\n- `switch event`：切换事件\n- `cct on switch`：切换瞬间用什么作初始值（reverse sync = 反向同步）\n\n### 多摄 AWB cheat\n\n| 反馈 | 调什么 |\n|---|---|\n| 切换镜头画面突变 | transition_frames 增大 |\n| 切换镜头画面渐变发暖/冷 | 启用 reverse sync（用副摄最新 cct）|\n| 切到长焦后偏黄 | 长焦的 OTP 校准（A 光源 RG 可能偏） |\n| 录像中切换抖动 | transition_frames 至少 60（录像 2 秒）|\n| 双摄一致性极端不好 | 各 sensor CCM 重新校准（24 色卡 + 标准光源）|",
+      "glossary": [
+        { "term": "Reverse Sync", "zh": "反向同步", "explain": "切换回主摄时，主摄不用 NVRAM 旧值，而用副摄最新 cct 作初始值。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "录像中切换难度大很多？", "a": "对。录像必须帧间连贯，不允许「切换瞬间色彩跳」。所以录像中切换的 transition_frames 通常 60-90（2-3 秒），用户能感觉到「**色彩慢慢调整**」但不突变。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Multi-camera Switch + Reverse Sync" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "多摄一致性的硬件 + 软件全景",
+      "type": "concept",
+      "content": "### 多摄一致性涉及的层次\n\n```\n硬件层：\n  - sensor 选型（同代 sensor，避免响应差异过大）\n  - 镜头选型（焦距、视场、色彩偏向）\n  - OTP 校准（每个 sensor 出厂校准）\n\n驱动层：\n  - 各 sensor 的初始化时序\n  - 各 sensor 的曝光/增益接口\n  - 多摄硬件流水线协调\n\nISP 层：\n  - 各 sensor 的 ISP 资源分配\n  - 切换时的硬件 fallback（避免黑屏）\n\nAE 层：\n  - 主摄独立 AE\n  - 副摄跟随主摄 lux + target（Day 27 学过）\n\nAWB 层（今天学）：\n  - 主摄独立 AWB → final_cct\n  - 副摄跟随 cct，gain 按本 sensor OTP 校准\n  - 切换 ramp + reverse sync\n\nCCM 层：\n  - 各 sensor 自己的 CCM 表\n  - 切换时 CCM 也 ramp\n\nTone Mapping 层：\n  - 各 sensor 自己的 Gamma + LTM/GTM\n  - 一致性要求：同一 cct 下不同摄像头色调一致\n```\n\n所有层都要协同。任何一层出 bug 都会破坏多摄一致性。\n\n### 测试矩阵\n\n多摄一致性测试**矩阵**：\n\n```\n          | 主摄 | 长焦 | 超广角 |\n---------+------+------+--------+\n户外 D65  |  √   |  √   |   √    |\n室内钨丝  |  √   |  √   |   √    |\n阴天     |  √   |  √   |   √    |\n夕阳     |  √   |  √   |   √    |\n夜景     |  √   |  √   |   √    |\n混合光源 |  √   |  √   |   √    |\n```\n\n+ 每个场景下「切换镜头」的平滑度。\n\n这是 **大约 50-100 个测试 case**。Tuning 工程师要花**几周**做完。\n\n### 工程现实\n\n现实是：**没有完美的多摄一致性**。\n\n- iPhone 旗舰：主长焦切换无感，超广角略差\n- Android 旗舰：主长焦勉强一致，超广角明显偏色\n- Android 中端：切换镜头时**明显**色彩跳变\n\n这是行业普遍现象。原因：\n\n1. 不同 sensor 物理特性差异（解决不了）\n2. CCM 校准成本高（每个 sensor 单独标）\n3. 测试矩阵太大（不可能每个场景都完美）\n\nTuning 工程师的目标是**让常见场景（90% 用户场景）做到无感切换**。极端场景接受妥协。\n\n### Tuning 工程师的优先级\n\n```\n优先级 1：户外场景（最常用，必须无感）\n优先级 2：室内日光（最常用之二）\n优先级 3：钨丝灯室内（重要 + 难）\n优先级 4：夜景（难 + 用户期望低）\n优先级 5：混合光源（难 + 用户期望最低）\n```\n\n资源不足时按优先级保。\n\n### 你妹妹的真实工作场景\n\n```\n上午：测主摄+长焦切换，调 transition_frames\n中午：测主摄+超广角切换，发现 CCM 不一致 → 标 24 色卡\n下午：测室内钨丝场景，发现长焦偏黄 → 调 OTP\n晚上：测夜景，发现切换时画面突变 → 加 long damping\n```\n\n**循环重复几周**。多摄一致性是 AWB 调教里**最磨人的工作**。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **AWB 比 AE 难同步**：sensor 颜色响应差异 + 不同视场看到不同画面 + CCM 联动\n2. **主从同步**：主摄独立 → final_cct，副摄跟随 cct，但 gain 按本 sensor OTP 校准\n3. **平滑切换 5 策略**：预热 + 同步主摄 cct + damping 过渡 + CCM 同步 + 极端场景 long damping\n4. **Reverse Sync**：切回主摄时用副摄最新 cct，不用 NVRAM 旧值\n5. **多摄一致性是层次问题**：硬件 + 驱动 + ISP + AE + AWB + CCM + TM 都要协同\n6. **没有完美一致性**：保常用场景，极端场景妥协。这是行业现实\n\n### 自我检查\n\n1. 副摄跟随主摄的什么？为什么 gain 不能直接抄？\n2. damping 过渡和 reverse sync 各自解决什么问题？\n3. 切换时「extra_long_damping」什么时候触发？\n4. 多摄一致性涉及哪几个层次？\n5. Tuning 工程师调多摄一致性的优先级是什么？\n\n### 笔记建议\n\n- 把多摄主从架构图画一遍\n- 整理 5 个平滑切换策略\n- 想想「切换镜头画面突变」可能是哪一层 bug\n\n### 明天预告\n\nDay 40：TGA（Triangle Gain Adjustment）三角增益调整 + Smart Convergence 智能收敛。这是 AWB 的「**精细调教**」工具，专门处理「**算法估对了 cct 但用户不喜欢**」这种「**风格化**」需求。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Multi-camera AWB Synchronization" }
+  ],
+  "dailyQuizId": "daily-day-39"
+}

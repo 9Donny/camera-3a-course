@@ -1,0 +1,90 @@
+{
+  "id": "day-38",
+  "week": 6,
+  "module": "M4",
+  "title": "AWB Flash：闪光灯下的白平衡",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "为什么闪光灯下 AWB 特别难",
+      "type": "concept",
+      "content": "### Day 6 复习\n\nWeek 1 Day 6 我们学过手机闪光灯：\n\n- 双 LED 闪光灯：暖白（~3000K） + 冷白（~6500K），混合调节\n- 拍照流程：**预闪 → 测光 → 主闪 → 拍照** 4 步\n- D65 是理想中性白，闪光灯设计目标接近 5500K\n\n今天看 AWB 在闪光灯场景的处理。\n\n### 闪光灯的 AWB 挑战\n\n**挑战 1：色温在拍照瞬间巨变**\n\n```\n用户按下拍照按钮：\n  按下前：环境光（如室内钨丝 3000K）→ AWB 当前 gain 适配 3000K\n  闪光灯亮（10ms）：场景突然变成「**环境光 + LED**」混合 → 色温瞬间变\n  按下后：环境光恢复 → 色温恢复\n  \n  关键瞬间是「闪光亮的 10ms」 —— 这 10ms 拍下的照片要正确\n```\n\n如果 AWB 用「**环境光的 gain**」（3000K 钨丝），照片会**整体偏蓝**（因为 LED 比钨丝冷得多）。\n\n如果用「**LED 的 gain**」（5500K），背景没被 LED 照到的地方（如远处墙壁）会**偏黄**（因为 LED 没照到那里，那里仍是钨丝光照）。\n\n这是「**前景 LED + 背景钨丝**」的混合光源场景，比 Day 36 学的「窗外日光 + 室内钨丝」**更难**因为色温**急剧变化**。\n\n**挑战 2：闪光灯的「真实色温」不固定**\n\nDay 6 学过双 LED 可调（暖 + 冷比例可变）。手机会按场景**动态调闪光灯**：\n\n- 暗光下：暖光为主（看起来温馨）\n- 一般场景：中性白（5500K）\n- 户外强光（很少用闪光）：偏冷（补光填影）\n\n所以「闪光灯色温」是**变量**，AWB 要知道这一帧用的是什么色温。\n\n**挑战 3：闪光灯只照亮前景**\n\nLED 衰减按距离平方反比：\n\n```\n距离 1m：闪光灯亮度 100%\n距离 2m：闪光灯亮度 25%（1/4）\n距离 4m：闪光灯亮度 6%\n```\n\n所以前景人脸被闪光主导，背景几乎没受闪光影响 → **画面里有两个光源**（前景 LED + 背景环境光）。\n\n### 解决思路：预闪测光 + 双白平衡\n\n手机的 AWB Flash 算法：\n\n```\n步骤 1：用户半按或对焦时，触发「预闪」（弱亮度 LED 闪一下）\n  - 用预闪期间的画面统计 → 估算 LED 衰减\n  - 算出哪些块「亮度大幅增加」 = 前景区\n  - 哪些块「几乎没变」 = 背景区\n\n步骤 2：分区域算 WB\n  - 前景区：用 LED 色温（~5500K）\n  - 背景区：用环境光色温（如 3000K 钨丝）\n  - 中间过渡区：内插\n\n步骤 3：按下拍照，主闪触发\n  - ISP 用「预闪时算好的双 WB」处理这一帧\n  - 前景被 LED 主导 → 用 LED gain → 肤色还原\n  - 背景没被 LED 影响 → 用环境光 gain → 背景颜色不变\n```\n\n这就是「**双白平衡（Dual WB）**」。\n\n### 调教参数\n\n```xml\n<awb_flash>\n  <preflash_enabled>true</preflash_enabled>\n  <preflash_duration_ms>50</preflash_duration_ms>\n  <flash_cct>5500</flash_cct>                    <!-- LED 色温 -->\n  <flash_cct_warm>3000</flash_cct_warm>          <!-- 暖光 LED -->\n  <flash_cct_cool>6500</flash_cct_cool>          <!-- 冷光 LED -->\n  <foreground_threshold>0.30</foreground_threshold>  <!-- 亮度增加比例 > 30% 算前景 -->\n  <enable_dual_wb>true</enable_dual_wb>          <!-- 是否启用双 WB -->\n  <transition_blocks>5</transition_blocks>       <!-- 前景/背景边界过渡块数 -->\n</awb_flash>\n```\n\n这是闪光灯 AWB 的核心配置。",
+      "glossary": [
+        { "term": "AWB Flash", "zh": "闪光灯下白平衡", "explain": "闪光灯触发时的特殊 AWB 处理，应对前景 LED + 背景环境光的混合光源。" },
+        { "term": "Pre-flash", "zh": "预闪", "explain": "拍照前的弱亮度闪光，用来探测 LED 对画面的影响 + 测光。Day 6 学过。" },
+        { "term": "Dual WB", "zh": "双白平衡", "explain": "前景区用 LED gain、背景区用环境光 gain 的精细处理。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么不直接用 5500K 的 gain？", "a": "前景虽然主要被 LED 照，但背景没被 LED 影响。用 LED gain 处理整张图，背景的钨丝灯仍是钨丝光照射，但被「修成中性」 → 实际效果偏蓝。" },
+          { "q": "预闪会让用户看到吗？", "a": "看到。但很快（50ms），用户会看到「闪两下」（预闪 + 主闪），手机相机这是正常现象。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：手机闪光灯 双 LED", "search": "手机 闪光灯 双 LED 调节" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "AWB Flash" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "前景/背景检测：闪光增量法",
+      "type": "concept",
+      "content": "### 怎么知道哪些块是「前景」\n\n关键是**预闪前 vs 预闪中**的对比：\n\n```python\ndef detect_foreground(stats_before, stats_during_preflash, threshold=0.30):\n    foreground_mask = []\n    for b_before, b_during in zip(stats_before, stats_during_preflash):\n        # 算亮度增量\n        Y_before = b_before.G  # G 通道作为亮度参考\n        Y_during = b_during.G\n        \n        if Y_before == 0:\n            increase_ratio = 0  # 避免除零\n        else:\n            increase_ratio = (Y_during - Y_before) / Y_before\n        \n        is_foreground = increase_ratio > threshold\n        foreground_mask.append(is_foreground)\n    return foreground_mask\n```\n\n直觉：LED 照到的块亮度大幅上升（30%+），LED 照不到的块亮度几乎没变。\n\n### 边界过渡处理\n\n硬边界（前景 vs 背景非黑即白）会让画面**有「拼接感」**（前景区色彩突变到背景区）。需要**软过渡**：\n\n```python\ndef compute_blend_weights(foreground_mask, transition_blocks=5):\n    \"\"\"对每个块算「前景权重」（0-1），边界处用渐变\"\"\"\n    weights = []\n    for i, is_fg in enumerate(foreground_mask):\n        if is_fg:\n            weights.append(1.0)\n        else:\n            # 看周围 transition_blocks 范围有没有前景\n            nearby_fg = count_foreground_in_neighborhood(i, foreground_mask, transition_blocks)\n            weights.append(nearby_fg / max_neighbors)\n    return weights\n```\n\n这样前景到背景之间有 5 块宽的「**渐变带**」，色温平滑过渡。\n\n### 双 WB 应用\n\n```python\ndef apply_dual_wb(stats, foreground_mask, fg_weights, led_gain, ambient_gain):\n    for i, (block, weight) in enumerate(zip(stats, fg_weights)):\n        # 按权重内插 gain\n        R_gain = led_gain.R * weight + ambient_gain.R * (1 - weight)\n        G_gain = led_gain.G * weight + ambient_gain.G * (1 - weight)\n        B_gain = led_gain.B * weight + ambient_gain.B * (1 - weight)\n        # ISP 用这套 gain 处理这块对应的像素\n```\n\nISP 必须支持「按 64×48 网格内插 gain」（Local WB 能力）。中端机型如果没有这个能力，**只能用全局单一 WB**（折中方案）。\n\n### 折中方案：全局加权 WB（中端机型）\n\n如果 ISP 不支持 Local WB，AWB 算「**前景占比加权**」的全局 gain：\n\n```python\ntotal_weight = sum(fg_weights)\ntotal_blocks = len(fg_weights)\nfg_ratio = total_weight / total_blocks  # 前景占比\n\n# 全局 gain 是 LED 和环境光按前景占比加权\nfinal_R_gain = led_gain.R * fg_ratio + ambient_gain.R * (1 - fg_ratio)\nfinal_G_gain = led_gain.G * fg_ratio + ambient_gain.G * (1 - fg_ratio)\nfinal_B_gain = led_gain.B * fg_ratio + ambient_gain.B * (1 - fg_ratio)\n```\n\n效果：前景占多 → 更偏 LED gain；前景占少 → 更偏环境光 gain。**两边都不完美但都凑合**。\n\n### Tuning 工程师的 AWB Flash 调教\n\n核心参数：\n\n```xml\n<awb_flash_tuning>\n  <foreground_increase_threshold>0.30</foreground_increase_threshold>\n  <transition_blocks>5</transition_blocks>\n  <enable_local_wb>true</enable_local_wb>           <!-- 旗舰开 Local WB -->\n  <fallback_to_global>true</fallback_to_global>     <!-- 中端用全局加权 -->\n  <led_gain_table>\n    <entry mode=\"warm\" R=\"0.95\" G=\"1.0\" B=\"1.05\"/>  <!-- 暖白 LED -->\n    <entry mode=\"normal\" R=\"1.0\" G=\"1.0\" B=\"1.0\"/>  <!-- 中性 LED -->\n    <entry mode=\"cool\" R=\"1.05\" G=\"1.0\" B=\"0.95\"/>  <!-- 冷白 LED -->\n  </led_gain_table>\n  <ambient_continuity>true</ambient_continuity>      <!-- 闪光后无缝切回环境光 gain -->\n</awb_flash_tuning>\n```",
+      "glossary": [
+        { "term": "Foreground Detection", "zh": "前景检测", "explain": "通过预闪前后亮度对比，判断哪些块被 LED 照亮（前景）。" },
+        { "term": "Blend Weight", "zh": "混合权重", "explain": "每个块的「前景程度」0-1，用于双 WB 的内插。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "前景检测会被运动干扰吗？", "a": "会。如果用户在预闪和主闪之间移动了手机，foreground_mask 会错。所以预闪到主闪之间间隔越短越好（< 100ms）。" },
+          { "q": "transition_blocks 设多少合适？", "a": "3-7 块。太少边界硬，太多前景被「稀释」。常见 5。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Foreground/Background Detection" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Precision Flash + AWB 协同",
+      "type": "concept",
+      "content": "### Day 6 学过的预闪 + 主闪\n\n```\n用户按下拍照\n  ↓\n预闪（50ms 弱亮度 LED）\n  ├── AE 测光：算正确曝光参数\n  ├── AWB 测光：算前景/背景 mask + 双 WB gain\n  └── AF 重新对焦\n  ↓\n等待 100ms（让 LED 冷却 + 让 AE/AWB/AF 决策固化）\n  ↓\n主闪（50ms 全亮度 LED）\n  ├── 同时 sensor 曝光\n  └── ISP 应用预闪算好的 AE/AWB/AF 参数\n  ↓\n出片\n```\n\n这套流程叫「**Precision Flash**」（精准闪光）。Week 7 学 Flash 模块时会更详细，今天看 AWB 角度。\n\n### AWB 在预闪中做什么\n\n```python\n# 阶段 1：预闪前\n# 正常 AWB 跑，得到 ambient_gain（环境光 gain）\n# stats_before = current 64×48 stats\n\n# 阶段 2：预闪触发\n# LED 亮起，sensor 拍 1-2 帧\n# stats_during_preflash = stats during LED on\n\n# 阶段 3：算前景/背景\nforeground_mask = detect_foreground(stats_before, stats_during_preflash)\nfg_weights = compute_blend_weights(foreground_mask)\n\n# 阶段 4：算 LED gain（基于 LED 色温配置）\nled_cct = current_led_mode_cct  # 暖/中/冷模式\nled_gain = compute_gain_from_cct(led_cct)\n\n# 阶段 5：等待主闪触发\n# 把 ambient_gain + led_gain + fg_weights 锁定\n\n# 阶段 6：主闪触发，sensor 曝光\n# ISP 应用双 WB（按 fg_weights 内插 ambient/led gain）\n```\n\n关键点：**AWB 决策在预闪阶段做完**，主闪只是用预算好的 gain。\n\n这就是「**预测式 AWB**」 —— 不是被动反应，而是主动预测。\n\n### 闪光灯关闭时呢\n\n用户拍照时不开闪光灯（「自动 / 关」模式下没触发），AWB 走正常流程：\n\n```\n按下拍照\n  ↓\nAWB 用当前的环境光 gain（不需要预测）\n  ↓\nsensor 曝光\n  ↓\nISP 应用 ambient_gain（普通 WB）\n```\n\n所以 AWB Flash 算法**只在闪光触发时启用**。\n\n### 闪光不同模式的 AWB 调教\n\n手机闪光灯有几种模式：\n\n| 模式 | AWB 策略 |\n|---|---|\n| **自动 (Auto)** | AE 决定是否需要闪光。如果触发 → AWB Flash 算法 |\n| **强制 (On)** | 总是闪。AWB Flash 总开 |\n| **关闭 (Off)** | 不闪。AWB 走正常流程 |\n| **填充 (Fill)** | 户外强光下补光（脸部）。AWB 用「日光 + 弱 LED」混合处理 |\n| **手电 (Torch)** | LED 持续亮（不是「闪」）。当成正常光源处理 |\n\n填充闪光（Fill）和手电模式（Torch）的 AWB 处理略不同，但核心思想一样：**前景被 LED 影响多 → 双 WB**。\n\n### 一个真实场景：晚上室内人像 + 闪光\n\n```\n环境：钨丝灯客厅（A 3000K）\n用户按下拍照触发闪光（中性白 LED 5500K）\n\n预闪前：\n  AWB 当前 gain：R=0.6, B=1.6（适配 3000K 钨丝）\n\n预闪中：\n  人脸亮度大幅上升（前景）\n  墙壁亮度小幅上升（半前景，距离稍远）\n  远处书架几乎没变（背景）\n  \n前景检测：\n  人脸：fg_weight=1.0\n  墙壁：fg_weight=0.7（边界过渡）\n  书架：fg_weight=0.0\n\nLED gain（5500K 中性白）：\n  R_led=1.0, B_led=1.0（接近 D65 → 几乎不修）\n\n主闪：\n  人脸用 fg_weight=1.0：R_gain=1.0, B_gain=1.0 → 中性白皮肤\n  墙壁 fg_weight=0.7：R_gain = 1.0×0.7+0.6×0.3=0.88, B_gain = 1.0×0.7+1.6×0.3=1.18\n  书架 fg_weight=0.0：R_gain=0.6, B_gain=1.6 → 钨丝灯下钨丝色\n\n效果：人脸自然白皙、墙壁温暖偏白、远处书架仍是钨丝灯黄。这是合理的物理还原 —— 闪光灯本来就只照前景。\n```\n\nFA + AWB Flash 协同：FA 检测到人脸（前景） → 用 LED gain 校准肤色 → 肤色更准。\n\n### Tuning 工程师的 cheat\n\n| 用户反馈 | 调什么 |\n|---|---|\n| 闪光人像偏蓝 | 检查 LED gain 是不是 D65（如果 LED 偏冷应该 R_led<1, B_led>1）|\n| 闪光后画面色调突变 | ambient_continuity=true 让闪光后无缝切环境光 gain |\n| 远景人脸 + 闪光仍偏黄 | foreground_threshold 减小（让远处脸也被识别为前景）|\n| 双 WB 边界明显 | transition_blocks 增大（5→8）|",
+      "glossary": [
+        { "term": "Precision Flash", "zh": "精准闪光", "explain": "预闪 → 测光决策 → 主闪 → 出片的流程，让闪光场景的 AE/AWB/AF 都准。" },
+        { "term": "Predictive AWB", "zh": "预测式 AWB", "explain": "AWB Flash 在预闪阶段就把主闪的 gain 算好，主闪时直接应用，避免反应延迟。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "如果预闪到主闪之间环境光变了怎么办？", "a": "极少。50-100ms 内环境光不会变。但用户半按 + 等了 5 秒才按（如关灯），AWB 应该重新预闪。这个由 AE 收敛检测触发。" },
+          { "q": "前置摄像头自拍闪光？", "a": "前置一般用屏幕闪光（屏幕全白亮）。色温由屏幕白点决定（~6500K）。AWB 处理类似但 LED gain 替换为屏幕白点 gain。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Precision Flash + AWB" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "AWB Flash 调试 cheat 综合",
+      "type": "example",
+      "content": "### log 字段\n\n```\n[AWB-Flash] frame=1234 mode=auto trigger=true\n[AWB-Flash] preflash_active=true led_mode=warm led_cct=3500\n[AWB-Flash] foreground_blocks=480/3072 (15.6%)\n[AWB-Flash] fg_weights mean=0.20 max=1.0\n[AWB-Flash] ambient_gain: R=0.62, B=1.55 (cct 2900)\n[AWB-Flash] led_gain: R=0.88, B=1.20 (cct 3500)\n[AWB-Flash] dual_wb=enabled transition=5\n[AWB-Flash] applied at frame=1240 (main flash)\n```\n\n字段含义：\n\n- `mode/trigger`：闪光模式 + 是否触发\n- `preflash_active`：当前是不是预闪帧\n- `foreground_blocks`：前景块数 + 占比\n- `fg_weights`：每块的前景权重统计\n- `ambient_gain`：环境光 gain（不开闪光时用）\n- `led_gain`：LED 主导时用的 gain\n- `dual_wb`：是否启用双 WB\n- `applied at frame`：主闪在哪一帧应用\n\n### 排查常见问题\n\n**「闪光人像偏白偏冷」**\n\n```\n[AWB-Flash] led_cct=5500 (默认)\n[AWB-Flash] led_gain: R=1.0, B=1.0\n```\n\n但用户感觉「冷」。可能：\n\n1. LED 实际色温比 5500K 偏冷（厂家标定不准）\n2. 用户期望「**暖一点的肤色**」（审美需求）\n\n修：\n\n- 让 LED 模式默认走「warm」（3000K）→ R_led<1, B_led>1\n- 或者整体微调 led_gain（R_gain += 0.05 让画面偏暖）\n\n**「闪光后画面突变」**\n\n```\n主闪帧（用 fg_weights）：色温混合\n下一帧（环境光）：突然回到 3000K 钨丝色\n→ 用户感觉「**闪一下后画面突变**」\n```\n\n修：闪光后**渐变恢复**到环境光 gain（damping window 增大到 30 帧）。\n\n**「关掉闪光后仍有 AWB Flash log」**\n\n说明算法没正确禁用。检查：\n\n- mode=off 时是否跳过预闪逻辑\n- trigger=false 时 AWB 是否走 normal flow\n\n这是工程层 bug，不是参数问题。\n\n### Tuning 工程师的 AWB Flash 完整 cheat\n\n| 反馈 | 调什么 |\n|---|---|\n| 整体偏冷 | LED 模式默认走 warm；或 led_gain.R += 0.05 |\n| 整体偏暖 | LED 默认走 cool；或 led_gain.R -= 0.05 |\n| 远景人脸偏黄（没用 LED gain）| foreground_threshold 减小（0.30→0.20）|\n| 双 WB 边界明显 | transition_blocks 5→8 |\n| 闪光后画面突变 | ambient_continuity=true + damping window 30 |\n| 自拍前置闪光偏冷 | 前置专用 led_gain（屏幕白点偏冷需补暖）|\n| 户外填充闪光偏黄 | Fill 模式 LED gain 用 D65 而不是默认 warm |\n\n### 周末实战题\n\n下次拍照时观察：\n\n1. 关掉闪光拍夜景人像 → 看画面色调\n2. 开闪光拍同样场景 → 对比\n3. 应该看到：开闪光后**人脸更白皙、背景颜色变化不大**（双 WB 在工作）\n\n如果看到「人脸白但背景变蓝」，说明这个手机用「全局 LED gain」没用双 WB（中端机型常见）。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **闪光灯 AWB 三大挑战**：色温瞬变 + LED 色温变量 + 只照前景\n2. **预闪测光**：用预闪期间的画面 + 预闪前画面对比，识别前景块\n3. **双白平衡**：前景用 LED gain、背景用环境光 gain，过渡区内插\n4. **Precision Flash 流程**：预闪 → AWB 决策 → 主闪 → 应用预算好的 gain（**预测式**）\n5. **中端机型用全局加权**：不支持 Local WB 时按前景占比加权 LED/ambient gain\n6. **填充闪光（Fill）和手电（Torch）**模式 AWB 处理略不同\n\n### 自我检查\n\n1. 为什么闪光灯下不能直接用 5500K 的 gain？\n2. 默写双 WB 算法的 4 步流程。\n3. 前景/背景检测靠什么？预闪起什么作用？\n4. transition_blocks 的作用是什么？\n5. 「闪光人像偏白偏冷」可能怎么调？\n\n### 笔记建议\n\n- 把 Precision Flash 流程图抄到笔记\n- 整理双 WB 三种处理方式（Local WB / 全局加权 / 单一 LED gain）\n- 思考前置摄像头屏幕闪光的特殊处理\n\n### 明天预告\n\nDay 39：双摄 AWB 同步。Day 27 学过 AE 多摄主从架构，明天看 AWB 怎么处理「**主摄长焦超广角各自看到的光源不同**」 —— 这是双摄一致性最难的一块。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "AWB Flash + Precision Flash" }
+  ],
+  "dailyQuizId": "daily-day-38"
+}

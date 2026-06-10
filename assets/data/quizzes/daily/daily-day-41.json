@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-41",
+  "title": "Day 41 日测：FCM + Bias Compensation",
+  "module": "M4",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "FCM（Fixed Color Matching）什么时候启用？",
+      "options": [
+        "总是启用",
+        "测试场景下（标准光源 + 标准色卡），禁用风格化让色彩严格匹配标准",
+        "极弱光下",
+        "闪光灯下"
+      ],
+      "answer": "测试场景下（标准光源 + 标准色卡），禁用风格化让色彩严格匹配标准",
+      "explain": "ISO 测试要求色彩中性（ΔE < 5），但日常调教用 style_bias 偏暖。FCM 检测到测试场景就关掉风格化，让两者兼得。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "AWB Bias Compensation 修正什么？",
+      "options": [
+        "用户的偏好",
+        "sensor 在「两个 OTP 标定点之间」的非线性偏移",
+        "AWB 算法 bug",
+        "AI 模型误差"
+      ],
+      "answer": "sensor 在「两个 OTP 标定点之间」的非线性偏移",
+      "explain": "OTP 标定 D65/D50/A/H 4 个点，两点之间用线性内插但 sensor 实际响应可能弯曲。Bias Table 加 cct 分段偏移修正。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "AWB 调教的 4 层是？",
+      "options": [
+        "硬件 / 软件 / 测试 / 风格",
+        "算法层 / 校准层 / 场景层 / 风格层",
+        "输入 / 处理 / 输出 / 显示",
+        "sensor / ISP / 算法 / 应用"
+      ],
+      "answer": "算法层 / 校准层 / 场景层 / 风格层",
+      "explain": "算法层（DWV/LWV）+ 校准层（OTP/Bias）+ 场景层（AGW/FA/Flash）+ 风格层（TGA/FCM）。约 170 个参数。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: ΔE < ___ 算「肉眼几乎无差」，是 ISO 色彩测试的标准",
+      "answer": [
+        "5",
+        "5.0",
+        "五"
+      ],
+      "explain": "ΔE 是 Lab 空间距离，反映人眼色差感觉。<3 优秀，<5 合格，>8 需重做。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "「钨丝灯下白纸偏黄 8%」是 bug 还是 feature？怎么判断？",
+      "referenceAnswer": "两种解读都有理：a) 物理准确视角 = bug（应修到中性 ΔE<5）；b) 风格化视角 = feature（钨丝灯下保留温度感是产品风格）。判断：1) 看产品定位（旗舰偏中性更可能 bug，中端偏暖可能 feature）；2) 看用户反馈数据；3) 跟 PM 同步「风格目标」。如果决定改：调 TGA warm 顶点（cct 3500→4500）。如果保留：跟 QA 解释这是风格不是 bug。"
+    }
+  ]
+}

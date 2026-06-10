@@ -1,0 +1,65 @@
+{
+  "id": "daily-day-57",
+  "title": "Day 57 日测：模拟面试 4 - PRD Q16-Q19",
+  "module": "M7",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "PRD-Q16 Dark Boost gain 公式？",
+      "options": [
+        "target / safe",
+        "dark_gain = (target_lum / safe_lum) × adrc_gain",
+        "adrc_gain 单独",
+        "target × safe"
+      ],
+      "answer": "dark_gain = (target_lum / safe_lum) × adrc_gain",
+      "explain": "target_lum / safe_lum 是「AE 没补到 adjusted_target 的部分」，adrc_gain 是 ADRC 曲线值。两者相乘 = ISP 暗部最终 gain。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "PRD-Q17 高通 AE 多少数据块？",
+      "options": [
+        "32×24",
+        "64×48 = 3072 块 + 中心测光 + ROI 加权",
+        "128×96",
+        "可配置"
+      ],
+      "answer": "64×48 = 3072 块 + 中心测光 + ROI 加权",
+      "explain": "高通 ISP 的硬件设计。64×48 是 2 的幂次的近似（便于硬件并行）。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "PRD-Q18 Metering 两个模块？",
+      "options": [
+        "只有 AE",
+        "AE 数据统计模块（决定 target）+ evtable 曝光表（决定 sensor 寄存器）",
+        "只有 AWB",
+        "sensor + ISP"
+      ],
+      "answer": "AE 数据统计模块（决定 target）+ evtable 曝光表（决定 sensor 寄存器）",
+      "explain": "设计理由：解耦让换 sensor 时只改 evtable，统计模块跨 sensor 通用。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: PRD-Q19 高通曝光表调试涵盖 ___ 个层次",
+      "answer": [
+        "5",
+        "5+",
+        "五",
+        "至少五"
+      ],
+      "explain": "1) 基础曝光表 2) lux_to_exp 3) Bright/Dark Region 4) ROI 5) HDR 多曝光 6) Antibanding。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "「晚上室内人像偏黄」用 AWB 视角排查？",
+      "referenceAnswer": "1) 抓 log 看 cct：用户在钨丝灯下应是 ~3000K，看实际估了多少。2) 看 sub_algos LWV：FA 估出多少？refpoint 估多少？AGW 估多少？3) 定位：如果 FA 估准（cct=2900K conf=0.85）但聚合后变 4500K，说明 refpoint/AGW 拉高了 → 让 FA 主导。4) 修：fa_lwv_weight 0.5→0.8；或调 refpoint sigma 让 D65 等远参考点权重小；或检查 OTP 校准。5) 重测：cct 应到 3100K 附近。"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "id": "day-51",
+  "week": 8,
+  "module": "M7",
+  "title": "Chromatix 工具实操",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Chromatix 是什么",
+      "type": "concept",
+      "content": "### Tuning 工程师每天用的工具\n\n你妹妹的工作大致这样：\n\n```\n上午：用相机拍 RAW 文件\n下午：在 Chromatix 里调教参数\n晚上：重新拍图对比效果\n```\n\nChromatix = 高通官方提供的 Tuning 工具，专门给 Camera 调教用。\n\n### Chromatix 的核心功能\n\n**1. 参数编辑器**\n\n图形界面编辑 Tuning XML 参数（Day 1-49 学过的所有 AE/AWB/AF/Flash 参数）：\n\n```\n左侧：参数树（按模块分类）\n  - AEC\n    - 曝光表\n    - 拐点配置\n    - Bright/Dark Region\n    - 各 Scene Analyzer\n    - ...\n  - AWB\n    - Reference Points\n    - DWV / LWV\n    - MLC 多边形\n    - ...\n  - AF\n  - Flash\n  - ...\n\n中间：当前参数值（可编辑）\n右侧：参数说明 + 取值范围\n```\n\n**2. RAW 处理 + 实时预览**\n\n```\n打开 RAW 文件 → 用当前 Chromatix 参数处理 → 显示输出图\n改一个参数 → 重新处理 RAW → 看效果变化\n```\n\n这是 Tuning 调教的**核心工作流**：\n\n```\n拍一张 RAW（在标定光源下）\n  ↓\n在 Chromatix 里加载这个 RAW\n  ↓\n试不同 CCM 参数 → 看色彩变化\n  ↓\n试不同 Tone Mapping → 看暗部细节变化\n  ↓\n找到「最满意」的参数组合\n  ↓\n保存 XML → 写到手机 firmware\n```\n\n**3. 数据可视化**\n\nChromatix 提供大量「**调教辅助图**」：\n\n- 色温曲线图（不同 cct 下 CCM 矩阵的视觉化）\n- 直方图（看亮度分布）\n- 色卡 ΔE 分析（24 色卡每色块的 ΔE）\n- AE 收敛曲线\n- AWB 决策树\n\n### Chromatix 的工作流\n\n**Step 1：项目初始化**\n\n```\n1. 创建项目（绑定 sensor 型号）\n2. 加载 sensor 出厂 OTP\n3. 加载初始 Tuning XML（项目模板）\n```\n\n**Step 2：批量拍图**\n\n```\n用相机在标定光源箱拍 100+ 张 RAW：\n  - 每个色温（D65 / D50 / A / H）\n  - 每个亮度档位（lux 50 / 200 / 500）\n  - 标定灰板 + 24 色卡 + 肤色卡\n  - 真实场景（户外 / 室内 / 夜景）\n```\n\n**Step 3：调教**\n\n```\n打开 RAW → 改参数 → 看效果 → 改下一个 → 看效果 → ...\n反复迭代 → 找到「**全场景都好**」的参数组合\n```\n\n**Step 4：测试**\n\n```\n用最终 XML 处理所有 100+ RAW：\n  - 算 24 色卡平均 ΔE\n  - 检查肤色是否准\n  - 检查暗部细节\n  - 检查特殊场景（夕阳 / 雪景）\n```\n\n**Step 5：导出 + 烧录**\n\n```\n导出 Tuning XML → 写到手机 firmware → 重新刷机\n用手机实机测试 → 对比 Chromatix 模拟结果\n```\n\n这是「**Chromatix 调教**」的完整流程。\n\n### 工具复杂度\n\nChromatix 极复杂：\n\n- 几千个参数\n- 多个标签页（AEC / AWB / AF / CCM / Gamma / 等）\n- 大量子参数（每个模块下又有几十个细节配置）\n\n你妹妹用了**几个月**才熟练。本课程不教 Chromatix 操作（需要软件），但**学完前 7 周内容你已经知道每个参数的含义**。打开 Chromatix 不会迷糊。",
+      "glossary": [
+        { "term": "Chromatix", "zh": "高通调教工具", "explain": "Tuning 工程师每天用的工具，编辑参数 + 实时预览 + 测试。" },
+        { "term": "RAW Processing", "zh": "RAW 处理", "explain": "Chromatix 用 sensor RAW 文件 + 当前 XML 参数生成 JPEG 预览，让你看到参数效果。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "Chromatix 是免费的吗？", "a": "不是。高通授权给客户（手机厂家），需要付费 + NDA。普通工程师在公司项目里用。" },
+          { "q": "学 Chromatix 难吗？", "a": "工具不难，难的是理解每个参数。本课程让你「**理解参数**」 → 用 Chromatix 时不迷糊。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：Chromatix 调教", "search": "高通 Chromatix Camera 调教" }
+        ],
+        "reads": [
+          { "title": "高通 Chromatix Tuning Guide（项目内部资料）" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Chromatix 常见调教操作",
+      "type": "concept",
+      "content": "### 操作 1：调 CCM\n\n```\n1. 打开 D65 标定 RAW\n2. 进 「CCM」 标签页\n3. 看 24 色卡处理结果（每色块 ΔE）\n4. 找 ΔE 最大的色块（如「**蓝绿**」 ΔE = 8）\n5. 微调 CCM 矩阵元素（如 a23 增大 0.05）\n6. 重新处理 → 看 ΔE 变化\n7. 反复迭代到平均 ΔE < 5\n```\n\n这是「**精细 CCM 调教**」。每天可能调 10+ 次迭代。\n\n### 操作 2：调 AEC 拐点\n\n```\n1. 在「曝光表」标签页\n2. 看现有曲线：lux_index → exp_time + gain\n3. 找拐点位置（曝光优先 → Gain 优先切换点）\n4. 调拐点位置（如从 lux 200 移到 lux 180）\n5. 重新处理多个 lux 的 RAW\n6. 验证：1/30 秒不能超（防手抖）\n```\n\n### 操作 3：调 AWB 参考点\n\n```\n1. 拍 D65 + D50 + A 三个色温的 RAW\n2. 进「AWB / Reference Points」\n3. 看现有 8-15 个参考点的 RG/BG\n4. 用 D65 RAW 算实际 RG/BG → 对比预设值\n5. 微调 D65 参考点的 RG/BG（按 OTP 校准）\n6. 重复其他色温\n```\n\n### 操作 4：调 Tone Mapping LUT\n\n```\n1. 在「Tone Mapping」标签页\n2. 看现有 LUT（256 个亮度档位的输出值）\n3. 找暗部（luma 0-50）\n4. 微调暗部 LUT（提亮 5-10）\n5. 重新处理 RAW → 看暗部细节\n6. 注意：暗部 LUT 太陡 → 噪点放大\n```\n\n### 操作 5：调风格 (TGA + CCM 协同)\n\n```\n产品经理要求：「整体偏暖 5%」\n\n1. 改 TGA 三角形：warm 顶点更极端\n2. 改 CCM：让肤色偏暖（a11 微调）\n3. 改 style_bias：在 TGA 内向暖端偏 5%\n4. 跑 100+ RAW 测试\n5. 验证：每张是否「**略暖**」\n```\n\n这是「**风格化调教**」。最艺术的部分。\n\n### Chromatix 调教 cheat 综合\n\n按反馈调什么模块：\n\n| 反馈 | 在 Chromatix 调哪里 |\n|---|---|\n| 整体偏黄 | AWB / TGA / CCM |\n| 草地变白 | AWB DWV / MLC |\n| 钨丝灯下偏冷 | AWB TGA warm 顶点 |\n| 视频拉风箱 | AF Continuous + smooth_dac |\n| 闪光偏冷 | Flash / LED 配置 |\n| 中国视频条纹 | Auto Flicker / fallback_to_region |\n| 24 色卡 ΔE 大 | CCM 标定 |\n| 暗部细节差 | Tone Mapping LUT 暗部 + ADRC |\n| 肤色不准 | CCM 肤色区微调 + FA |\n| 多摄一致性差 | 各 sensor CCM 重新标 + 多摄同步 |",
+      "glossary": []
+    },
+    {
+      "id": "s3",
+      "title": "Chromatix 调教的工程现实",
+      "type": "concept",
+      "content": "### 一个调教周期\n\n```\n周一：跟 PM 同步本周需求（如「**改善夜景肤色**」）\n周二：按需求拍 RAW（夜景人像 20 张）\n周三：在 Chromatix 调 CCM + Tone Mapping + AWB FA\n周四：导出 XML 烧机测试\n周五：QA + 用户测试反馈\n下周一：根据反馈再调\n```\n\n一周一个迭代。3-6 个月一个项目。\n\n### Tuning 工程师的「**软实力**」\n\n除了懂算法，Tuning 工程师还要：\n\n**1. 沟通能力**\n\n- 跟 PM 讨论「**风格定位**」\n- 跟 QA 讨论「**测试场景**」\n- 跟 sensor 厂家对接「**OTP 标定**」\n- 跟 UX 团队讨论「**用户反馈**」\n\n**2. 审美**\n\n色彩调教**艺术性强**。需要：\n\n- 看大量好照片培养「**审美**」\n- 知道「**奶油色调**」「**电影感**」「**胶片感**」是什么\n- 懂「**HDR 风格**」「**夜景风格**」「**人像风格**」\n\n**3. 工程方法**\n\n- 知道**怎么拍标定 RAW**（光源 / 距离 / 角度）\n- 知道**怎么测客观指标**（ΔE / SNR / Resolution）\n- 知道**怎么 A/B 测试**（旧 vs 新参数）\n- 知道**怎么 git 管理 XML**（每次改记录原因）\n\n**4. 耐心**\n\n这是最重要的。**调一个参数可能要测 10 张图**。3 个月项目跑几千次「**改 → 测 → 对比**」循环。\n\n### Tuning 工程师的成长路径\n\n```\n初级（0-1 年）：\n  懂参数含义\n  能跟着前辈调简单场景\n  会用 Chromatix 基础功能\n  → 你做完本课程 + 1 年项目经验 = 这级\n\n中级（1-3 年）：\n  能独立调教一个 sensor\n  能解决大部分 bug（3A 全模块）\n  能识别问题在哪一层\n  会与 sensor 厂家深度合作\n\n高级（3-5 年）：\n  能定义产品色彩风格\n  能设计 Tuning 流程 + 测试矩阵\n  能跨平台迁移调教经验\n  能 mentor 初级工程师\n\n资深（5+ 年）：\n  能为公司定 Camera 战略\n  能跟竞品对标分析\n  能做 ISP 算法层定制（不只调参数）\n```\n\n你的目标：**2 个月后达到初级水平**（能上岗）。\n\n### Tuning 工程师 vs 算法工程师\n\n```\nTuning 工程师：\n  调高通 ISP 现成模块的参数\n  使用 Chromatix\n  关心 \"怎么调\"\n\n算法工程师：\n  设计新算法（如自家的 AI AWB）\n  写 C++/CUDA 代码\n  关心 \"怎么实现\"\n```\n\n手机厂家两种工程师**都有**。你应聘的是 Tuning 工程师（高通生态内）。",
+      "glossary": []
+    },
+    {
+      "id": "s4",
+      "title": "Chromatix 实战练习题",
+      "type": "example",
+      "content": "### 练习题 1：调 CCM\n\n场景：某 sensor 在 D65 下，24 色卡里「**红色**」色块 ΔE = 9（偏黄）。\n\n问题：怎么在 Chromatix 调 CCM 让红色 ΔE < 5？\n\n答：\n\n1. 进 CCM 标签，选 D65 矩阵\n2. 红色偏黄 = R 输出值偏高（黄=R+G）\n3. 减小 a11（R 行 R 列）→ 让 R 输出降低\n4. 微调 a13（R 行 B 列）→ 增加蓝补偿\n5. 重新处理 D65 RAW → 红色色块 ΔE 测量\n6. 反复迭代到 < 5\n\n注意：调 a11 也会影响其他色块（绿、蓝）。所以**整体优化**，不是只看一个色块。\n\n### 练习题 2：调 AWB 风格\n\n场景：产品经理要求「**比 iPhone 略暖 5%**」。\n\n问题：在 Chromatix 怎么调？\n\n答：\n\n1. 测 iPhone 同场景 RAW 的 RG/BG 值\n2. 进 AWB / TGA：warm 顶点 RG 调小（更极端暖）\n3. 进 AWB / style_bias：偏暖 5%\n4. 进 CCM：肤色区微调（a11 增加 0.02 让肤色偏暖）\n5. 测 100+ RAW → 平均 cct 比 iPhone 低 200K（偏暖）\n6. 真机测试用户体验\n\n### 练习题 3：调夜景\n\n场景：用户反馈「**夜景人像偏暗 + 肤色偏黄**」。\n\n问题：在 Chromatix 怎么调？\n\n答：\n\n1. **整体偏暗**：\n   - 进 AEC / luma_target_table：lux < 100 时 luma_target 增大（80→90）\n   - 进 AEC / Brighten：strength 增大\n   - 注意：可能让噪点变多，需要降噪联动\n\n2. **肤色偏黄**：\n   - 进 AWB / FA：skin_prior_rg 调小（让 FA 把更黄的肤色当「正常」 → 反向修暖）\n   - 进 CCM 暗光档：肤色区色彩调整\n   - 进 AWB / TGA：warm 顶点不要太极端（避免过度保留暖色）\n\n这是「**多模块协同调教**」的真实例子。\n\n### 练习题 4：调多摄一致性\n\n场景：主摄 + 长焦切换时画面偏暖。\n\n问题：怎么调？\n\n答：\n\n1. **检查 OTP**：长焦 OTP 是否准（拍标定灰板验证）\n2. **检查 CCM**：长焦的 D65 / D50 / A CCM 是否准（24 色卡 ΔE）\n3. **多摄同步**：transition_frames 增大（30→60）\n4. **Reverse Sync**：切回主摄时用长焦最新 cct\n5. **CCM 内插**：切换瞬间 CCM 也内插过渡\n\n这种 bug 可能要花 1-2 周修。\n\n### 练习题 5：你妹妹的真实场景\n\n场景：「**用户报户外人像偏冷**」（在阴天 / 多云下）。\n\n问题：怎么排查？\n\n答：\n\n1. **抓 log 看 cct**：用户场景 cct 是多少？（应该 ~5500-7000K）\n2. **看 LWV**：哪个参考点主导？（应该 D55-D65）\n3. **看 FA**：是否检测到人脸？conf 多少？\n4. **可能问题**：\n   - 阴天云层让光偏冷，AWB 估出 7500K → 加大暖修正 → 整体冷\n   - 修：FA 加权 + skin_prior_rg 调整 + TGA cool 端不要太极端\n5. **测试**：在云天下拍同样场景 → 验证修复\n\n这是 Tuning 工程师的「**诊断 + 修复**」标准流程。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **Chromatix 是 Tuning 主工具**：参数编辑 + RAW 预览 + 数据可视化\n2. **5 步工作流**：项目初始化 → 拍图 → 调教 → 测试 → 导出烧录\n3. **5 种常见操作**：调 CCM / 拐点 / 参考点 / Tone Mapping / 风格\n4. **Tuning 软实力**：沟通 + 审美 + 工程方法 + 耐心\n5. **成长路径 4 级**：初级（你目标）/ 中级 / 高级 / 资深\n6. **Tuning vs 算法工程师**：调参 vs 设计算法\n\n### 自我检查\n\n1. Chromatix 主要做什么？\n2. Tuning 调教的 5 步流程？\n3. CCM 调教的迭代过程？\n4. Tuning 工程师 4 个软实力？\n5. 你目标级别是什么？\n\n### 笔记建议\n\n- 把 Tuning 5 步工作流抄到笔记\n- 整理常见调教操作 5 类\n- 思考自己的成长目标（初级 → 中级要多久）\n\n### 明天预告\n\nDay 52：多摄一致性总结 + 行业工程方法。串完前 7 周学过的多摄概念，看 Tuning 工程师的工程方法（标定 / 测试 / 迭代）。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 Chromatix Tuning Guide" }
+  ],
+  "dailyQuizId": "daily-day-51"
+}

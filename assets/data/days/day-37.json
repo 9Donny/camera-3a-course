@@ -1,0 +1,91 @@
+{
+  "id": "day-37",
+  "week": 6,
+  "module": "M4",
+  "title": "FA（Face Assist）人脸辅助 AWB",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "为什么 AWB 需要人脸辅助",
+      "type": "concept",
+      "content": "### Day 24 复习\n\nWeek 4 Day 24 我们学过 Face Analyzer 在 AE 里的作用：检测到人脸 → 那块的 64×48 权重 ×5 → AE 优先曝光人脸。\n\n**人脸在 AWB 里也很关键**，但用法完全不同。\n\n### 核心想法：人脸肤色是「**已知信号**」\n\n人脸肤色虽然有人种差异，但**整体在一个相对稳定的范围**：\n\n```\n东亚人肤色：R/G ≈ 1.10-1.25, B/G ≈ 0.55-0.70\n非裔肤色：  R/G ≈ 1.30-1.45, B/G ≈ 0.60-0.75\n白人肤色：  R/G ≈ 1.15-1.30, B/G ≈ 0.55-0.65\n```\n\n注意：**所有人种的肤色都偏暖**（R/G > 1，B/G < 1），落在 RG-BG 平面上一个**有界区域**。\n\n这意味着：**画面里有人脸 → 那块的「真实色彩」有先验范围**。AWB 可以**反推光源**：\n\n```\n如果观测到人脸 R/G = 1.55, B/G = 0.50\n但已知人脸真实 R/G 应该 ≈ 1.20, B/G ≈ 0.62\n→ 偏差比例：R/G 偏高 1.55/1.20=1.29，B/G 偏低 0.62/0.50=1.24\n→ 推断：光源是「比 D65 更暖」，色温估约 3000K（钨丝灯）\n→ AWB 输出 R_gain ≈ 0.77, B_gain ≈ 1.24（让肤色还原到正常范围）\n```\n\n### FA 的根本优势\n\nDay 31 学的「**最近参考点法**」 + Day 32 学的 LWV，都依赖「**画面颜色分布反映光源**」这个假设。但这个假设在两类场景下崩：\n\n1. **画面色彩单一**（绿草地、蓝天）\n2. **混合色彩干扰**（彩色衣服、霓虹背景）\n\nFA 不依赖整体色彩分布，**只看人脸**。人脸像一个「**色彩锚点**」，不论背景多复杂，肤色总是肤色。\n\n所以 FA 在「**普通场景下不那么强、但人脸场景下非常强**」。\n\n### FA 算法骨架\n\n```python\ndef fa_awb(stats_64x48, face_box):\n    if face_box is None or face_box.confidence < 0.7:\n        return None  # 没人脸或置信度低，FA 不工作\n    \n    # 1. 取人脸区的 64×48 块\n    face_blocks = get_blocks_in_box(stats_64x48, face_box)\n    if len(face_blocks) < 10:\n        return None  # 人脸太小\n    \n    # 2. 算人脸观测的 R/G、B/G\n    R_avg = mean(b.R for b in face_blocks)\n    G_avg = mean(b.G for b in face_blocks)\n    B_avg = mean(b.B for b in face_blocks)\n    obs_rg = R_avg / G_avg\n    obs_bg = B_avg / G_avg\n    \n    # 3. 已知肤色先验（中性光源下）\n    skin_prior_rg = 1.20  # 工程参数\n    skin_prior_bg = 0.62\n    \n    # 4. 算光源色温（让观测肤色还原到先验肤色）\n    # 光源 RG = obs / prior\n    light_rg = obs_rg / skin_prior_rg  # 如 1.55/1.20 = 1.29\n    light_bg = obs_bg / skin_prior_bg  # 如 0.50/0.62 = 0.81\n    \n    # 5. 转 LWV（找最近参考点）\n    lwv = compute_lwv_from_light(light_rg, light_bg, reference_points)\n    \n    confidence = face_box.confidence * face_size_factor(face_box)\n    return lwv, confidence\n```\n\nFA 输出 LWV，按 Day 34 决策聚合融入最终 AWB 决策。\n\n### 关键调教参数：肤色先验\n\n```xml\n<face_assist_awb>\n  <skin_prior_rg>1.20</skin_prior_rg>      <!-- 中性光源下的肤色 RG -->\n  <skin_prior_bg>0.62</skin_prior_bg>\n  <skin_prior_rg_tolerance>0.10</skin_prior_rg_tolerance>  <!-- 允许偏差 -->\n  <min_face_size_ratio>0.05</min_face_size_ratio>          <!-- 太小忽略 -->\n  <min_face_blocks>10</min_face_blocks>\n  <min_face_confidence>0.7</min_face_confidence>\n  <fa_lwv_weight>0.6</fa_lwv_weight>      <!-- FA 在最终聚合的权重 -->\n</face_assist_awb>\n```\n\n肤色先验是 **AWB 调教的「**人种适应**」核心**。中国市场用 1.20/0.62（东亚人偏黄），印度市场可能调到 1.28/0.65（更深肤色），欧美市场调到 1.22/0.60。**不同地区可能有不同 tuning 配置**。",
+      "glossary": [
+        { "term": "FA", "zh": "Face Assist 人脸辅助", "explain": "AWB sub-algorithm 之一，用人脸肤色作为「色彩锚点」反推光源。" },
+        { "term": "Skin Prior", "zh": "肤色先验", "explain": "中性光源下「典型肤色」的 RG/BG 值。FA 用它跟观测对比反推光源。" },
+        { "term": "肤色锚点 Color Anchor", "zh": "色彩锚点", "explain": "已知颜色范围的物体，AWB 可以用它反推光源。人脸是最常用的色彩锚点。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "肤色因人种差异这么大，FA 怎么处理？", "a": "1) 用「**多人种综合先验**」（取中位值）；2) 检测人脸时也估计肤色类型（深/中/浅）调整先验；3) 高级实现用神经网络直接从人脸预测光源（不显式用先验）。" },
+          { "q": "化妆 / 病态 / 染发会影响 FA 吗？", "a": "化妆（如腮红）影响小（只局部染色）；严重的医美（皮肤过白/橘皮）会让 FA 误判。这种情况下 FA 置信度应该自动降低。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：人脸肤色 色彩科学", "search": "人脸肤色 色彩科学 Camera" }
+        ],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "Face Assisted AWB" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "肤色检测的精细化",
+      "type": "concept",
+      "content": "### 不只是 bounding box 平均\n\n上面的 FA 算法用 face_box 内**所有块**的平均。但实际上 face_box 里**很多不是肤色**：\n\n- 头发（黑色 / 棕色）\n- 眼睛（深色）\n- 嘴唇（红色）\n- 眼镜（玻璃反光）\n- 脖子（背景或衣领）\n\n这些**非肤色像素**会让 FA 算的 RG/BG 偏差。\n\n### 解决：肤色像素分类\n\n```python\ndef is_skin_pixel(R, G, B):\n    # 经验公式：肤色在 YCbCr 空间相对集中\n    # 转 YCbCr\n    Y = 0.299*R + 0.587*G + 0.114*B\n    Cb = -0.169*R - 0.331*G + 0.500*B + 128\n    Cr = 0.500*R - 0.419*G - 0.081*B + 128\n    \n    # 经典肤色规则（Cb/Cr 范围）\n    return 77 <= Cb <= 127 and 133 <= Cr <= 173\n```\n\nAWB 用这个判别函数**只取真正的肤色像素**做 FA：\n\n```python\nface_skin_pixels = [b for b in face_blocks if is_skin_pixel(b.R, b.G, b.B)]\nif len(face_skin_pixels) > 30:\n    # 用过滤后的像素算 FA\n    ...\n```\n\n这种过滤让 FA 准确率**显著提升**。\n\n### 现代做法：人脸语义分割\n\n旗舰手机用 NPU 跑「**人脸语义分割**」模型，每像素分类：\n\n- 背景\n- 头发\n- 皮肤\n- 眼睛\n- 嘴唇\n- 牙齿\n\n然后 FA **只用「皮肤」标签的像素**。比简单 YCbCr 规则准确率高得多。\n\n但这需要 NPU 模型 + 每帧推理（5-10ms），中端机型负担不起。中端用 YCbCr 规则就够。\n\n### 多人脸场景\n\n画面有 2 个或更多人脸时，FA 怎么处理？\n\n**策略 A：选最大人脸**（最近的人）\n\n用「主人脸」做 FA，其他人脸忽略。简单但可能丢信息。\n\n**策略 B：每个人脸独立算 + 综合**\n\n每个人脸算自己的「光源估计」，然后**多人脸投票**：\n\n```python\nlight_estimates = []\nfor face in faces:\n    if face.confidence < 0.7: continue\n    light = fa_estimate_light(face)\n    light_estimates.append((light, face.size))\n\n# 加权平均（脸大权重大）\ntotal_size = sum(size for _, size in light_estimates)\nfinal_rg = sum(light.rg * size for light, size in light_estimates) / total_size\nfinal_bg = sum(light.bg * size for light, size in light_estimates) / total_size\n```\n\n多人脸投票更稳。但实现成本高，中端机型用策略 A。\n\n### FA 在不同光源下的表现\n\n**钨丝灯下拍人**（A，3000K）：\n\n```\n观测肤色：R/G=1.55, B/G=0.42\n肤色先验：R/G=1.20, B/G=0.62\n推断光源：R/G=1.29, B/G=0.68 → 接近 A 钨丝（CCT 3000K）\nFA 输出：R_gain=0.77, B_gain=1.47\n效果：肤色还原到 1.20/0.62 → 自然黄白色\n```\n\nFA 在钨丝灯下**特别强**，因为参考点法可能被「**画面里其他暖光物体**」误导。FA 锁定肤色 → 准确。\n\n**强阳光下拍人**（D65，6500K）：\n\n```\n观测肤色：R/G=1.18, B/G=0.65\n肤色先验：R/G=1.20, B/G=0.62\n推断光源：R/G=0.98, B/G=1.05 → 接近 D65\nFA 输出：R_gain=1.02, B_gain=0.95（基本不修）\n效果：跟参考点法基本一致\n```\n\nD65 下 FA 没什么用（参考点法本来就准）。\n\n**冷光下拍人**（D75 阴天，7500K）：\n\n```\n观测肤色：R/G=1.05, B/G=0.85\n肤色先验：R/G=1.20, B/G=0.62\n推断光源：R/G=0.88, B/G=1.37 → 偏冷\nFA 输出：R_gain=1.14, B_gain=0.73\n效果：肤色被「加暖」补偿冷光\n```\n\nFA 在阴天 / 蓝天场景**也有用**，让人物肤色不受冷光影响。",
+      "glossary": [
+        { "term": "YCbCr 肤色规则", "zh": "Skin Color Rule", "explain": "经验公式：肤色在 YCbCr 空间集中在特定范围（77<Cb<127, 133<Cr<173）。" },
+        { "term": "Face Segmentation", "zh": "人脸语义分割", "explain": "NPU 模型，每像素分类（皮肤/头发/眼睛/嘴唇）。旗舰才有。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么 YCbCr 规则在肤色检测里这么常用？", "a": "1) 计算便宜；2) Cb/Cr 与亮度解耦，不论暗光亮光肤色 Cb/Cr 范围一致；3) 经验上肤色在 Cb/Cr 平面相对集中。" },
+          { "q": "全戴口罩怎么办？", "a": "FA 失败（人脸肤色被遮）。算法应该检测「**有效肤色像素 < 阈值**」 → confidence = 0 → 退化为非 FA 算法。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "维基百科 · YCbCr", "url": "https://en.wikipedia.org/wiki/YCbCr" },
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "FA Skin Detection" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "FA 与其他 AWB 算法的协同",
+      "type": "concept",
+      "content": "### FA confidence 校准\n\nFA 的置信度应该结合多个因素：\n\n```python\ndef fa_confidence(face_box, skin_block_count):\n    if not face_box or face_box.confidence < 0.7:\n        return 0.0\n    \n    # 1. 人脸大小因子（脸越大信号越强）\n    face_ratio = (face_box.w * face_box.h) / (screen_w * screen_h)\n    size_factor = min(1.0, face_ratio / 0.10)  # 占 10% 以上才满分\n    \n    # 2. 有效肤色像素数（少了不可靠）\n    skin_factor = min(1.0, skin_block_count / 30)\n    \n    # 3. 人脸检测自身置信度\n    detect_factor = face_box.confidence\n    \n    # 4. 人脸朝向因子（正脸最好，侧脸 / 仰头 / 戴口罩降权）\n    orientation_factor = face_box.orientation_score  # 0-1\n    \n    return size_factor * skin_factor * detect_factor * orientation_factor\n```\n\n人脸越大、肤色越完整、正脸 → confidence 越高。\n\n### FA 主导 vs 协同\n\nFA confidence 高时（脸大 + 正脸 + 充足肤色像素），FA **主导** AWB 决策：\n\n```\n场景：自拍（脸占画面 30%）\n  FA conf: 0.95  ← 主导\n  参考点法 conf: 0.60\n  AGW conf: 0.40\n  → AWB 用 FA 输出（最准）\n```\n\nFA confidence 低时（脸小 / 侧脸 / 戴口罩），其他算法主导：\n\n```\n场景：合影远景（脸只占 5%）\n  FA conf: 0.30  ← 弱信号\n  参考点法 conf: 0.85\n  AGW conf: 0.70\n  → 参考点法主导，FA 微调\n```\n\n这种**自适应权重**让 AWB 在不同场景都最优。\n\n### 用户场景：自拍 vs 合影\n\n**自拍模式**：\n\nFace ROI 大、脸接近镜头、肤色像素丰富 → FA 信号强 → AWB 准确。这就是为什么手机「**自拍肤色都很好**」 —— FA 在拼命工作。\n\n**合影模式**：\n\n多人脸但单脸都小，FA 用每个脸算一个估计后投票。比单脸场景略弱但仍有用。\n\n**风景模式**：\n\n没人脸，FA 不工作。完全靠参考点法 + AGW + AI。\n\n这是为什么「自拍美 + 风景一般」是手机摄影的常见现象 —— 算法在自拍场景下能用更多信号。\n\n### Tuning 工程师的 FA 调试 cheat\n\n| 用户反馈 | 调什么 |\n|---|---|\n| 自拍时肤色偏黄 | skin_prior_rg 调大（1.20→1.25），让 FA 把更暖的肤色当「正常」 |\n| 自拍时肤色偏白 | skin_prior_rg 调小（1.20→1.18），FA 更激进修暖 |\n| 戴口罩自拍偏黄 | min_face_blocks 提高（防止口罩区误参与 FA）|\n| 多人脸场景慢 | 限制 max_faces=3，超过的脸忽略 |\n| 印度市场肤色偏白 | skin_prior_rg 调到 1.28（适配深肤色市场）|\n\n### 一个真实问题\n\nQA 报：「**亚洲女性自拍偏黄**」。\n\n排查：\n\n1. skin_prior_rg = 1.20（公司全球默认）\n2. 但中国市场女性肤色偏白偏冷（R/G ≈ 1.15-1.18）\n3. FA 把「真实白皙」的肤色当「正常」，光源估暖了 → 加偏暖 gain → 看起来更黄\n\n修：\n\n- 中国市场专用配置：skin_prior_rg = 1.16\n- 或者「美颜模式」时拉 RGB Gain 整体偏冷\n\n这是「**肤色先验地区差异**」的真实例子。",
+      "glossary": [
+        { "term": "Skin Prior 地区差异", "zh": "肤色先验区域调整", "explain": "不同市场（中/印/欧美）的「典型肤色」不同，FA 的 skin_prior 参数需要本地化。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "FA 会被「美颜算法」干扰吗？", "a": "美颜算法在 ISP 后段（YUV 域），FA 在 AWB 阶段（Bayer 域）。FA 不受美颜影响。但美颜可能让用户看到的「最终肤色」比 FA 算的更白。" },
+          { "q": "skin_prior 怎么标定？", "a": "拍 100+ 张「不同人种 + D65 标准光源下」的人脸照，统计 RG/BG 分布的中位数。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "高通 3A 7.0 Tuning Guide", "section": "FA Confidence + Aggregation" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "FA log 实战",
+      "type": "example",
+      "content": "### FA log 字段\n\n```\n[AWB-FA] frame=2000 face_count=1\n[AWB-FA] main_face: x=320 y=180 w=200 h=240 conf=0.92\n[AWB-FA] face_blocks=48 skin_blocks=36\n[AWB-FA] obs_rg=1.55 obs_bg=0.50\n[AWB-FA] light_estimate: rg=1.29 bg=0.81 cct=3100\n[AWB-FA] confidence=0.85 (size=0.92 skin=0.95 detect=0.92 orient=1.0)\n[AWB-FA] lwv contribution: A 0.45, H 0.20, TL84 0.15, ...\n```\n\n字段含义：\n\n- `face_blocks`：人脸 box 内的 64×48 块数\n- `skin_blocks`：被 YCbCr 规则判定为肤色的块数（< face_blocks 是正常的）\n- `obs_rg/bg`：观测肤色 RG/BG\n- `light_estimate`：FA 反推的光源\n- `confidence`：4 个因子相乘\n\n### bug 排查实例\n\n**「自拍偏黄」**\n\n```\n[AWB-FA] obs_rg=1.55 obs_bg=0.50 cct=3100\n[AWB-FA] confidence=0.90\n[AWB-Final] cct=4500 ← 但最终输出是 4500K，不是 FA 估的 3100K\n```\n\n说明 FA conf 高但**没主导决策**。可能是 fa_lwv_weight 太低，参考点法（估出 D55 5500K）+ FA（估 3000K）平均得到 4500K。\n\n修：增加 fa_lwv_weight 0.6 → 0.8。\n\n**「FA 不工作」**\n\n```\n[AWB-FA] face_blocks=8 (< min_face_blocks=10)\n[AWB-FA] confidence=0.0  ← 直接归零\n```\n\n人脸太小（face_blocks < 10）。修：让 FA 在小脸场景仍工作（min_face_blocks 8 → 5），但 confidence 降低（让其他算法主导）。\n\n**「侧脸自拍偏冷」**\n\n```\n[AWB-FA] orient=0.4 (侧脸)\n[AWB-FA] confidence=0.40\n[AWB-Final] 参考点法主导（FA 弱）\n```\n\n侧脸 orient 因子低 → FA confidence 低 → 参考点法主导。但参考点法在普通场景下偏冷（如果用户在夕阳下侧脸）。修：让 orient 因子衰减更慢（0.4 → 0.6），让 FA 在侧脸场景仍有一定参与度。\n\n### Tuning 工程师的 FA 调教流程\n\n```\n1. 收集多人种 + 多光源场景的样本（100+ 张 RAW）\n2. 标定肤色先验：在 D65 下取所有样本的肤色 RG/BG 中位数\n3. 配置 skin_prior_rg/bg\n4. 跑算法 + 看 FA log\n5. 对比 FA 估出的 cct 和「真实光源」（人工标定）\n6. 误差大的样本 → 看是哪个 confidence 因子有问题\n7. 调参数 + 重测\n```\n\n这是 AWB 调教里**最 tedious** 但**最有效**的工作。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **FA = 用人脸肤色反推光源**：肤色有相对稳定的先验范围（RG ≈ 1.20, BG ≈ 0.62），从观测肤色与先验偏差推光源\n2. **肤色像素分类**：用 YCbCr 规则（77<Cb<127, 133<Cr<173）过滤掉头发/眼睛/嘴唇 → FA 只用真肤色\n3. **多人脸投票**：每个脸独立估计，按脸大小加权\n4. **FA confidence 4 因子**：脸大小 + 肤色像素数 + 检测置信度 + 朝向\n5. **FA 在自拍场景最强**（脸大 + 正脸），合影 / 风景场景弱\n6. **肤色先验地区差异**：中/印/欧美市场的 skin_prior 需本地化\n\n### 自我检查\n\n1. FA 的核心想法是什么？为什么人脸是「色彩锚点」？\n2. 默写 FA 算法的 5 步流程。\n3. YCbCr 肤色规则的作用是什么？为什么不直接用 face_box 平均？\n4. FA confidence 的 4 个因子是什么？\n5. 自拍肤色偏黄可能调哪个参数？\n\n### 笔记建议\n\n- 把肤色 RG/BG 范围抄到笔记（1.10-1.45 / 0.55-0.75）\n- 整理 FA 失败场景（侧脸 / 戴口罩 / 远景小脸）+ 应对\n- 思考 FA + 美颜算法是否冲突\n\n### 明天预告\n\nDay 38：AWB Flash 闪光灯下白平衡。Day 6 学过闪光灯（LED 暖白 + 主闪机制），明天看 AWB 怎么应对「**主闪触发瞬间光源色温巨变**」 —— 闪光灯前是环境光（如室内钨丝），闪光灯亮的瞬间是 LED（5500K），AWB 必须**预测**而不是反应。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Face Assisted AWB" },
+    { "source": "维基百科 · YCbCr", "url": "https://en.wikipedia.org/wiki/YCbCr" }
+  ],
+  "dailyQuizId": "daily-day-37"
+}

@@ -1,0 +1,64 @@
+{
+  "id": "daily-day-53",
+  "title": "Day 53 日测：跨平台知识 + 行业趋势",
+  "module": "M7",
+  "scope": "daily",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "choice",
+      "prompt": "高通 vs 联发科 ISP 的关系？",
+      "options": [
+        "完全不同",
+        "核心算法相似（80% 知识通用），工具和参数命名不同",
+        "联发科是高通子公司",
+        "只有联发科有 ISP"
+      ],
+      "answer": "核心算法相似（80% 知识通用），工具和参数命名不同",
+      "explain": "AE/AWB/AF 概念相通；Chromatix vs MTK Tuning Tool 是工具差异。Tuning 工程师跨平台不是从 0 开始。"
+    },
+    {
+      "id": "q2",
+      "type": "choice",
+      "prompt": "Camera 行业 6 大趋势？",
+      "options": [
+        "AI / 计算摄影 / 算力暴涨 / 传感器进化 / 视频崛起 / 硬件协同",
+        "只有 AI",
+        "只有视频",
+        "只有传感器"
+      ],
+      "answer": "AI / 计算摄影 / 算力暴涨 / 传感器进化 / 视频崛起 / 硬件协同",
+      "explain": "未来 5-10 年这些趋势会持续。Tuning 工程师要懂 AI 调教 + 计算摄影 + 视频特殊处理。"
+    },
+    {
+      "id": "q3",
+      "type": "choice",
+      "prompt": "软实力面试「为什么转行」的核心答题方向？",
+      "options": [
+        "上家不好",
+        "个人兴趣 + 职业匹配 + 行业前景，用真实经历支撑",
+        "薪资高",
+        "听人说好"
+      ],
+      "answer": "个人兴趣 + 职业匹配 + 行业前景，用真实经历支撑",
+      "explain": "真实故事比模板答案更打动 HR。展示「测试经验 → Camera 兴趣 → 自学转型」的自然过渡。"
+    },
+    {
+      "id": "q4",
+      "type": "fill",
+      "prompt": "fill blank: STAR 法则 = Situation + Task + ___ + Result",
+      "answer": [
+        "Action",
+        "行动",
+        "执行"
+      ],
+      "explain": "Situation 背景 + Task 任务 + Action 行动（重点）+ Result 结果（量化）。是行为面试的标准模板。"
+    },
+    {
+      "id": "q5",
+      "type": "short",
+      "prompt": "「跟 PM 分歧」面试题怎么答？",
+      "referenceAnswer": "场景：PM 要求「整体偏暖 5%」，你认为违反色彩科学（ΔE > 5）。答题方向：1) 不直接拒绝（PM 有理由）；2) 先理解需求（用户调研？竞品对标？）；3) 提出技术约束（ΔE > 5 让 ISO 测试不通过）；4) 提出折中方案（FCM 测试场景关风格化，让风格 + 测试两得）；5) 同意 + 跟踪用户反馈。这考察「沟通 + 灵活性」。"
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "id": "day-50",
+  "week": 8,
+  "module": "M6",
+  "title": "色彩科学：Lab / sRGB / Display P3 / DCI-P3",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "为什么色彩科学重要",
+      "type": "concept",
+      "content": "### Camera Tuning 跟色彩科学的关系\n\nWeek 3-7 我们学的 3A + ISP 都涉及「**色彩**」：\n\n- AWB 估计光源色温\n- CCM 把 sensor RGB 转标准色彩\n- Tone Mapping 把高动态范围压到显示\n- Gamma 校正屏幕显示\n\n这一切**都建立在「色彩是什么」的科学定义上**。Week 8 第一天（今天）补这块基础。\n\n### 颜色不是 RGB 三个数\n\n你直觉认为颜色 = RGB 三个数。**错**。\n\n颜色的物理定义：\n\n> **颜色 = 不同波长的光在不同强度下的组合，被人眼感受到的「色彩感觉」**\n\n关键：颜色是「**人眼感受**」，不是物理量本身。\n\n举例：\n\n- 单色 532nm（绿光）= 一种「**纯绿色**」感觉\n- 700nm + 540nm 混合（红 + 绿）= 一种「**黄色**」感觉\n- 这两个**物理上完全不同**（不同波长组成），但**人眼感觉「都是黄色」**（前者是真黄，后者是绿色 + 红色刺激黄色感受细胞）\n\n这种「**物理不同 → 人眼相同**」叫「**条件等色（Metamerism）**」，是色彩科学的核心。\n\n### CIE 1931 色度图\n\n科学家 1931 年用大量实验测出「**人眼对各波长的感受**」，画成一张图：\n\n```\n       y\n       ↑\n   绿  |   .....\n  -----|.........\n  |   .|.........\n  |   .|......红\n  |   .|.........\n  |   . ....\n  |.\n蓝____|________→ x\n```\n\n这是「**CIE 1931 色度图**」。每个点是「**人眼能感受到的一种颜色**」（含色相 + 饱和度，不含亮度）。\n\n所有「**人眼能看到的颜色**」都在这个**马蹄形**区域内。区域外的（数学上的 x/y）人眼看不到。\n\n### 颜色空间是「**马蹄形里的一块**」\n\n屏幕 / 相机能显示的颜色**不是全部 CIE 1931**，只是马蹄形里的一个**多边形**：\n\n```\n         马蹄形 (CIE 1931)\n         /        \\\n        /  Display \\\n       /     P3     \\\n      /  ┌──────┐    \\\n     /   │ sRGB │     \\\n    /    └──────┘      \\\n   /                    \\\n  /______________________\\\n```\n\n每种屏幕 / 相机的「**颜色空间**」就是这个马蹄形里的一个具体多边形。常见：\n\n- **sRGB**：1996 年微软+惠普制定，最小最普及。普通显示器、网页、JPEG 默认用这个\n- **Display P3**：苹果 2015 年推广，比 sRGB 大 25%（覆盖更多绿色和红色）\n- **DCI-P3**：电影工业标准，比 Display P3 略大\n- **Adobe RGB**：摄影师常用，比 sRGB 在绿色区大\n- **BT.2020**：4K HDR 视频用，比 Display P3 大很多\n\n### 各色彩空间对比\n\n```\n空间        | 大小   | 用途\n───────────────────────────────\nsRGB       | 1.0    | 网页、普通显示器、JPEG 默认\nDisplay P3 | 1.25x  | iPhone / Mac / iPad\nDCI-P3     | 1.30x  | 电影院\nAdobe RGB  | 1.20x  | 摄影后期\nBT.2020    | 2.50x  | 4K HDR 视频\nProPhoto   | 4.00x  | 后期工作（含人眼看不到的颜色）\n```\n\n手机相机的色彩调教**主要面向 sRGB（JPEG）和 Display P3（HEIF/HDR）**。\n\n### Lab 色彩空间\n\n上面是「**显示色彩空间**」。还有一个「**感知色彩空间**」 —— **Lab**：\n\n- L：亮度（0-100）\n- a：红绿轴（负数=绿，正数=红）\n- b：蓝黄轴（负数=蓝，正数=黄）\n\nLab 的核心特点：\n\n> Lab 空间里的「**距离**」 = 「**人眼感觉的色差**」\n\n这就是 Day 41 学过的 ΔE：两点 Lab 距离 = ΔE 值。ΔE < 5 = 「**肉眼几乎无差**」。\n\nLab 是色彩科学的「**人眼标尺**」。CCM 调教的优劣常用 ΔE 衡量。",
+      "glossary": [
+        { "term": "CIE 1931", "zh": "CIE 1931 色度图", "explain": "国际照明委员会 1931 年定的「人眼可见颜色」图。" },
+        { "term": "Color Space", "zh": "色彩空间", "explain": "屏幕/相机能显示/记录的颜色范围（CIE 1931 内的多边形）。" },
+        { "term": "Lab", "zh": "CIE Lab 色彩空间", "explain": "感知均匀色彩空间。距离 = 人眼色差感觉。" },
+        { "term": "ΔE", "zh": "Delta E 色差", "explain": "Lab 空间里的距离。ΔE < 5 算肉眼无差。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么要这么多色彩空间？", "a": "不同设备能显示的颜色范围不同。sRGB 普及（最小但通用），Display P3 是新一代主流，BT.2020 是未来 HDR 标准。" },
+          { "q": "RGB 数值在不同色彩空间含义不同吗？", "a": "对。R=255, G=0, B=0 在 sRGB 是「**普通红**」，在 Display P3 是「**更鲜艳的红**」（覆盖更广）。同 RGB 数值不同色彩空间显示不同颜色。" }
+        ],
+        "videos": [
+          { "title": "B 站搜索：色彩空间 sRGB Display P3", "search": "色彩空间 sRGB Display P3 区别" }
+        ],
+        "reads": [
+          { "title": "维基百科 · CIE 1931", "url": "https://en.wikipedia.org/wiki/CIE_1931_color_space" },
+          { "title": "维基百科 · Lab color space", "url": "https://en.wikipedia.org/wiki/CIELAB_color_space" }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "title": "色彩流水线：从 sensor 到屏幕",
+      "type": "concept",
+      "content": "### 完整色彩管线\n\n```\nsensor RAW（sensor 原生色彩空间，每个 sensor 不同）\n  ↓ Demosaic\n  ↓ White Balance（去光源色温）\n  ↓ CCM 3×3 矩阵（转 sRGB 空间）\n  ↓ Gamma（线性 → sRGB Gamma）\n  ↓ Tone Mapping\nsRGB JPEG\n  ↓ 显示\n屏幕（接收 sRGB → 转屏幕原生 → 像素发光）\n```\n\n关键转换：CCM 把「**sensor 原生**」转「**sRGB 标准**」。\n\n### CCM 是什么\n\nCCM = **3×3 色彩转换矩阵**：\n\n```\n[R_out]   [a11 a12 a13]   [R_in]\n[G_out] = [a21 a22 a23] × [G_in]\n[B_out]   [a31 a32 a33]   [B_in]\n```\n\n9 个数定义 sensor RGB 怎么转 sRGB RGB。\n\n标定方法：\n\n1. 在标准光源箱拍 X-Rite 24 色卡\n2. 测每个色块的 sensor RGB（in）和理论 sRGB（out）\n3. 用最小二乘拟合 9 个矩阵元素\n\n这是 sensor 出厂校准的一部分，**每个 sensor + 每个色温**配一组 CCM。\n\n### 不同色温的 CCM\n\nDay 29 学过 AWB 输出 cct → CCM 按 cct 分段选：\n\n```xml\n<ccm_table>\n  <entry cct=\"2856\" matrix=\"...A 钨丝下的 CCM\"/>\n  <entry cct=\"5000\" matrix=\"...D50 下的 CCM\"/>\n  <entry cct=\"6500\" matrix=\"...D65 下的 CCM\"/>\n  <entry cct=\"7500\" matrix=\"...D75 下的 CCM\"/>\n</ccm_table>\n```\n\n实际 cct 在两档之间 → 内插 9 个矩阵元素。这是 Day 31 学过的「**CCM 内插**」。\n\n### 输出 Display P3 的代价\n\n手机想输出 Display P3（更鲜艳）：\n\n```\nCCM 的 9 个元素必须「**重新标定**」（输出目标变了）\n屏幕也必须支持 Display P3（旧手机不支持）\nJPEG 编码格式必须支持 P3（HEIF 支持，普通 JPEG 不支持）\n```\n\n所以 Display P3 输出**全链路升级**：sensor → ISP → JPEG → 屏幕。\n\n中端手机仍输出 sRGB（最普及但**色彩范围小**）。\n\n### Wide Gamut 模式\n\n用户在「**专业模式 / 摄影模式**」下可以选输出格式：\n\n- sRGB（普通）：兼容性最好\n- Display P3（更鲜艳）：iPhone 默认\n- ProRAW（保留更多）：苹果专业模式\n\n### Tuning 工程师的工作\n\n```\n阶段 1：sensor CCM 标定（4-8 个色温的 3×3 矩阵）\n阶段 2：CCM 内插平滑性测试（不同 cct 切换不抖）\n阶段 3：色彩准确性测试（24 色卡 ΔE < 5）\n阶段 4：风格化（如果产品要偏暖/冷）\n阶段 5：输出格式选择（sRGB / P3）\n```\n\n这是「**色彩调教**」的标准流程。",
+      "glossary": [
+        { "term": "CCM", "zh": "Color Correction Matrix", "explain": "3×3 矩阵把 sensor RGB 转标准 sRGB（或 P3）。" },
+        { "term": "Wide Gamut", "zh": "广色域", "explain": "覆盖比 sRGB 更大的颜色范围（如 P3 / Adobe RGB / BT.2020）。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "CCM 矩阵的 9 个数有约束吗？", "a": "每行和应接近 1（保证整体亮度）。这是「色彩平衡」约束，不是硬约束。" },
+          { "q": "Display P3 比 sRGB 多多少颜色？", "a": "覆盖区域大 25%。视觉上「**红色更红、绿色更绿**」，但**蓝紫色相差不大**。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "维基百科 · DCI-P3", "url": "https://en.wikipedia.org/wiki/DCI-P3" }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Gamma 与色调映射",
+      "type": "concept",
+      "content": "### Gamma 复习\n\nDay 11 学过 Gamma：把 sensor 输出的「**线性亮度**」（光强度成比例）转「**sRGB Gamma**」（接近人眼感知）。\n\n```\n线性亮度（sensor 输出）     sRGB Gamma 输出\n  0.0                         0\n  0.5                         0.74（接近 1 的 75%）\n  1.0                         255\n```\n\n核心：γ ≈ 2.2。\n\n### 不同色彩标准的 Gamma\n\n```\nsRGB：    γ ≈ 2.2（具体公式略复杂）\nDisplay P3：γ ≈ 2.2（与 sRGB 相同）\nDCI-P3：  γ = 2.6（电影院更暗，预设观看条件）\nBT.1886（HDR）：γ = 2.4\nPQ（HDR10）：「**绝对亮度**」曲线，对应 0-10000 nits\nHLG：「**对数 + Gamma**」混合\n```\n\nGamma 越高 → 暗部越暗 / 亮部越亮 → 对比度越强。这是色彩标准的「**风格**」之一。\n\n### Tone Mapping 复习\n\nDay 11-12 学过 Tone Mapping：把高动态范围（如 sensor 14-bit）压到显示位深（8-bit）。\n\n```\nsensor 14-bit (16384 级亮度)\n  ↓ Tone Mapping 压缩\nsRGB 8-bit (256 级亮度)\n```\n\nTone Mapping 不只压位深，还**保留对比度** —— 让暗部和亮部都有细节。GTM/LTM 是两种实现。\n\n### Display 端的 Tone Mapping\n\n屏幕也有「**显示 Tone Mapping**」：\n\n- **HDR10 视频**用 PQ 曲线（10-bit 亮度），如果显示器只支持 SDR（8-bit），播放器要做「**HDR → SDR Tone Mapping**」\n- **iPhone 显示 HEIF 照片**用 Display P3，如果照片是 sRGB 拍的，会做「**sRGB → P3 Tone Mapping**」\n\n这种「**端到端 Tone Mapping**」让不同色彩标准互相兼容。\n\n### Camera 端的色彩管线（含 Gamma + Tone Mapping）\n\n```\nsensor RAW (linear, 14-bit)\n  ↓ WB 三通道 gain\n  ↓ CCM 3×3 矩阵\n  ↓ Tone Mapping (linear → sRGB Gamma)\n  ↓ Gamma 校正（再次微调）\n  ↓ JPEG (sRGB, 8-bit)\n```\n\n这是 sRGB 输出。Display P3 输出**类似但 CCM 和 Tone Mapping 用不同曲线**。\n\n### Tuning 调 Gamma + Tone Mapping\n\n```xml\n<color_pipeline>\n  <output_color_space>srgb</output_color_space>\n  <gamma>2.2</gamma>\n  <tone_mapping_curve>...</tone_mapping_curve>  <!-- LUT 查找表 -->\n  <ccm_table>...</ccm_table>\n</color_pipeline>\n```\n\n这是「**色彩调教**」最末端的环节。",
+      "glossary": [
+        { "term": "Linear Color Space", "zh": "线性色彩空间", "explain": "亮度和光强成比例的色彩表示。sensor 输出和后期处理用。" },
+        { "term": "Gamma Encoding", "zh": "Gamma 编码", "explain": "把线性亮度转人眼感知的非线性表示。sRGB Gamma 约 2.2。" }
+      ],
+      "extras": {
+        "faq": [
+          { "q": "为什么 sensor 是线性，输出是 Gamma？", "a": "sensor 物理上接收光强成比例的电信号 → 线性。但人眼感知是对数的（暗部细节敏感）。Gamma 把更多 bit 分配给暗部 → 视觉舒服 + 节省存储。" }
+        ],
+        "videos": [],
+        "reads": [
+          { "title": "维基百科 · Gamma correction", "url": "https://en.wikipedia.org/wiki/Gamma_correction" }
+        ]
+      }
+    },
+    {
+      "id": "s4",
+      "title": "色彩科学的工程应用",
+      "type": "example",
+      "content": "### 应用 1：CCM 标定（精确）\n\n```\n1. 在标准光源箱（D65 + D50 + A 三种）拍 X-Rite 24 色卡\n2. 测每个色块的 sensor RGB（24 个 RGB）\n3. 查 X-Rite 标准卡的 sRGB 数值（24 个标准 sRGB）\n4. 用最小二乘拟合 9 个矩阵元素\n5. 重复 3 个色温 → 3 组 CCM\n6. 保存到 sensor OTP / Tuning XML\n```\n\n标定后测试：\n\n- 24 色卡每个色块的 ΔE\n- 平均 ΔE < 3 = 优秀\n- 平均 ΔE < 5 = 合格\n- 平均 ΔE > 8 = 需要重标\n\n### 应用 2：色彩风格化\n\n品牌差异：\n\n```\niPhone：\n  Display P3 输出\n  CCM 偏中性（自然色彩）\n  Tone Mapping 保守（不刻意提亮）\n\n三星：\n  sRGB / Display P3 自动选\n  CCM 偏鲜艳（饱和度 +10%）\n  Tone Mapping 激进（暗部拉亮）\n\n小米：\n  类似苹果（旗舰）/ 类似三星（中端）\n```\n\n这就是「**同样场景不同手机色彩不同**」的来源。\n\n### 应用 3：肤色优化\n\n肤色是色彩调教的「**敏感地带**」：\n\n- 偏黄 → 用户嫌「**黄气重**」\n- 偏白 → 用户嫌「**死白**」\n- 偏红 → 用户嫌「**像妆**」\n\nTuning 工程师专门在 CCM 矩阵里给「**肤色区**」做微调（保留肤色自然 + 不让其他颜色乱）。\n\n这是 CCM 调教里**最 tedious** 的工作。\n\n### 应用 4：HDR 视频色彩\n\nHDR10 / HLG 视频用更广色彩空间（BT.2020）+ PQ 曲线。CCM 矩阵跟 sRGB 完全不同，需要 sensor 标定到 BT.2020。\n\n这是 Week 4 学过的 HDR 视频流程的色彩部分。\n\n### Tuning 工程师的色彩工作量\n\n一个项目大概：\n\n```\n标定阶段：3-4 天（全色温 CCM + Gamma + Tone Mapping 标定）\n精修阶段：2-3 周（肤色 / 天空 / 草地 / 食物等专门优化）\n测试阶段：1-2 周（24 色卡 ΔE + 真实场景）\n上线后调整：持续（按用户反馈微调）\n```\n\n色彩调教不像 AE/AWB 那么算法重，但**艺术性强** —— 哪些颜色调多少要看「**品牌调性**」。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **颜色 = 人眼感受**（不是物理量），CIE 1931 是色彩科学基础\n2. **色彩空间 = CIE 马蹄形里的多边形**：sRGB / Display P3 / DCI-P3 / BT.2020\n3. **Lab 是「人眼标尺」**：距离 = ΔE 色差\n4. **CCM 是 3×3 矩阵**：sensor RGB → 标准 sRGB；按 cct 分段配置\n5. **完整色彩管线**：sensor RAW → WB → CCM → Tone Mapping → Gamma → JPEG\n6. **Gamma**：线性 vs 人眼感知，sRGB γ≈2.2\n7. **品牌色彩风格**：苹果中性、三星鲜艳、小米中端偏暖\n\n### 自我检查\n\n1. CIE 1931 是什么？为什么所有色彩空间都在它里面？\n2. sRGB / Display P3 / Lab / Adobe RGB 各自用途？\n3. CCM 怎么标定？ΔE < 5 是什么意思？\n4. 为什么 sensor 是线性，输出是 Gamma？\n5. 完整色彩管线 6 步？\n\n### 笔记建议\n\n- 把 CIE 1931 + 各色彩空间画一遍\n- 整理 CCM 标定流程 5 步\n- 思考你妹妹项目用的是 sRGB 还是 P3 输出\n\n### 明天预告\n\nDay 51：Chromatix 工具实操。Tuning 工程师用 Chromatix 调教 3A，明天看这个工具的工作流 + 常见操作。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "维基百科 · CIE 1931", "url": "https://en.wikipedia.org/wiki/CIE_1931_color_space" },
+    { "source": "维基百科 · Lab color space", "url": "https://en.wikipedia.org/wiki/CIELAB_color_space" },
+    { "source": "高通 3A 7.0 Tuning Guide", "section": "Color Pipeline" }
+  ],
+  "dailyQuizId": "daily-day-50"
+}

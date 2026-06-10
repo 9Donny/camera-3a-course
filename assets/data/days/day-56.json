@@ -1,0 +1,47 @@
+{
+  "id": "day-56",
+  "week": 8,
+  "module": "M7",
+  "title": "模拟面试 3：曝光 + Target（PRD Q11-Q15）",
+  "estimatedMinutes": 240,
+  "sections": [
+    {
+      "id": "s1",
+      "title": "Q11：240fps 曝光时间 + Q12：高通曝光表",
+      "type": "example",
+      "content": "### 题 11：240fps 慢动作时曝光时间最长多少？\n\n**思考要点**：帧率和曝光时间的关系。\n\n**参考答案**：\n\n> 240fps 意味着每秒拍 240 帧，每帧时间 = 1/240 秒 ≈ 4.17ms。\n> \n> **理论上每帧曝光时间不能超过 1/240 秒 = 4.17ms**（否则帧间会重叠 → 拍不出 240 帧）。\n> \n> 实际中需要留 sensor 读出时间（比如 1ms），所以曝光时间最多 1/300 ≈ 3.3ms 更稳。\n> \n> **影响**：\n> \n> - 240fps 下曝光时间极短（< 5ms）→ 单帧吸光少 → 噪点多\n> - 必须用大光圈 + 高 ISO 补偿\n> - 暗光下慢动作几乎不可用（用户感觉「**画面又暗又糊**」）\n> \n> **应对**：\n> \n> - 240fps 模式自动开高 ISO（如 12800+）\n> - 必要时降帧率（用户用 120fps 时 → 曝光时间 8ms，画质更好）\n> - 户外强光下 240fps 效果最好（不需要太高 ISO）\n\n### 题 12：高通曝光表怎么调试？（PRD-Q12）\n\n**参考答案**：\n\n> 调试涵盖几个层次（这也是 PRD-Q19 的扩展版）：\n> \n> **1. 基础曝光表**：\n> - 拐点位置（一般 lux 200 / 1/30 秒，OIS 机型可放到 1/8 秒）\n> - Analog Gain 上限（决定暗光画质，6400-12800 常见）\n> - Digital Gain 是否启用（一般作为 Analog Gain 已满后的兜底）\n> \n> **2. lux_to_exp 映射**：\n> - lux_index 到曝光表行号的桥接\n> - 不同亮度场景下用哪行（暗 → 行号大）\n> \n> **3. Bright/Dark Region**：\n> - dark_high / bright_low 边界\n> - dark_weight / bright_weight 修正系数（注意方向：暗区超标 → 降 target）\n> \n> **4. ROI 加权**：\n> - Touch / Face / Saliency / Depth 4 类的权重和半径\n> \n> **5. HDR sensor 多曝光表**：\n> - 长 / 短 / 超短曝光表分别调（3-EXP HDR）\n> - SHDR / MFHDR 模式不同配置\n> \n> **6. 抗带状（Antibanding）**：\n> - 曝光时间吸附到 50/60Hz 整数倍\n> - gain 补足总曝光量\n> \n> **调教方法**：标准光源箱 + 灰板从亮到暗扫一遍 → 验证每个 lux 下亮度收敛 → 拐点过渡平滑测试 → 真实场景验证（夜景 / 室内 / 户外 / 雪景 / 夕阳 / 逆光人像）。\n> \n> 一个项目曝光表大约 50 行 × 5 字段 = 250 个数 + 多种模式 → 总数 500-1000 个参数。"
+    },
+    {
+      "id": "s2",
+      "title": "Q13：TMC 作用 + Q14：Gamma vs LTM 优先级",
+      "type": "example",
+      "content": "### 题 13：TMC 的作用是什么？（PRD-Q13）\n\n**参考答案**：\n\n> TMC = Tone Mapping Curve，色调映射曲线。\n> \n> **核心作用**：把 sensor 输出的高动态范围数据（如 14-bit RAW，0-16384 级）压缩到显示位深（8-bit JPEG，0-255 级）。\n> \n> **关键不仅是「**压缩**」，还是「**重新分配**」**：\n> \n> - 暗部（0-30）：用更多 8-bit 档位（如 0-50）保留细节\n> - 中亮区（中间）：标准映射\n> - 亮部（200+）：用更少档位（避免饱和）\n> \n> 这种「**非线性压缩**」让 8-bit JPEG 看起来比简单截断（直接 / 64）更有细节。\n> \n> **TMC 的两种实现**：\n> \n> 1. **GTM**（全局曲线）：整图一条曲线。简单但对动态范围不极端的场景效果好。TMC 3.0 用这个。\n> 2. **LTM**（局部曲线）：每个区域一条曲线。复杂但暗部 / 亮部精细处理。TMC 4.0 用这个。\n> \n> **TMC 的位置**：\n> \n> ```\n> ISP Pipeline：\n> RAW → ... → CCM → 【TMC（Tone Mapping）】→ Gamma → ... → JPEG\n> ```\n> \n> TMC 在 Gamma 之前。先压缩动态范围，再做 Gamma 编码。\n> \n> **TMC 跟 ADRC 的关系**：\n> \n> ADRC 是 LTM 的简化版（只处理暗部），处理「**不开 LTM 但要拉暗部**」的场景。中端机型常用 ADRC + GTM 组合。旗舰用 LTM 自带暗部处理。\n\n### 题 14：Gamma vs LTM 优先级（PRD-Q14）\n\n**参考答案**：\n\n> 这是个深入题。理解需要看 ISP Pipeline 顺序：\n> \n> ```\n> RAW → WB → CCM → Tone Mapping (LTM/GTM) → 【Gamma】→ ... → JPEG\n>                          ↑                 ↑\n>                       先做 LTM            后做 Gamma\n> ```\n> \n> **关键事实**：LTM **在 Gamma 之前**，Gamma **在 LTM 之后**。\n> \n> **「优先级」的含义**：\n> \n> - 调对比度时，**LTM 影响更大**（处理整个动态范围分布）\n> - Gamma 是**最后一道**，影响范围更窄（一条固定曲线）\n> \n> **如果两者效果重叠**（如都要拉暗部）：\n> \n> 1. **LTM 优先**：LTM 是局部精细处理，调它能让效果最好\n> 2. Gamma 作为「**全局微调**」：在 LTM 之后做整体曲线调整\n> \n> 实际工程中：**LTM 调暗部细节**，**Gamma 调整体明暗** —— 两者协同。\n> \n> **PRD-Q14 的另一种解读**：\n> \n> 「**Gamma 优先**」可能指调教时**先调 Gamma**（基础曲线），后调 LTM（细节）。这跟「**LTM 处理优先**」（在 ISP Pipeline 里更早）是两回事。需要看面试官想要哪种。\n> \n> 我的回答：「这要看「优先级」的含义。\n> - **执行顺序**：LTM 先于 Gamma\n> - **影响范围**：LTM 大于 Gamma\n> - **调教顺序**：先 Gamma 基础后 LTM 细节」\n> \n> 三个角度都讲，让面试官选他要的。"
+    },
+    {
+      "id": "s3",
+      "title": "Q15：Safe target 推导 3 步",
+      "type": "example",
+      "content": "### 题 15：默写 PRD-Q15 答案\n\n**参考答案**（必背！）：\n\n> safe_target 三步推导：\n> \n> **Step 1：luma_target** —— 按 lux 查表的基础亮度配置\n> \n> ```\n> lux 50 → luma_target = 60 （暗光低 target，避免噪点放大）\n> lux 200 → luma_target = 80 （室内日常）\n> lux 320 → luma_target = 95 （强光高 target，画面通透）\n> ```\n> \n> 80 是「黄金数」：理论 18% 灰经过 Gamma 后约 119，但实际场景偏暗，设 80 留出亮部余量防过曝。\n> \n> **Step 2：adjusted_target** = luma_target × scene_factor + scene_offset\n> \n> 由 10 个 Scene Analyzer 的修正聚合而来：\n> \n> - **Brighten**：暗场景加亮（factor 1.10-1.30）\n> - **Saturation Prevention**：亮部过曝压低（factor 0.85-0.95，priority 90 最高）\n> - **Dark Prevention**：暗部截断时提一点（factor 1.10-1.20）\n> - **Extreme Color**：色彩极端时降 target（factor 0.85-0.95）\n> - **Face**：人脸偏暗加亮（factor 1.10-1.15）\n> - 其他...\n> \n> 各 Analyzer 用几何加权聚合：final_factor = Π factor_i^(p_i/sum_p)。\n> \n> **Step 3：safe_target** = adjusted_target − dark_boost_extra\n> \n> ADRC 给暗部加 gain 让画面整体变亮（通常约 5-15 luma 单位）。AE 必须把这部分预扣，否则最终画面会过曝。\n> \n> 完整流程：\n> \n> ```\n> Step 1: luma_target = 80  (按 lux 查表)\n> Step 2: adjusted_target = 80 × 1.10 + 0 = 88  (Face Analyzer 加亮)\n> Step 3: safe_target = 88 - 8 = 80  (ADRC 预扣)\n> ```\n> \n> safe_target 是 AE 真正驱动 sensor 的目标。保证 ADRC 处理后画面亮度恰好达到 adjusted_target，避免过曝。\n> \n> **关键意义**：safe_target 让「**AE 算法**」和「**ISP Tone Mapping**」无缝协同。如果没有这一步，开 ADRC 后画面会**整体偏亮 5-10%**。\n\n### 这道题的重要性\n\nPRD-Q15 是 60 天里**最高频**的面试题之一。任何 AE 类岗位**必问**。\n\n建议：\n\n1. 默写 5 遍以上\n2. 用真实数字举例（如 luma_target=80, factor=1.10, dark_boost_extra=8）\n3. 讲清「**为什么减 ADRC 预扣**」（核心理解点）\n\n### Day 56 总结\n\n做完 Q11-Q15：\n\n- ✅ 240fps 曝光时间约束\n- ✅ 高通曝光表 6 层调试\n- ✅ TMC 作用 + 与 ADRC 关系\n- ✅ Gamma vs LTM 优先级三种解读\n- ✅ **safe_target 三步推导（核心）**\n\n这是 AE 实战题的核心。",
+      "glossary": []
+    },
+    {
+      "id": "s4",
+      "title": "面试技巧：处理「不知道」",
+      "type": "concept",
+      "content": "### 面试遇到陌生题怎么办\n\n比如面试官问：「**你对 IPE 模块的 Demosaic 算法熟悉吗？**」\n\n你 60 天里学过 Demosaic（Day 9）但不深入。\n\n**最差回答**：\n\n> 「**我不熟悉**」← 印象分负\n\n**好回答 1：诚实 + 相关知识**：\n\n> 「Demosaic 是 ISP 把 Bayer 单通道数据还原成 RGB 三通道的过程，最常用的算法是双线性内插。Day 9 我学过基础原理，但具体实现细节（如 IPE 里的硬件优化）我没深入接触。如果项目需要，我能快速学习。」\n\n这种回答展示「**有基础知识 + 知道怎么补**」。\n\n**好回答 2：相关推断**：\n\n> 「我对 Demosaic 算法本身（如双线性 / 高级 5x5 内插）了解，但具体高通 IPE 模块的实现差异我没接触过。我猜可能涉及硬件加速 + 边缘检测优化（避免色彩拉花）。」\n\n用「**我猜**」展示推断能力，但留出余地。\n\n**好回答 3：求助**：\n\n> 「这块我不熟，能给个提示吗？或者您想我讲讲 Demosaic 算法的基础？」\n\n这种**主动方向**避免冷场。\n\n### 关键：「**不会**」≠「**学不会**」\n\n面试官在意：\n\n```\n会的部分：能不能流畅讲？（Yes/No）\n不会的部分：能不能用相关知识推断？（Yes/No）\n         有没有学习能力？（Yes/No）\n```\n\n**前两项你 60 天学过 80%，第三项靠表达**。\n\n### Day 56 完成后\n\n剩下 4 天：\n\n```\nDay 57：模拟面试 4 - PRD Q16-Q19（Dark Boost / 64×48 / Metering / 曝光表调试）\nDay 58：模拟面试 5 - PRD Q20-Q23 + 综合 + 行为题\nDay 59：简历润色\nDay 60：最终冲刺\n```\n\n继续节奏，每天进步一点。",
+      "glossary": []
+    },
+    {
+      "id": "s5",
+      "title": "本日小结",
+      "type": "recap",
+      "content": "### 今天打的核心地基\n\n1. **PRD Q11-Q15 完成**：曝光时间 / 曝光表调试 / TMC / Gamma vs LTM / safe_target 三步\n2. **safe_target 三步**：再次默写（PRD-Q15 是最高频面试题）\n3. **不知道的题**：诚实 + 相关推断 + 主动求助\n4. **Gamma 和 LTM 三种优先级解读**：执行顺序 / 影响范围 / 调教顺序\n\n### 自我检查\n\n1. PRD Q11-Q15 你能流畅口述吗？\n2. safe_target 三步你**完全不看笔记**能默写吗？\n3. 240fps 曝光时间约束你能算吗？\n4. 「**不知道**」时你怎么应对？\n\n### 笔记建议\n\n- safe_target 三步**默写 10 遍**\n- 整理「**不知道**」的 3 种回答模板\n- 弱点重看：Q11→Day 5；Q12→Day 16；Q15→Day 18\n\n### 明天预告\n\nDay 57：模拟面试 4 - PRD Q16-Q19（Dark Boost / 64×48 / Metering / 曝光表调试）。",
+      "glossary": []
+    }
+  ],
+  "references": [
+    { "source": "Day 5, Day 12, Day 16, Day 18 复习" },
+    { "source": "PRD-Q11 ~ PRD-Q15 真题" }
+  ],
+  "dailyQuizId": "daily-day-56"
+}
