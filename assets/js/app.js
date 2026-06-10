@@ -325,6 +325,21 @@ async function loadSeedFlashcards() {
       flashcards.loadInitial(seeds);
     } catch (e) { /* 文件不存在或格式错时静默，继续下一周 */ }
   }
+
+  // 迁移：把用户已完成 day 的种子卡（dueAt=null）激活到今天
+  // 解决：第 1 天就要复习 263 张未学卡 / 学到 day 4 看到 day 50 内容
+  try {
+    const today = todayISO();
+    const completed = progress.getState().completedDays || [];
+    let totalUnlocked = 0;
+    for (const dayNum of completed) {
+      const dayId = `day-${String(dayNum).padStart(2, "0")}`;
+      totalUnlocked += flashcards.unlockBySrcDay(dayId, today);
+    }
+    if (totalUnlocked > 0) {
+      console.info(`[review] migrated ${totalUnlocked} seed cards (completed days only)`);
+    }
+  } catch (e) { console.warn("seed migration failed:", e); }
 }
 await loadSeedFlashcards();
 

@@ -160,12 +160,18 @@ export async function renderToday(content, { progress, router, persistProgress, 
   `;
 
   if (!isCompleted) {
-    document.getElementById("completeBtn").addEventListener("click", () => {
+    document.getElementById("completeBtn").addEventListener("click", async () => {
       const today = new Date().toISOString().slice(0, 10);
       progress.completeDay(day, today);
       persistProgress();
       tts.stop();
       celebrateConfetti();
+      // 解锁本 day 的种子记忆卡（让它们进入复习队列）
+      try {
+        const { flashcards } = await import("../flashcards.js");
+        const unlocked = flashcards.unlockBySrcDay(dayId, today);
+        console.info(`[review] unlocked ${unlocked} cards for ${dayId}`);
+      } catch (e) { console.warn("flashcards unlock failed:", e); }
       // 让特效先播放再跳页
       setTimeout(() => {
         alert(`🎉 Day ${day} 完成！下一天已解锁。`);

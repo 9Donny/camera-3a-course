@@ -36,14 +36,38 @@ test("add() with explicit id is honored, dedupes by id", () => {
   assert.equal(fc.all()[0].front, "Q changed");
 });
 
-test("dueToday() filters by dueAt <= today", () => {
+test("dueToday() filters by dueAt <= today; new cards (dueAt=null) excluded", () => {
   const fc = new Flashcards(makeFakeStorage());
   fc.add({ id: "a", front: "a", back: "a", dueAt: "2026-06-05" });
   fc.add({ id: "b", front: "b", back: "b", dueAt: "2026-06-07" });
   fc.add({ id: "c", front: "c", back: "c", dueAt: "2026-06-10" });
-  fc.add({ id: "d", front: "d", back: "d", dueAt: null }); // 新卡片立即到期
+  // 新卡 dueAt=null：用户未学过对应 Day，不该出现在复习
+  // 等用户完成对应 Day 后调 unlockBySrcDay 才被激活
+  fc.add({ id: "d", front: "d", back: "d", dueAt: null });
   const due = fc.dueToday("2026-06-07");
-  assert.deepEqual(due.map(c => c.id).sort(), ["a", "b", "d"]);
+  assert.deepEqual(due.map(c => c.id).sort(), ["a", "b"]);
+});
+
+test("unlockBySrcDay() activates new cards by srcDay", () => {
+  const fc = new Flashcards(makeFakeStorage());
+  fc.add({ id: "a", front: "a", back: "a", srcDay: "day-01", dueAt: null });
+  fc.add({ id: "b", front: "b", back: "b", srcDay: "day-01", dueAt: null });
+  fc.add({ id: "c", front: "c", back: "c", srcDay: "day-02", dueAt: null });
+  // 完成 day-01 学习
+  const unlocked = fc.unlockBySrcDay("day-01", "2026-06-10");
+  assert.equal(unlocked, 2);
+  // 现在 a, b 进入到期队列；c 仍在 day-02 待解锁
+  const due = fc.dueToday("2026-06-10");
+  assert.deepEqual(due.map(c => c.id).sort(), ["a", "b"]);
+});
+
+test("unlockBySrcDay() doesn't reset cards with existing dueAt", () => {
+  const fc = new Flashcards(makeFakeStorage());
+  // 卡已经评过分，dueAt 在未来
+  fc.add({ id: "a", front: "a", back: "a", srcDay: "day-01", dueAt: "2026-07-01" });
+  fc.unlockBySrcDay("day-01", "2026-06-10");
+  const c = fc.all().find(c => c.id === "a");
+  assert.equal(c.dueAt, "2026-07-01"); // 未被覆盖
 });
 
 test("dueToday() sorts oldest-first", () => {

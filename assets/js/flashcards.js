@@ -32,18 +32,33 @@ export class Flashcards {
     return this._load().slice();
   }
 
-  // 返回 dueAt <= today 或 dueAt 为 null（新卡）的卡片，oldest-first
+  // 返回 dueAt <= today 的卡片，oldest-first
+  // 关键：新卡（dueAt=null，即用户从未学过+评过分的）不视为「到期」
+  // 这种卡只在用户完成对应 Day 学习后才会被「激活」（unlockBySrcDay）
+  // 这样避免：第 1 天就要复习 263 张未学的卡 / 学到第 4 天看到第 50 天的内容
   dueToday(today) {
     const list = this._load().filter(c => {
-      if (c.dueAt === null || c.dueAt === undefined) return true;
+      if (c.dueAt === null || c.dueAt === undefined) return false;
       return c.dueAt <= today;
     });
-    list.sort((a, b) => {
-      const da = a.dueAt ?? "0000-00-00";
-      const db = b.dueAt ?? "0000-00-00";
-      return da.localeCompare(db);
-    });
+    list.sort((a, b) => a.dueAt.localeCompare(b.dueAt));
     return list;
+  }
+
+  // 用户完成 day-NN 学习后调用：把所有 srcDay==dayId 的种子卡设 dueAt=今天
+  // 这些卡才会出现在复习队列里
+  // 已经有 dueAt 的不动（保留之前的复习状态）
+  unlockBySrcDay(dayId, today) {
+    const list = this._load();
+    let unlocked = 0;
+    for (const c of list) {
+      if (c.srcDay !== dayId) continue;
+      if (c.dueAt !== null && c.dueAt !== undefined) continue; // 已激活的不动
+      c.dueAt = today; // 今天就要复习一次（强化记忆）
+      unlocked += 1;
+    }
+    if (unlocked > 0) this._save();
+    return unlocked;
   }
 
   add(partial) {
